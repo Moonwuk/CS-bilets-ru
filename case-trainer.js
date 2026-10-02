@@ -12,6 +12,7 @@
   const $ = selector => document.querySelector(selector);
   const main = $('#main');
   const esc = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+  const termsMarkup = window.TrainerTerms.markup;
   const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
   const isObject = value => !!value && typeof value === 'object' && !Array.isArray(value);
   const nonempty = value => typeof value === 'string' && value.trim().length > 0;
@@ -211,7 +212,7 @@
   function focusMain() { main.focus({ preventScroll: true }); window.scrollTo({ top: 0, behavior: 'auto' }); }
   function focusElement(selector, preventScroll = true) { const element = main.querySelector(selector); if (element) element.focus({ preventScroll }); }
   function noticeMarkup() { return notice ? `<div class="case-notice" role="status">${esc(notice)}</div>` : ''; }
-  function listMarkup(items, ordered = false) { const tag = ordered ? 'ol' : 'ul'; return `<${tag}>${items.map(item => `<li>${esc(item)}</li>`).join('')}</${tag}>`; }
+  function listMarkup(items, ordered = false) { const tag = ordered ? 'ol' : 'ul'; return `<${tag}>${items.map(item => `<li>${termsMarkup(item)}</li>`).join('')}</${tag}>`; }
 
   function methodologyMarkup() {
     const collections = dataset.interviewCollections || [];
@@ -248,20 +249,20 @@
   }
 
   function foundationsMarkup(question) {
-    return `<details class="case-foundations"><summary>Опорные понятия</summary><dl>${question.prerequisites.map(item => `<dt>${esc(item.term)}</dt><dd>${esc(item.explanation)}</dd>`).join('')}</dl></details>`;
+    return `<details class="case-foundations"><summary>Опорные понятия</summary><dl>${question.prerequisites.map(item => `<dt>${termsMarkup(item.term)}</dt><dd>${termsMarkup(item.explanation)}</dd>`).join('')}</dl></details>`;
   }
 
   function scenarioMarkup(question) {
-    return `<p class="case-prompt">${esc(question.question)}</p><div class="case-context"><section><h3>Известные факты</h3>${listMarkup(question.evidence)}</section><section><h3>Ограничения и условия</h3>${listMarkup(question.constraints)}</section></div>`;
+    return `<p class="case-prompt">${termsMarkup(question.question)}</p><div class="case-context"><section><h3>Известные факты</h3>${listMarkup(question.evidence)}</section><section><h3>Ограничения и условия</h3>${listMarkup(question.constraints)}</section></div>`;
   }
 
   function deepReviewMarkup(question, order) {
     return `<div class="case-review">
-      <section><h3>Почему выбран этот ответ</h3>${order.map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; return `<div class="case-option-reason ${option.correct ? 'best' : ''}"><strong>${LETTERS[displayIndex]}. ${esc(option.text)}</strong>${option.correct ? '<span class="case-option-status">Лучший ответ при заданных условиях</span>' : ''}<p>${esc(option.explanation)}</p></div>`; }).join('')}</section>
+      <section><h3>Почему выбран этот ответ</h3>${order.map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; return `<div class="case-option-reason ${option.correct ? 'best' : ''}"><strong>${LETTERS[displayIndex]}. ${termsMarkup(option.text)}</strong>${option.correct ? '<span class="case-option-status">Лучший ответ при заданных условиях</span>' : ''}<p>${termsMarkup(option.explanation)}</p></div>`; }).join('')}</section>
       <section><h3>Ход рассуждений</h3>${listMarkup(question.reasoning, true)}</section>
       <section><h3>Компромиссы и остаточные риски</h3>${listMarkup(question.tradeoffs)}</section>
-      <section><h3>Что изменит ответ</h3><p>${esc(question.whatChangesAnswer)}</p></section>
-      <section><h3>Углублённые вопросы для собеседования</h3><p>Сначала попробуйте ответить вслух, затем раскройте ориентир для самопроверки.</p>${question.followUps.map(item => `<details class="case-followup"><summary>${esc(item.question)}</summary><p>${esc(item.answer)}</p></details>`).join('')}</section>
+      <section><h3>Что изменит ответ</h3><p>${termsMarkup(question.whatChangesAnswer)}</p></section>
+      <section><h3>Углублённые вопросы для собеседования</h3><p>Сначала попробуйте ответить вслух, затем раскройте ориентир для самопроверки.</p>${question.followUps.map(item => `<details class="case-followup"><summary>${termsMarkup(item.question)}</summary><p>${termsMarkup(item.answer)}</p></details>`).join('')}</section>
       ${foundationsMarkup(question)}
       <section><h3>Технические источники</h3><ul class="case-source-list">${question.references.map(reference => { const source = sources.get(reference.sourceId); return `<li><a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a><small>${esc(source.publisher)} · ${esc(reference.locator)}<br>Проверено: <time datetime="${esc(source.accessedAt)}">${dateLabel(source.accessedAt)}</time></small></li>`; }).join('')}</ul></section>
     </div>`;
@@ -288,9 +289,9 @@
       <p class="case-progress-label" role="status">Сценарий ${session.index + 1} из ${session.ids.length} · ${esc(tracks.get(question.track).title)}</p>
       <div class="case-layout"><article class="question-panel" aria-labelledby="case-title">
         <div class="question-context"><span class="level-tag">${question.difficulty === 'advanced' ? 'Углублённый' : 'Переход к сложным задачам'}</span><span>${session.mode === 'interview' ? 'Разбор появится после завершения попытки' : 'Можно учиться в своём темпе'}</span></div>
-        <h1 class="case-title" id="case-title" tabindex="-1">${esc(question.title)}</h1>${scenarioMarkup(question)}
+        <h1 class="case-title" id="case-title" tabindex="-1">${termsMarkup(question.title)}</h1>${scenarioMarkup(question)}
         ${session.mode === 'practice' && !checked ? foundationsMarkup(question) : ''}
-        <fieldset class="case-options"><legend>Выберите лучший ответ при этих условиях</legend><div class="case-option-list">${session.orders[id].map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; const chosen = selected && answer === optionIndex; const status = checked ? (option.correct ? 'Лучший ответ' : chosen ? 'Ваш ответ · неверно' : '') : ''; return `<label class="case-option ${chosen ? 'selected' : ''} ${checked ? `locked ${option.correct ? 'good' : chosen ? 'bad' : ''}` : ''}" for="answer-${optionIndex}"><input type="radio" name="case-answer" id="answer-${optionIndex}" data-answer="${optionIndex}" value="${optionIndex}" ${chosen ? 'checked' : ''} ${checked ? 'disabled' : ''}><span class="case-option-copy"><strong>${LETTERS[displayIndex]}.</strong>${esc(option.text)}${status ? `<span class="case-option-status">${status}</span>` : ''}</span></label>`; }).join('')}</div></fieldset>
+        <p class="term-help-hint case-term-hint">Нажмите на подчёркнутый термин — объясним простыми словами.</p><fieldset class="case-options"><legend>Выберите лучший ответ при этих условиях</legend><div class="case-option-list">${session.orders[id].map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; const chosen = selected && answer === optionIndex; const status = checked ? (option.correct ? 'Лучший ответ' : chosen ? 'Ваш ответ · неверно' : '') : ''; return `<div class="case-option ${chosen ? 'selected' : ''} ${checked ? `locked ${option.correct ? 'good' : chosen ? 'bad' : ''}` : ''}"><input type="radio" name="case-answer" id="answer-${optionIndex}" data-answer="${optionIndex}" value="${optionIndex}" aria-label="${LETTERS[displayIndex]}. ${esc(option.text)}" ${chosen ? 'checked' : ''} ${checked ? 'disabled' : ''}><label class="case-option-pick" for="answer-${optionIndex}" aria-hidden="true"></label><span class="case-option-copy"><strong>${LETTERS[displayIndex]}.</strong>${termsMarkup(option.text)}${status ? `<span class="case-option-status">${status}</span>` : ''}</span></div>`; }).join('')}</div></fieldset>
         <div class="case-notes"><label for="reasoning-note">Мои рассуждения <span class="topic-count">Необязательно</span></label><p id="reasoning-help">Какие факты определяют решение? Какие допущения и риски остаются? До ${NOTE_LIMIT} символов. Заметка хранится только в этом браузере; сравните её с разбором самостоятельно.</p><textarea id="reasoning-note" aria-describedby="reasoning-help" maxlength="${NOTE_LIMIT}" rows="5" placeholder="Запишите ход мысли до просмотра ответа…">${esc(session.notes[id] || '')}</textarea></div>
         <div class="case-actions"><button class="button secondary" data-action="previous" ${session.index === 0 ? 'disabled' : ''}>Назад</button><div class="action-right">${session.mode === 'practice' && !checked ? `<button class="button primary" data-action="check" ${selected ? '' : 'disabled'}>Проверить решение</button>` : ''}<button class="button ${session.mode === 'interview' || checked ? 'primary' : 'secondary'}" data-action="${last ? 'finish' : 'next'}">${last ? 'К результатам' : 'Далее'}</button></div></div>
         ${checked ? `<section class="case-feedback ${isCorrect(id) ? '' : 'is-error'}" id="case-feedback" tabindex="-1"><h2>${isCorrect(id) ? 'Решение верное' : 'В выбранном решении есть проблема'}</h2><p>Сравните ход своих рассуждений с разбором. У правильного варианта тоже есть ограничения.</p>${deepReviewMarkup(question, session.orders[id])}</section>` : ''}
@@ -309,7 +310,7 @@
     main.innerHTML = `${noticeMarkup()}<header class="page-heading"><div><span class="eyebrow">Результат и самопроверка</span><h1>Разбор попытки</h1><p>${esc(session.title)} · ${esc(modeLabel(session.mode))}</p></div></header>
       <section class="result-card"><div class="result-score" aria-label="Верно ${correct} из ${session.ids.length}">${correct}<span> / ${session.ids.length}</span></div><div class="result-copy"><h2>Решения проверены</h2><p>Верно: ${correct}. Неверно: ${wrong - skipped}. Без ответа: ${skipped}.</p><div class="result-actions"><button class="button primary" data-action="retry">Повторить набор</button>${wrong ? '<button class="button secondary" data-action="repeat-wrong">Разобрать ошибки</button>' : ''}<button class="button secondary" data-action="home">К наборам</button></div></div></section>
       <p class="case-score-note">Оценён только выбор варианта. Ваши заметки не получили автоматическую оценку: сравните их с ходом рассуждений, компромиссами и ответами на дополнительные вопросы. Этот результат не является оценкой профессиональной квалификации.</p>
-      <section aria-labelledby="review-heading"><div class="section-heading"><h2 id="review-heading">Разбор всех сценариев</h2></div><div class="case-review-list">${session.ids.map((id, index) => { const question = questions.get(id); const chosen = session.answers[id]; const answered = has(session.answers, id); const correctAnswer = isCorrect(id); return `<details class="review-item"><summary><span class="case-review-state ${correctAnswer ? '' : 'bad'}">${correctAnswer ? 'Верно' : answered ? 'Ошибка' : 'Без ответа'}</span>${index + 1}. ${esc(question.title)}</summary><div class="review-body"><div class="question-context"><span>${esc(tracks.get(question.track).title)}</span></div>${scenarioMarkup(question)}<p class="review-answer ${correctAnswer ? '' : 'wrong'}"><strong>Ваш ответ:</strong> ${answered ? esc(question.options[chosen].text) : 'Не выбран; сценарий добавлен в работу над ошибками.'}</p><section><h3>Мои рассуждения</h3>${session.notes[id] ? `<div class="case-review-note">${esc(session.notes[id])}</div>` : '<p class="topic-count">Заметка не добавлена.</p>'}</section>${deepReviewMarkup(question, session.orders[id])}</div></details>`; }).join('')}</div></section>`;
+      <section aria-labelledby="review-heading"><div class="section-heading"><h2 id="review-heading">Разбор всех сценариев</h2></div><div class="case-review-list">${session.ids.map((id, index) => { const question = questions.get(id); const chosen = session.answers[id]; const answered = has(session.answers, id); const correctAnswer = isCorrect(id); return `<details class="review-item"><summary><span class="case-review-state ${correctAnswer ? '' : 'bad'}">${correctAnswer ? 'Верно' : answered ? 'Ошибка' : 'Без ответа'}</span>${index + 1}. ${termsMarkup(question.title)}</summary><div class="review-body"><div class="question-context"><span>${esc(tracks.get(question.track).title)}</span></div>${scenarioMarkup(question)}<p class="review-answer ${correctAnswer ? '' : 'wrong'}"><strong>Ваш ответ:</strong> ${answered ? esc(question.options[chosen].text) : 'Не выбран; сценарий добавлен в работу над ошибками.'}</p><section><h3>Мои рассуждения</h3>${session.notes[id] ? `<div class="case-review-note">${esc(session.notes[id])}</div>` : '<p class="topic-count">Заметка не добавлена.</p>'}</section>${deepReviewMarkup(question, session.orders[id])}</div></details>`; }).join('')}</div></section>`;
     bindMain();
     updateStats();
   }
@@ -495,7 +496,7 @@
 
   function keyboard(event) {
     const session = progress.session;
-    if (!session || session.finished || progress.view !== 'session' || confirmation || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (!session || session.finished || progress.view !== 'session' || confirmation || window.TrainerTerms.isOpen() || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
     const target = event.target;
     if (target && (target.isContentEditable || target.closest?.('[contenteditable="true"]') || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || (target.tagName === 'INPUT' && target.type !== 'radio'))) return;
     if (/^[1-4]$/.test(event.key)) {

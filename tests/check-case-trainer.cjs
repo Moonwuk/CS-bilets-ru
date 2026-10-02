@@ -60,14 +60,15 @@ class Element {
   get innerHTML() { return this._html; }
   addEventListener(name, fn) { if (!this.listeners.has(name)) this.listeners.set(name, new Set()); this.listeners.get(name).add(fn); }
   dispatch(name, extra = {}) {
-    const event = { target: this, preventDefault() { this.defaultPrevented = true; }, ...extra };
+    const event = { target: this, preventDefault() { this.defaultPrevented = true; }, stopPropagation() { this.propagationStopped = true; }, ...extra };
     for (const handler of this.listeners.get(name) || []) handler(event);
     return event;
   }
   focus() { this.document.activeElement = this; }
-  closest() { return this.isContentEditable ? this : null; }
+  closest(selector) { return selector === '[data-term]' ? this.dataset.term ? this : null : this.isContentEditable ? this : null; }
+  contains(element) { return [...this.cache.values()].includes(element); }
   showModal() { this.open = true; }
-  close() { this.open = false; }
+  close() { this.open = false; this.dispatch('close'); }
   querySelectorAll(selector) {
     const nodes = [];
     const selectorId = selector.startsWith('#') ? selector.slice(1) : null;
@@ -121,6 +122,7 @@ async function runtime({ id = 'senior', bank = fixture(id), storage = new Map(),
     fetch: async url => { fetched.push(url); return { ok: !failedHttp, status: failedHttp ? 404 : 200, json: async () => bank }; }
   };
   vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(root,'glossary.js'),'utf8'),context);
   const expose = `  globalThis.qa = { startSession, requestStart, selectAnswer, saveNote, checkAnswer, jump, finishSession, requestFinish, goHome, resume, setMode, resetProgress, mixedIds, keyboard, render, validateBank, get: () => ({ dataset, questions, sources, tracks, signature, progress, storageAvailable, notice, confirmation }) };\n  load();\n})();`;
   assert(source.includes('  load();\n})();'), 'The harness must expose the actual trainer functions');
   vm.runInContext(source.replace('  load();\n})();', expose), context);
@@ -414,6 +416,31 @@ function assertHidden(run, hidden) {
   assert(run.html().includes('https://example.org/primary?first=1&amp;second=2'));
   assert(!run.html().includes('<img src=x') && !run.html().includes('<svg onload='));
 
+  // Help is independent of a case answer, including in interview mode and after a locked choice.
+  for(const id of ['senior','ai-security']) {
+    const vocabularyBank=fixture(id);
+    vocabularyBank.questions[0].question='Как защитить API, использующий LLM и RAG?';
+    vocabularyBank.questions[0].options[0].text='Проверить JSON tool call перед выполнением';
+    const helpRun=await runtime({id,bank:vocabularyBank});
+    helpRun.a.startSession([vocabularyBank.questions[0].id],'Справка','interview');
+    const main=helpRun.nodes.get('#main');
+    let launcher=main.querySelector('[data-term="tool-call"]');assert(launcher);
+    const before=helpRun.storage.get(keys[id]);
+    const event=main.dispatch('click',{target:launcher});assert(event.defaultPrevented && event.propagationStopped);
+    assert(helpRun.nodes.get('#term-dialog').open);
+    helpRun.key('1');helpRun.key('Enter');
+    assert.equal(helpRun.storage.get(keys[id]),before,'Help must not save or choose an interview answer');
+    assert.equal(Object.keys(helpRun.a.get().progress.session.answers).length,0);
+    assert(!helpRun.html().includes('SOURCE_SENTINEL') && !helpRun.html().includes('REASONING_SENTINEL'));
+    helpRun.nodes.get('#term-dialog').dispatch('cancel');
+    assert.equal(helpRun.document.activeElement,launcher);
+    helpRun.a.startSession([vocabularyBank.questions[0].id],'Справка','practice');
+    choose(helpRun,true);helpRun.a.checkAnswer();
+    launcher=main.querySelector('[data-term="tool-call"]');main.dispatch('click',{target:launcher});
+    assert(helpRun.nodes.get('#term-dialog').open,'Help must remain usable in checked choices');
+    assert.equal(helpRun.a.get().progress.total,1);
+    helpRun.nodes.get('#term-close').dispatch('click');
+  }
   const checkedBanks = [];
   const selectedBank = process.argv.find(argument => argument.startsWith('--bank='))?.slice('--bank='.length);
   if (selectedBank) assert(Object.hasOwn(keys, selectedBank), 'Unknown --bank value');

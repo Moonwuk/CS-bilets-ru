@@ -28,15 +28,17 @@ jobs:
 
       - name: Check trainers
         run: |
+          node --check glossary.js
           node --check app.js
           node --check case-trainer.js
+          node tests/check-glossary.cjs
           node tests/check-trainer.cjs
           node tests/check-case-trainer.cjs
 
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp index.html style.css app.js questions.json .nojekyll \
+          cp index.html style.css glossary.js app.js questions.json .nojekyll \
             senior.html ai-security.html case-trainer.js case-trainer.css \
             senior-questions.json ai-security-questions.json _site/
 
