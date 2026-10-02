@@ -97,19 +97,24 @@
   const questionCount = n => `${n} ${word(n,['вопрос','вопроса','вопросов'])}`;
   const errorCount = n => `${n} ${word(n,['ошибка','ошибки','ошибок'])}`;
   const difficultyNames = {basic:'Базовый',intermediate:'Средний',advanced:'Сложный'};
+  const legalJurisdictions = {RU:'РФ',EU:'ЕС · GDPR'};
+  const dateLabel = value => value.split('-').reverse().join('.');
   function questionContext(q) {
     const level=difficultyNames[q.difficulty];
     const certs=Array.isArray(q.certifications) ? q.certifications : [];
     const interview=q.interviewSourceIds?.length;
-    if(!level && !certs.length && !interview)return '';
-    return `<div class="question-context">${level ? `<span class="level-tag">${esc(level)}</span>` : ''}${interview ? '<span class="level-tag">Собеседование</span>' : ''}${certs.length ? `<span>По тематике: ${certs.map(esc).join(' · ')}</span>` : ''}</div>`;
+    const legal=q.legal;
+    if(!level && !certs.length && !interview && !legal)return '';
+    return `<div class="question-context">${legal ? `<span class="level-tag legal-tag">${legalJurisdictions[legal.jurisdiction]}</span><span class="legal-reviewed">Нормы проверены: <time datetime="${esc(legal.reviewedAt)}">${dateLabel(legal.reviewedAt)}</time></span>` : ''}${level ? `<span class="level-tag">${esc(level)}</span>` : ''}${interview ? '<span class="level-tag">Собеседование</span>' : ''}${certs.length ? `<span>По тематике: ${certs.map(esc).join(' · ')}</span>` : ''}</div>`;
   }
   function sourcesMarkup(q) {
-    const sources=(q.sourceIds || []).map(id=>sourceIndex.get(id)).filter(Boolean);
+    const allSources=(q.sourceIds || []).map(id=>sourceIndex.get(id)).filter(Boolean);
+    const sources=allSources.filter(source=>source.kind!=='legal');
+    const legalSources=allSources.filter(source=>source.kind==='legal');
     const interviews=(q.interviewSourceIds || []).map(id=>sourceIndex.get(id)).filter(Boolean);
-    if(!sources.length && !interviews.length)return '<p class="answer-source">Источник: infosec_interview.docx.</p>';
-    const links=items=>`<ul>${items.map(source=>`<li><a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a></li>`).join('')}</ul>`;
-    return `<div class="answer-sources">${sources.length ? `<span class="feedback-label">Для разбора темы</span>${links(sources)}` : ''}${interviews.length ? `<span class="feedback-label">Тема из открытой подборки собеседований</span>${links(interviews)}` : ''}</div>`;
+    if(!sources.length && !legalSources.length && !interviews.length)return '<p class="answer-source">Источник: infosec_interview.docx.</p>';
+    const links=items=>`<ul>${items.map(source=>`<li><a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>${source.kind==='legal' ? q.legal.references.filter(ref=>ref.sourceId===source.id).map(ref=>`<span class="legal-locator">${esc(ref.locator)}</span>`).join('') : ''}</li>`).join('')}</ul>`;
+    return `<div class="answer-sources">${legalSources.length ? `<span class="feedback-label">Правовые источники</span>${links(legalSources)}` : ''}${sources.length ? `<span class="feedback-label">Для разбора темы</span>${links(sources)}` : ''}${interviews.length ? `<span class="feedback-label">Тема из открытой подборки собеседований</span>${links(interviews)}` : ''}</div>`;
   }
   function bankNotes() {
     const added=dataset.questions.filter(q=>q.origin==='authored').length;
@@ -117,8 +122,10 @@
     const guides=dataset.certificationGuides || [];
     const interviewCount=dataset.questions.filter(q=>q.interviewSourceIds?.length).length;
     const interviews=dataset.interviewCollections || [];
+    const legalQuestions=dataset.questions.filter(q=>q.legal);
+    const reviewDates=[...new Set(legalQuestions.map(q=>q.legal.reviewedAt))].sort().map(dateLabel);
     const links=items=>`<ul>${items.map(item=>`<li><a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.title)}</a></li>`).join('')}</ul>`;
-    return `<details class="bank-notes"><summary>О вопросах и источниках</summary><p>${questionCount(dataset.questions.length-added)} из исходного документа и ${questionCount(added)} с авторскими формулировками. Новые вопросы опираются на открытые программы сертификаций, темы собеседований и техническую документацию. В исходных вопросах уточнены найденные неточности. Ссылки на материалы доступны в разборе ответов.</p>${interviewCount ? `<p>Для подготовки к собеседованиям: ${questionCount(interviewCount)} с меткой «Собеседование». Темы взяты из открытых подборок; сценарии, варианты и объяснения составлены для тренажёра. Технические ответы проверены отдельно по документации.</p>` : ''}<p>Метки сертификатов обозначают тематику. Это учебная подборка, а не официальный экзамен или полная программа подготовки. Режим «Экзамен» проверяет выбранный билет.</p>${interviews.length ? `<p><strong>Открытые подборки собеседований</strong></p>${links(interviews)}` : ''}${guides.length ? `<p><strong>Программы сертификаций</strong></p>${links(guides)}` : ''}</details>`;
+    return `<details class="bank-notes"><summary>О вопросах и источниках</summary><p>${questionCount(dataset.questions.length-added)} из исходного документа и ${questionCount(added)} с авторскими формулировками. Новые вопросы опираются на открытые программы сертификаций, темы собеседований${legalQuestions.length ? ', техническую документацию и правовые источники' : ' и техническую документацию'}. В исходных вопросах уточнены найденные неточности. Ссылки на материалы доступны в разборе ответов.</p>${interviewCount ? `<p>Для подготовки к собеседованиям: ${questionCount(interviewCount)} с меткой «Собеседование». Темы взяты из открытых подборок; сценарии, варианты и объяснения составлены для тренажёра. Технические ответы проверены отдельно по документации.</p>` : ''}${legalQuestions.length ? `<p>Для изучения правовых норм: ${questionCount(legalQuestions.length)} по РФ и ЕС (GDPR). Нормы проверены по состоянию на ${reviewDates.join(', ')}. Применимость нормы зависит от юрисдикции и условий вопроса.</p>` : ''}<p>Метки сертификатов обозначают тематику. Это учебная подборка, а не официальный экзамен или полная программа подготовки. Режим «Экзамен» проверяет выбранный билет.</p>${interviews.length ? `<p><strong>Открытые подборки собеседований</strong></p>${links(interviews)}` : ''}${guides.length ? `<p><strong>Программы сертификаций</strong></p>${links(guides)}` : ''}</details>`;
   }
   function shuffled(items) {
     const result = [...items];
@@ -341,6 +348,12 @@
         if(q.difficulty && !difficultyNames[q.difficulty])throw new Error('Invalid difficulty');
         if(q.sourceIds && (!Array.isArray(q.sourceIds) || q.sourceIds.some(id=>!sourceIndex.has(id))))throw new Error('Missing source');
         if(q.interviewSourceIds && (!Array.isArray(q.interviewSourceIds) || q.interviewSourceIds.some(id=>sourceIndex.get(id)?.kind!=='interview')))throw new Error('Invalid interview source');
+        const legalSourceIds=(q.sourceIds || []).filter(id=>sourceIndex.get(id)?.kind==='legal');
+        if(q.legal!==undefined || legalSourceIds.length){
+          const legal=q.legal;
+          if(!legal || typeof legal!=='object' || Array.isArray(legal) || !['RU','EU'].includes(legal.jurisdiction) || typeof legal.reviewedAt!=='string' || !/^\d{4}-\d{2}-\d{2}$/.test(legal.reviewedAt) || !Number.isFinite(Date.parse(legal.reviewedAt)) || new Date(legal.reviewedAt).toISOString().slice(0,10)!==legal.reviewedAt || !Array.isArray(legal.references) || !legal.references.length)throw new Error('Invalid legal metadata');
+          if(legal.references.some(ref=>!ref || typeof ref.sourceId!=='string' || sourceIndex.get(ref.sourceId)?.kind!=='legal' || !q.sourceIds?.includes(ref.sourceId) || typeof ref.locator!=='string' || !ref.locator.trim()) || legalSourceIds.some(id=>!legal.references.some(ref=>ref.sourceId===id)))throw new Error('Invalid legal reference');
+        }
         if(q.origin==='authored' && (!q.sourceIds?.length || !q.difficulty))throw new Error('Incomplete authored question');
       }
       if(new Set(data.questions.map(q=>q.id)).size!==data.questions.length)throw new Error('Duplicate question IDs');

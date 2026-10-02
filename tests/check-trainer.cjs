@@ -16,23 +16,38 @@ class Node {
   get innerHTML(){return this._html;}
   set innerHTML(value){this._html=value;this.children=new Map();}
   querySelector(selector){if(!this.children.has(selector))this.children.set(selector,new Node());return this.children.get(selector);}
-  querySelectorAll(selector){return selector==='[data-action="random"]' && this.innerHTML.includes('data-action="random"') ? [this.querySelector(selector)] : [];}
+  querySelectorAll(selector){
+    const match=selector.match(/^\[(data-[a-z-]+)(?:="([^"]*)")?\]$/);
+    if(!match)return [];
+    const [,attribute,value]=match;
+    return [...this.innerHTML.matchAll(new RegExp(`${attribute}="([^"]*)"`,'g'))].filter(([,v])=>value===undefined || v===value).map(([,v])=>{
+      const node=this.querySelector(`[${attribute}="${v}"]`);
+      node.dataset[attribute.slice(5).replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=v;
+      return node;
+    });
+  }
   showModal(){this.open=true;} close(){this.open=false;}
 }
 
 async function runtime(storage=new Map(),options={}) {
   const nodes=new Map();
+  const loadErrors=[];
   const document={querySelector:s=>{if(!nodes.has(s))nodes.set(s,new Node());return nodes.get(s);},querySelectorAll:()=>[],addEventListener(){},body:new Node()};
   const localStorage={
     getItem(k){if(options.blocked)throw new Error('Storage denied');return storage.get(k)??null;},
     setItem(k,value){if(options.blocked)throw new Error('Storage denied');storage.set(k,value);}
   };
-  const ctx={document,window:{localStorage,scrollTo(){},addEventListener(){}},fetch:async()=>({ok:true,json:async()=>options.data||data}),console,AbortController,Math,Map,Set,Promise,URL};
+  const logger={...console,error(...args){loadErrors.push(args);if(!options.expectLoadFailure)console.error(...args);}};
+  const ctx={document,window:{localStorage,scrollTo(){},addEventListener(){}},fetch:async()=>({ok:true,json:async()=>options.data||data}),console:logger,AbortController,Math,Map,Set,Promise,URL};
   vm.createContext(ctx);
   const source=fs.readFileSync(path.join(root,'app.js'),'utf8').replace('const TICKET_SIZE = 50;',`const TICKET_SIZE = ${options.ticketSize||50};`).replace('  load();\n})();',`  globalThis.qa={startSession,requestStartSession,selectAnswer,checkAnswer,jump,finishSession,isCorrect,navigate,resetProgress,setMode:m=>{mode=m;},get:()=>({session,sessionOpen,tickets,bank,errors,ticketResults,total,correctTotal,page,mode,storageAvailable})};\n  load();\n})();`);
   vm.runInContext(source,ctx);
   await new Promise(resolve=>setImmediate(resolve));
-  assert(ctx.qa.get().bank,'The bank must load successfully');
+  if(options.expectLoadFailure){
+    assert(!ctx.qa.get().bank,`${options.expectLoadFailure} must be rejected`);
+    assert.equal(loadErrors.length,1);
+    assert(nodes.get('#main').innerHTML.includes('Не удалось загрузить вопросы'));
+  } else assert(ctx.qa.get().bank,'The bank must load successfully');
   return {a:ctx.qa,nodes,storage};
 }
 
@@ -48,16 +63,30 @@ function choose(a,correct) {
   let {a,nodes}=await runtime();
   let state=()=>a.get();
   const all=state().tickets.flat();
-  assert.equal(all.length,400);assert.equal(new Set(all).size,400);
-  assert.deepEqual(Array.from(state().tickets,t=>t.length),Array(8).fill(50));
-  assert.equal(Number(nodes.get('#ticket-count').textContent),8);
-  assert.equal(Number(nodes.get('#topic-count').textContent),22);
-  assert(nodes.get('#dataset-info').textContent.includes('400 вопросов'));
+  assert.equal(all.length,500);assert.equal(new Set(all).size,500);
+  assert.deepEqual(Array.from(all).sort(),data.questions.map(q=>q.id).sort(),'Numbered tickets cover every question once');
+  assert.deepEqual(Array.from(state().tickets,t=>t.length),Array(10).fill(50));
+  assert.deepEqual(Array.from(state().tickets,t=>t.filter(id=>state().bank.get(id).legal).length),Array(10).fill(10),'Each ticket includes ten new legal questions');
+  assert.equal(Number(nodes.get('#ticket-count').textContent),10);
+  assert.equal(Number(nodes.get('#topic-count').textContent),26);
+  assert(nodes.get('#dataset-info').textContent.includes('500 вопросов · 26 тем'));
+  assert.equal(nodes.get('#main').querySelectorAll('[data-ticket]').length,10);
+  assert(fs.readFileSync(path.join(root,'index.html'),'utf8').includes('500 вопросов'));
   for(const topic of data.topics){
     const counts=Array.from(state().tickets,ticket=>ticket.filter(id=>state().bank.get(id).topic===topic).length);
     assert(Math.max(...counts)-Math.min(...counts)<=1,`${topic} must be spread evenly across tickets`);
-    if(topic==='Модель OSI'){assert.equal(counts.reduce((a,b)=>a+b,0),41);assert(counts.every(n=>n===5||n===6));}
+    if(topic==='Модель OSI'){assert.equal(counts.reduce((a,b)=>a+b,0),41);assert(counts.every(n=>n===4||n===5));}
   }
+  const legalTopics=new Map([['Персональные данные РФ',30],['Правовые основы ИБ РФ',25],['КИИ и ответственность в ИБ',20],['GDPR и защита данных в ЕС',25]]);
+  assert.equal(data.questions.filter(q=>q.legal).length,100);
+  for(const [topic,count] of legalTopics){
+    const questions=data.questions.filter(q=>q.topic===topic);
+    assert.equal(questions.length,count);
+    assert(questions.every(q=>q.legal?.jurisdiction===(topic.startsWith('GDPR')?'EU':'RU') && q.legal.reviewedAt==='2026-10-02'));
+  }
+  assert(nodes.get('#main').innerHTML.includes('Для изучения правовых норм: 100 вопросов'));
+  assert(nodes.get('#main').innerHTML.includes('Нормы проверены по состоянию на 02.10.2026'));
+  assert(nodes.get('#main').innerHTML.includes('Применимость нормы зависит от юрисдикции и условий вопроса'));
   assert(nodes.get('#main').innerHTML.includes('50 вопросов из всех тем'));
   nodes.get('#main').querySelector('[data-action="random"]').dispatch('click');
   assert.equal(state().session.ids.length,50);assert.equal(new Set(state().session.ids).size,50);
@@ -107,6 +136,66 @@ function choose(a,correct) {
   a.setMode('exam');a.startSession([interview.id],'Interview exam');choose(a,true);
   assert(!nodes.get('#main').innerHTML.includes('class="answer-sources"'));
   a.finishSession();assert(nodes.get('#main').innerHTML.includes('class="answer-sources"'));
+
+  // Jurisdiction and review date are visible; distinctive citation text must never leak into an unchecked question.
+  for(const [jurisdiction,label] of [['RU','РФ'],['EU','ЕС · GDPR']]){
+    const legalData=JSON.parse(JSON.stringify(data));
+    const q=legalData.questions.filter(q=>q.legal?.jurisdiction===jurisdiction).sort((a,b)=>b.legal.references.length-a.legal.references.length)[0];
+    q.legal.references.forEach((ref,i)=>{
+      ref.locator=`QA legal locator ${jurisdiction} ${i}`;
+      legalData.sources.find(source=>source.id===ref.sourceId).title=`QA legal source ${jurisdiction} ${i}`;
+    });
+    const legalStorage=new Map();
+    ({a,nodes}=await runtime(legalStorage,{data:legalData}));
+    const checkLegalMarkup=visible=>{
+      const markup=nodes.get('#main').innerHTML;
+      assert(markup.includes(`class="level-tag legal-tag">${label}</span>`));
+      assert(markup.includes('<time datetime="2026-10-02">02.10.2026</time>'));
+      assert.equal(markup.includes('class="answer-sources"'),visible);
+      assert.equal(markup.includes('Правовые источники'),visible);
+      assert.equal(markup.includes('class="legal-locator"'),visible);
+      if(q.sourceIds.every(id=>legalData.sources.find(source=>source.id===id).kind==='legal'))assert(!markup.includes('Для разбора темы'));
+      for(const ref of q.legal.references){
+        const source=legalData.sources.find(source=>source.id===ref.sourceId);
+        assert.equal(markup.includes(`href="${source.url.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}"`),visible);
+        assert.equal(markup.includes(source.title),visible);
+        assert.equal(markup.includes(ref.locator),visible);
+      }
+    };
+    a.startSession([q.id],'Legal practice');checkLegalMarkup(false);
+    choose(a,true);checkLegalMarkup(false);a.checkAnswer();checkLegalMarkup(true);a.finishSession();
+    a.setMode('exam');a.startSession([q.id],'Legal exam');choose(a,true);a.checkAnswer();checkLegalMarkup(false);
+    ({a,nodes}=await runtime(legalStorage,{data:legalData}));
+    assert.equal(state().total,1,'Resuming a legal exam does not score an unchecked answer');checkLegalMarkup(false);
+    a.finishSession();checkLegalMarkup(true);assert.equal(state().total,2);
+  }
+
+  // New topic buttons and the last numbered ticket use the dynamic bank, with the same existing controls.
+  await a.navigate('tickets');nodes.get('#main').querySelector('[data-ticket="9"]').dispatch('click');
+  assert.equal(state().session.ticket,9);assert.equal(state().session.ids.length,50);
+  await a.navigate('topics');assert.equal(nodes.get('#main').querySelectorAll('[data-topic]').length,26);
+  nodes.get('#main').querySelector('[data-mode="practice"]').dispatch('click');
+  nodes.get('#main').querySelector(`[data-topic="${data.topics.indexOf('Персональные данные РФ')}"]`).dispatch('click');
+  nodes.get('#dialog-ok').dispatch('click');await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(state().session.mode,'practice');assert.equal(state().session.ids.length,30);
+  assert(state().session.ids.every(id=>state().bank.get(id).topic==='Персональные данные РФ'));
+
+  // Reject malformed legal context and references before making the bank available.
+  const ordinarySource=data.sources.find(source=>source.kind!=='legal');
+  for(const [reason,mutate] of [
+    ['missing legal context',q=>{q.legal=null;}],
+    ['unknown jurisdiction',q=>{q.legal.jurisdiction='US';}],
+    ['non-ISO review date',q=>{q.legal.reviewedAt='02.10.2026';}],
+    ['impossible review date',q=>{q.legal.reviewedAt='2026-02-30';}],
+    ['empty legal references',q=>{q.legal.references=[];}],
+    ['unknown legal source',q=>{q.legal.references[0].sourceId='law-missing';}],
+    ['reference absent from sourceIds',q=>{q.sourceIds=q.sourceIds.filter(id=>id!==q.legal.references[0].sourceId);q.sourceIds.push(ordinarySource.id);}],
+    ['non-legal source',q=>{q.legal.references[0].sourceId=ordinarySource.id;q.sourceIds.push(ordinarySource.id);}],
+    ['empty legal locator',q=>{q.legal.references[0].locator='  ';}]
+  ]){
+    const invalidData=JSON.parse(JSON.stringify(data));mutate(invalidData.questions.find(q=>q.legal));
+    await runtime(new Map(),{data:invalidData,expectLoadFailure:reason});
+  }
 
   // Simulate closing and reopening the page with the same browser storage.
   const storage=new Map();
@@ -197,14 +286,21 @@ function choose(a,correct) {
   assert.equal(state().total,81);assert.equal(state().correctTotal,23,'Only the new ticket is scored');
   assert.equal(state().ticketResults.get(0).length,50);
 
-  // A ticket-layout change alone must invalidate numbered results, even when all question content is identical.
-  const layoutStorage=new Map();
-  ({a,nodes}=await runtime(layoutStorage,{ticketSize:20}));
-  a.startSession(state().tickets[0],'Old short ticket',0);choose(a,true);a.checkAnswer();a.finishSession();
-  a.startSession(state().tickets[1],'Old pending ticket',1);choose(a,false);
-  ({a,nodes}=await runtime(layoutStorage));
-  assert.equal(state().session,null);assert.equal(state().ticketResults.size,0);assert.equal(state().total,20);assert.equal(state().correctTotal,1);
-  assert.equal(state().errors.size,19,'Mistake IDs survive a ticket-layout change');
-  assert(nodes.get('#main').innerHTML.includes('Банк вопросов обновлён'));
-  console.log('PASS: 400 questions, 8 tickets × 50, balanced OSI/topics, random ticket, sources after checking, training, exam secrecy, scoring, mistakes, reload/resume, answer order, completed results, reset, corrupt/unavailable storage, legacy 88-question and ticket-layout migrations.');
+  // Bank growth from 400 questions and a layout-only change from 20 to 50 retain aggregates and mistake IDs.
+  const previousData={...data,questions:data.questions.filter(q=>Number(q.id.slice(1))<=400)};
+  previousData.topics=data.topics.filter(topic=>previousData.questions.some(q=>q.topic===topic));
+  assert.equal(previousData.questions.length,400);assert.equal(previousData.topics.length,22);
+  for(const [priorData,ticketSize] of [[previousData,50],[previousData,20],[data,20]]){
+    const migrationStorage=new Map();
+    ({a,nodes}=await runtime(migrationStorage,{data:priorData,ticketSize}));
+    a.startSession(state().tickets[0],'Old completed ticket',0);choose(a,true);a.checkAnswer();a.finishSession();
+    a.startSession(state().tickets[1],'Old pending ticket',1);choose(a,false);
+    const beforeMigration=JSON.parse(migrationStorage.get(key));
+    ({a,nodes}=await runtime(migrationStorage));
+    assert.equal(state().session,null);assert.equal(state().ticketResults.size,0);
+    assert.equal(state().total,ticketSize);assert.equal(state().correctTotal,1);
+    assert.deepEqual([...state().errors].sort(),beforeMigration.errors.sort(),'Mistake IDs survive bank and ticket-layout changes');
+    assert(nodes.get('#main').innerHTML.includes('Банк вопросов обновлён'));
+  }
+  console.log('PASS: 500 questions, 10 tickets × 50, 26 balanced topics, OSI 4–5 per ticket, dynamic controls, random ticket, validated legal metadata, legal sources only after checking/completion, training, exam secrecy, scoring, mistakes, reload/resume, answer order, completed results, reset, corrupt/unavailable storage, migrations from 88/400 questions and 20/50-question tickets.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
