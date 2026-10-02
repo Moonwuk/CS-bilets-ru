@@ -25,13 +25,13 @@
 ## GitHub Pages
 
 1. Откройте [Settings → Pages](https://github.com/Moonwuk/CS-bilets-ru/settings/pages).
-2. В **Build and deployment → Source** выберите **Deploy from a branch**.
-3. Выберите ветку **main**, папку **/ (root)** и нажмите **Save**.
-4. Дождитесь завершения публикации. GitHub покажет адрес сайта на этой же странице.
+2. В **Build and deployment → Source** выберите **GitHub Actions**.
+3. Откройте [Actions → Deploy GitHub Pages](https://github.com/Moonwuk/CS-bilets-ru/actions/workflows/deploy-pages.yml), нажмите **Run workflow** и выберите ветку **main**.
+4. Дождитесь успешного завершения публикации. GitHub покажет адрес сайта в результате запуска и в разделе Pages.
 
 Ожидаемый адрес после включения Pages: <https://moonwuk.github.io/CS-bilets-ru/>.
 
-При следующих изменениях в `main` GitHub Pages обновит сайт автоматически. Файл `.nojekyll` отключает обработку Jekyll. Все пути к CSS, JavaScript и банку вопросов относительные, поэтому сайт работает в подкаталоге репозитория.
+При следующих изменениях в `main` workflow `.github/workflows/deploy-pages.yml` проверит JavaScript и опубликует сайт автоматически. Публикуются только HTML, CSS, JavaScript, банк вопросов и `.nojekyll`; документация и тесты в сайт не входят. Все пути к CSS, JavaScript и банку вопросов относительные, поэтому сайт работает в подкаталоге репозитория.
 
 Исходная версия тренажёра: <https://infosec-study-tickets.mazujlava.chatgpt.site>. Это другой адрес, поэтому его сохранения не переходят на GitHub Pages.
 
