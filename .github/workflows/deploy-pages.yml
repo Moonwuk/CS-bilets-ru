@@ -26,13 +26,19 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7.0.1
 
-      - name: Check JavaScript
-        run: node --check app.js
+      - name: Check trainers
+        run: |
+          node --check app.js
+          node --check case-trainer.js
+          node tests/check-trainer.cjs
+          node tests/check-case-trainer.cjs
 
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp index.html style.css app.js questions.json .nojekyll _site/
+          cp index.html style.css app.js questions.json .nojekyll \
+            senior.html ai-security.html case-trainer.js case-trainer.css \
+            senior-questions.json ai-security-questions.json _site/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6.0.0
