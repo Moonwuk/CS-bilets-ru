@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#132341">
+  <meta name="description" content="Тренажёр по информационной безопасности: 88 вопросов, билеты, экзамен и разбор ошибок из infosec_interview.docx.">
+  <title>ИБ · Тренажёр билетов</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23132341'/%3E%3Cpath d='M9 16l5 5 10-11' fill='none' stroke='%2371b6ff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">К вопросам</a>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Навигация">
+      <a class="brand" href="#" id="brand"><span class="brand-mark" aria-hidden="true">ИБ</span><span>Тренажёр<span class="brand-sub">Билеты к собеседованию</span></span></a>
+      <nav class="navigation" aria-label="Режимы подготовки">
+        <button class="nav-item active" data-page="tickets" aria-current="page"><span data-icon="tickets" aria-hidden="true"></span><span>Билеты</span><span class="nav-count" id="ticket-count">5</span></button>
+        <button class="nav-item" data-page="topics"><span data-icon="topics" aria-hidden="true"></span><span>По темам</span><span class="nav-count">14</span></button>
+        <button class="nav-item" data-page="mistakes"><span data-icon="mistakes" aria-hidden="true"></span><span>Мои ошибки</span><span class="nav-count" id="mistake-count">0</span></button>
+      </nav>
+      <div class="session-stats">
+        <span class="sidebar-label">Весь прогресс</span>
+        <div class="stat-row"><span>Ответов</span><strong id="stat-total">0</strong></div>
+        <div class="stat-row"><span>Верных</span><strong id="stat-correct">0</strong></div>
+        <div class="stat-track" aria-hidden="true"><span id="stat-bar"></span></div>
+        <p id="sidebar-storage-status">Результаты и ошибки сохраняются между посещениями.</p>
+      </div>
+      <div class="source-note"><span data-icon="document" aria-hidden="true"></span><div>Вопросы и пояснения<br>из infosec_interview.docx</div></div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><span>Подготовка по ИБ</span><span class="dataset-info" id="dataset-info">88 вопросов · 14 тем</span></header>
+      <main id="main" tabindex="-1"><div class="loading">Загружаем вопросы…</div></main>
+      <footer class="footer"><span id="storage-status" role="status">Прогресс сохраняется в этом браузере автоматически.</span><button class="button ghost" id="reset-progress">Сбросить прогресс</button></footer>
+    </div>
+  </div>
+  <dialog id="confirm-dialog" aria-labelledby="dialog-title">
+    <h2 id="dialog-title"></h2><p id="dialog-message"></p>
+    <div class="dialog-actions"><button class="button secondary" id="dialog-cancel">Продолжить</button><button class="button primary" id="dialog-ok">Завершить</button></div>
+  </dialog>
+  <div class="sr-only" id="announcement" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>
