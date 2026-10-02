@@ -16,9 +16,10 @@
   const $ = selector => document.querySelector(selector);
   const main = $('#main');
   const letters = ['А','Б','В','Г'];
+  const TICKET_SIZE = 50;
   const storageKey = 'cs-bilets-ru.progress.v1';
-  let dataset, bank, tickets, session = null, sessionOpen = false, page = 'tickets', mode = 'practice';
-  let storageAvailable = true, bankSignature = '';
+  let dataset, bank, tickets, sourceIndex, session = null, sessionOpen = false, page = 'tickets', mode = 'practice';
+  let storageAvailable = true, bankSignature = '', bankUpdateNotice = '';
   let total = 0, correctTotal = 0;
   const errors = new Set();
   const ticketResults = new Map();
@@ -44,7 +45,8 @@
     updateStorageStatus();
   }
   function getBankSignature(data) {
-    const content=JSON.stringify(data.questions.map(q=>[q.id,q.topic,q.question,q.options.map(o=>[o.text,o.correct])]));
+    // Answers depend on the question content; numbered results also depend on the ticket layout.
+    const content=JSON.stringify([data.questions.map(q=>[q.id,q.topic,q.question,q.options.map(o=>[o.text,o.correct])]),tickets]);
     let hash=2166136261;
     for(let i=0;i<content.length;i++)hash=Math.imul(hash^content.charCodeAt(i),16777619);
     return (hash>>>0).toString(16);
@@ -62,8 +64,11 @@
     if(['tickets','topics','mistakes'].includes(saved.page))page=saved.page;
     if(['practice','exam'].includes(saved.mode))mode=saved.mode;
     if(Array.isArray(saved.errors))saved.errors.forEach(id=>{if(bank.has(id))errors.add(id);});
-    // Keep aggregate history, but avoid restoring answers against a changed question bank.
-    if(saved.bankSignature!==bankSignature)return;
+    // Keep aggregate history and mistake IDs, but never apply old answer indices or ticket results to a new bank.
+    if(saved.bankSignature!==bankSignature){
+      if(typeof saved.bankSignature==='string' && saved.bankSignature)bankUpdateNotice='Банк вопросов обновлён. Общая статистика и список ошибок сохранены. Старые результаты билетов и незавершённый билет сброшены.';
+      return;
+    }
     if(Array.isArray(saved.ticketResults))saved.ticketResults.forEach(entry=>{
       if(!Array.isArray(entry) || entry.length!==2)return;
       const [n,result]=entry;
@@ -84,13 +89,37 @@
   }
   async function resetProgress() {
     if(!dataset || !await confirmAction('Сбросить прогресс?','Результаты билетов, ошибки и незавершённый билет будут удалены из этого браузера.','Сбросить','Отмена'))return;
-    total=0;correctTotal=0;errors.clear();ticketResults.clear();session=null;sessionOpen=false;page='tickets';mode='practice';
+    total=0;correctTotal=0;errors.clear();ticketResults.clear();session=null;sessionOpen=false;page='tickets';mode='practice';bankUpdateNotice='';
     saveProgress();renderHome();focusMain();announce('Прогресс сброшен.');
   }
   const esc = str => String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const word = (n, forms) => forms[n%100>=11 && n%100<=14 ? 2 : n%10===1 ? 0 : n%10>=2 && n%10<=4 ? 1 : 2];
   const questionCount = n => `${n} ${word(n,['вопрос','вопроса','вопросов'])}`;
   const errorCount = n => `${n} ${word(n,['ошибка','ошибки','ошибок'])}`;
+  const difficultyNames = {basic:'Базовый',intermediate:'Средний',advanced:'Сложный'};
+  function questionContext(q) {
+    const level=difficultyNames[q.difficulty];
+    const certs=Array.isArray(q.certifications) ? q.certifications : [];
+    const interview=q.interviewSourceIds?.length;
+    if(!level && !certs.length && !interview)return '';
+    return `<div class="question-context">${level ? `<span class="level-tag">${esc(level)}</span>` : ''}${interview ? '<span class="level-tag">Собеседование</span>' : ''}${certs.length ? `<span>По тематике: ${certs.map(esc).join(' · ')}</span>` : ''}</div>`;
+  }
+  function sourcesMarkup(q) {
+    const sources=(q.sourceIds || []).map(id=>sourceIndex.get(id)).filter(Boolean);
+    const interviews=(q.interviewSourceIds || []).map(id=>sourceIndex.get(id)).filter(Boolean);
+    if(!sources.length && !interviews.length)return '<p class="answer-source">Источник: infosec_interview.docx.</p>';
+    const links=items=>`<ul>${items.map(source=>`<li><a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a></li>`).join('')}</ul>`;
+    return `<div class="answer-sources">${sources.length ? `<span class="feedback-label">Для разбора темы</span>${links(sources)}` : ''}${interviews.length ? `<span class="feedback-label">Тема из открытой подборки собеседований</span>${links(interviews)}` : ''}</div>`;
+  }
+  function bankNotes() {
+    const added=dataset.questions.filter(q=>q.origin==='authored').length;
+    if(!added)return '';
+    const guides=dataset.certificationGuides || [];
+    const interviewCount=dataset.questions.filter(q=>q.interviewSourceIds?.length).length;
+    const interviews=dataset.interviewCollections || [];
+    const links=items=>`<ul>${items.map(item=>`<li><a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.title)}</a></li>`).join('')}</ul>`;
+    return `<details class="bank-notes"><summary>О вопросах и источниках</summary><p>${questionCount(dataset.questions.length-added)} из исходного документа и ${questionCount(added)} с авторскими формулировками. Новые вопросы опираются на открытые программы сертификаций, темы собеседований и техническую документацию. В исходных вопросах уточнены найденные неточности. Ссылки на материалы доступны в разборе ответов.</p>${interviewCount ? `<p>Для подготовки к собеседованиям: ${questionCount(interviewCount)} с меткой «Собеседование». Темы взяты из открытых подборок; сценарии, варианты и объяснения составлены для тренажёра. Технические ответы проверены отдельно по документации.</p>` : ''}<p>Метки сертификатов обозначают тематику. Это учебная подборка, а не официальный экзамен или полная программа подготовки. Режим «Экзамен» проверяет выбранный билет.</p>${interviews.length ? `<p><strong>Открытые подборки собеседований</strong></p>${links(interviews)}` : ''}${guides.length ? `<p><strong>Программы сертификаций</strong></p>${links(guides)}` : ''}</details>`;
+  }
   function shuffled(items) {
     const result = [...items];
     for(let i=result.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}
@@ -123,7 +152,7 @@
       body=`<div class="section-heading"><h2>Все билеты</h2><span>${dataset.questions.length} вопросов без повторов</span></div><div class="tickets-grid">${tickets.map((ids,i)=>{
         const result=ticketResults.get(i);
         return `<article class="ticket-card"><div class="ticket-head"><span class="ticket-no">${String(i+1).padStart(2,'0')}</span><span class="ticket-status${result && result.correct===result.length?' success':''}">${result ? `${result.correct}/${result.length} верно`:'Не решён'}</span></div><h3>Билет ${i+1}</h3><p>${questionCount(ids.length)} · разные темы</p><button class="button secondary" data-ticket="${i}">${result?'Решить снова':'Решать билет'}</button></article>`;
-      }).join('')}<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">Новый каждый раз</span></div><h3>Случайный билет</h3><p>20 вопросов из всех тем</p><button class="button primary" data-action="random">Начать</button></article></div>`;
+      }).join('')}<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">Новый каждый раз</span></div><h3>Случайный билет</h3><p>${questionCount(Math.min(TICKET_SIZE,dataset.questions.length))} из всех тем</p><button class="button primary" data-action="random">Начать</button></article></div>`;
     } else if(page==='topics') {
       body=`<div class="topic-grid">${dataset.topics.map((topic,i)=>`<button class="topic-card" data-topic="${i}"><span class="topic-left"><span class="topic-icon">${icon(i===0?'shield':'document')}</span><span><span class="topic-name">${esc(topic)}</span><span class="topic-count">${questionCount(dataset.questions.filter(q=>q.topic===topic).length)}</span></span></span></button>`).join('')}</div>`;
     } else if(!errors.size) {
@@ -131,8 +160,9 @@
     } else {
       body=`<div class="mode-bar"><span class="mode-hint">${questionCount(errors.size)} для повторения</span><button class="button primary" data-action="errors">Повторить ошибки</button></div><div class="error-list">${[...errors].map(id=>{const q=bank.get(id);return `<div class="error-item">${icon('mistakes')}<div><span class="error-topic">${esc(q.topic)}</span><p>${esc(q.question)}</p></div><button class="button secondary" data-single="${id}">Повторить</button></div>`;}).join('')}</div>`;
     }
+    const updateNotice=bankUpdateNotice ? `<p class="bank-update-notice" role="status">${esc(bankUpdateNotice)}</p>` : '';
     const resume=session && !session.finished ? `<section class="resume-card" aria-label="Незавершённый билет"><div><strong>${esc(session.title)}</strong><p>${session.mode==='exam'?'Экзамен':'Тренировка'} · вопрос ${session.index+1} из ${session.ids.length}</p></div><button class="button primary" data-action="resume">Продолжить билет</button></section>` : '';
-    main.innerHTML=`<div class="page-heading"><div><span class="eyebrow">Учимся на практике</span><h1>${title}</h1><p>${description}</p></div>${modeToggle()}</div><div class="mode-bar"><span class="mode-hint">${modeHint()}</span></div>${resume}${body}`;
+    main.innerHTML=`<div class="page-heading"><div><span class="eyebrow">Учимся на практике</span><h1>${title}</h1><p>${description}</p></div>${modeToggle()}</div><div class="mode-bar"><span class="mode-hint">${modeHint()}</span></div>${updateNotice}${resume}${body}${page==='mistakes'?'':bankNotes()}`;
     bindHome();
     updateStats();
   }
@@ -141,7 +171,7 @@
     main.querySelectorAll('[data-ticket]').forEach(el=>el.addEventListener('click',()=>{const n=Number(el.dataset.ticket);requestStartSession(tickets[n],`Билет ${n+1}`,n);}));
     main.querySelectorAll('[data-topic]').forEach(el=>el.addEventListener('click',()=>{const topic=dataset.topics[Number(el.dataset.topic)];requestStartSession(dataset.questions.filter(q=>q.topic===topic).map(q=>q.id),topic);}));
     main.querySelectorAll('[data-single]').forEach(el=>el.addEventListener('click',()=>requestStartSession([el.dataset.single],'Повторение ошибки')));
-    main.querySelectorAll('[data-action="random"]').forEach(el=>el.addEventListener('click',()=>requestStartSession(shuffled(dataset.questions.map(q=>q.id)).slice(0,20),'Случайный билет')));
+    main.querySelectorAll('[data-action="random"]').forEach(el=>el.addEventListener('click',()=>requestStartSession(shuffled(dataset.questions.map(q=>q.id)).slice(0,TICKET_SIZE),'Случайный билет')));
     main.querySelectorAll('[data-action="errors"]').forEach(el=>el.addEventListener('click',()=>requestStartSession([...errors],'Работа над ошибками')));
     main.querySelectorAll('[data-action="resume"]').forEach(el=>el.addEventListener('click',()=>{sessionOpen=true;saveProgress();renderQuiz();focusMain();}));
   }
@@ -177,7 +207,7 @@
     const selected=session.answers.get(q.id);
     const right=q.options.findIndex(o=>o.correct);
     const correct=isCorrect(q.id);
-    return `<section class="feedback${correct?'':' is-error'}" aria-label="Разбор ответа"><div class="feedback-heading">${icon(correct?'check':'mistakes')}${correct?'Верно':'Есть ошибка'}</div>${!correct ? `<span class="feedback-label">Почему ваш ответ неверен</span><p>${esc(q.options[selected].explanation)}</p><span class="feedback-label">Правильный ответ</span><p>${esc(q.options[right].text)}</p>`:''}<span class="feedback-label">${correct?'Пояснение':'Почему это верно'}</span><p>${esc(q.options[right].explanation)}</p>${detailsMarkup(q,selected)}</section>`;
+    return `<section class="feedback${correct?'':' is-error'}" aria-label="Разбор ответа"><div class="feedback-heading">${icon(correct?'check':'mistakes')}${correct?'Верно':'Есть ошибка'}</div>${!correct ? `<span class="feedback-label">Почему ваш ответ неверен</span><p>${esc(q.options[selected].explanation)}</p><span class="feedback-label">Правильный ответ</span><p>${esc(q.options[right].text)}</p>`:''}<span class="feedback-label">${correct?'Пояснение':'Почему это верно'}</span><p>${esc(q.options[right].explanation)}</p>${detailsMarkup(q,selected)}${sourcesMarkup(q)}</section>`;
   }
   function renderQuiz() {
     const id=session.ids[session.index],q=bank.get(id),selected=session.answers.get(id);
@@ -200,7 +230,7 @@
     let primary='';
     if(session.mode==='practice' && !checked)primary=`<button class="button primary" data-action="check"${selected===undefined?' disabled':''}>Проверить</button>`;
     else primary=`<button class="button primary" data-action="${isLast?'finish':'next'}">${isLast?'Завершить билет':'Следующий вопрос'}</button>`;
-    main.innerHTML=`<div class="quiz-top"><div><span class="eyebrow">${session.mode==='exam'?'Экзамен':'Тренировка'}</span><h1>${esc(session.title)}</h1></div><button class="button secondary" data-action="leave">К билетам</button></div><div class="quiz-layout"><div class="question-panel"><div class="question-meta"><span class="topic-tag">${esc(q.topic)}</span><span>Вопрос ${session.index+1} / ${session.ids.length}</span></div><h2 class="question-title">${esc(q.question)}</h2><div class="options" role="group" aria-label="Варианты ответа">${options}</div>${checked ? feedbackMarkup(q):''}<div class="question-actions"><button class="button ghost" data-action="previous"${session.index===0?' disabled':''}>Назад</button><div class="action-right">${!checked && session.mode==='practice' ? `<button class="button secondary" data-action="${isLast?'finish':'next'}">${isLast?'Завершить':'Пропустить'}</button>` : !isLast && session.mode==='exam' ? '<button class="button secondary" data-action="finish">Завершить</button>':''}${primary}</div></div></div><aside class="quiz-map" aria-label="Навигация по вопросам"><div class="quiz-map-title">Вопросы билета</div><div class="question-grid">${questionMap}</div><div class="map-legend">${session.mode==='practice' ? '<span class="legend-item"><span class="legend-square good"></span>Верно</span><span class="legend-item"><span class="legend-square bad"></span>Ошибка</span>':'<span class="legend-item"><span class="legend-square"></span>Ответ выбран</span>'}</div><div class="quiz-progress">${session.mode==='practice' ? session.recorded.size : answered} из ${session.ids.length} ${session.mode==='practice'?'проверено':'отвечено'}<div class="progress-track"><span style="width:${(session.mode==='practice'?session.recorded.size:answered)/session.ids.length*100}%"></span></div></div></aside></div><p class="keyboard-hint">Клавиши 1–4 — выбрать ответ · Enter — проверить или продолжить</p>`;
+    main.innerHTML=`<div class="quiz-top"><div><span class="eyebrow">${session.mode==='exam'?'Экзамен':'Тренировка'}</span><h1>${esc(session.title)}</h1></div><button class="button secondary" data-action="leave">К билетам</button></div><div class="quiz-layout"><div class="question-panel"><div class="question-meta"><span class="topic-tag">${esc(q.topic)}</span><span>Вопрос ${session.index+1} / ${session.ids.length}</span></div>${questionContext(q)}<h2 class="question-title">${esc(q.question)}</h2><div class="options" role="group" aria-label="Варианты ответа">${options}</div>${checked ? feedbackMarkup(q):''}<div class="question-actions"><button class="button ghost" data-action="previous"${session.index===0?' disabled':''}>Назад</button><div class="action-right">${!checked && session.mode==='practice' ? `<button class="button secondary" data-action="${isLast?'finish':'next'}">${isLast?'Завершить':'Пропустить'}</button>` : !isLast && session.mode==='exam' ? '<button class="button secondary" data-action="finish">Завершить</button>':''}${primary}</div></div></div><aside class="quiz-map" aria-label="Навигация по вопросам"><div class="quiz-map-title">Вопросы билета</div><div class="question-grid">${questionMap}</div><div class="map-legend">${session.mode==='practice' ? '<span class="legend-item"><span class="legend-square good"></span>Верно</span><span class="legend-item"><span class="legend-square bad"></span>Ошибка</span>':'<span class="legend-item"><span class="legend-square"></span>Ответ выбран</span>'}</div><div class="quiz-progress">${session.mode==='practice' ? session.recorded.size : answered} из ${session.ids.length} ${session.mode==='practice'?'проверено':'отвечено'}<div class="progress-track"><span style="width:${(session.mode==='practice'?session.recorded.size:answered)/session.ids.length*100}%"></span></div></div></aside></div><p class="keyboard-hint">Клавиши 1–4 — выбрать ответ · Enter — проверить или продолжить</p>`;
     main.querySelectorAll('[data-option]').forEach(el=>el.addEventListener('click',()=>selectAnswer(Number(el.dataset.option))));
     main.querySelectorAll('[data-jump]').forEach(el=>el.addEventListener('click',()=>jump(Number(el.dataset.jump))));
     main.querySelector('[data-action="leave"]').addEventListener('click',()=>navigate('tickets'));
@@ -268,7 +298,7 @@
     const title=wrong.length?'Есть что повторить':'Билет пройден';
     const review=session.ids.map((id,i)=>{
       const q=bank.get(id),selected=session.answers.get(id),right=q.options.find(o=>o.correct),good=isCorrect(id);
-      return `<details class="review-item"><summary><span class="review-symbol${good?'':' bad'}">${icon(good?'check':'cross')}</span><span class="review-summary-text"><small>${i+1}. ${esc(q.topic)}${selected===undefined?' · пропущен':''}</small><span>${esc(q.question)}</span></span><span class="review-toggle">${icon('chevron')}</span></summary><div class="review-body">${!good ? `<div class="review-answer wrong"><strong>Ваш ответ:</strong> ${selected===undefined?'Нет ответа':esc(q.options[selected].text)}</div>`:''}<div class="review-answer"><strong>Правильный ответ:</strong> ${esc(right.text)}</div>${selected!==undefined && !good ? `<p><strong>Почему ваш ответ неверен:</strong> ${esc(q.options[selected].explanation)}</p>`:''}<p><strong>Пояснение:</strong> ${esc(right.explanation)}</p>${detailsMarkup(q,selected)}</div></details>`;
+      return `<details class="review-item"><summary><span class="review-symbol${good?'':' bad'}">${icon(good?'check':'cross')}</span><span class="review-summary-text"><small>${i+1}. ${esc(q.topic)}${selected===undefined?' · пропущен':''}</small><span>${esc(q.question)}</span></span><span class="review-toggle">${icon('chevron')}</span></summary><div class="review-body">${questionContext(q)}${!good ? `<div class="review-answer wrong"><strong>Ваш ответ:</strong> ${selected===undefined?'Нет ответа':esc(q.options[selected].text)}</div>`:''}<div class="review-answer"><strong>Правильный ответ:</strong> ${esc(right.text)}</div>${selected!==undefined && !good ? `<p><strong>Почему ваш ответ неверен:</strong> ${esc(q.options[selected].explanation)}</p>`:''}<p><strong>Пояснение:</strong> ${esc(right.explanation)}</p>${detailsMarkup(q,selected)}${sourcesMarkup(q)}</div></details>`;
     }).join('');
     main.innerHTML=`<div class="page-heading"><div><span class="eyebrow">${session.mode==='exam'?'Результат экзамена':'Результат тренировки'}</span><h1>${esc(session.title)}</h1></div></div><section class="result-card"><div class="result-score">${correct}<span> / ${session.ids.length}</span></div><div class="result-copy"><h2>${title}</h2><p>${wrong.length ? `${errorCount(wrong.length)}${skipped?`, из них ${skipped} без ответа`:''}. Они добавлены в «Мои ошибки».`:'Все ответы верные. Можно перейти к следующему билету.'}</p><div class="result-actions">${wrong.length?'<button class="button primary" data-result="errors">Повторить ошибки</button>':''}<button class="button ${wrong.length?'secondary':'primary'}" data-result="retry">Решить снова</button><button class="button secondary" data-result="home">К билетам</button></div></div></section><div class="section-heading"><h2>Разбор всех вопросов</h2><span>Откройте вопрос</span></div><div class="result-review">${review}</div>`;
     main.querySelector('[data-result="retry"]').addEventListener('click',()=>startSession([...session.ids],session.title,session.ticket));
@@ -300,16 +330,34 @@
       if(!response.ok)throw new Error('Question bank unavailable');
       const data=await response.json();
       if(!Array.isArray(data.questions) || !data.questions.length || !Array.isArray(data.topics))throw new Error('Invalid question bank');
-      for(const q of data.questions){if(!q.id || !data.topics.includes(q.topic) || q.options.length!==4 || q.options.filter(o=>o.correct).length!==1)throw new Error('Invalid question');}
+      const sources=data.sources || [];
+      if(!Array.isArray(sources) || new Set(sources.map(s=>s.id)).size!==sources.length)throw new Error('Invalid sources');
+      for(const source of sources){if(!source.id || !source.title || new URL(source.url).protocol!=='https:')throw new Error('Invalid source');}
+      sourceIndex=new Map(sources.map(source=>[source.id,source]));
+      for(const guide of data.certificationGuides || []){if(!guide.title || new URL(guide.url).protocol!=='https:')throw new Error('Invalid guide');}
+      for(const collection of data.interviewCollections || []){if(!collection.title || new URL(collection.url).protocol!=='https:')throw new Error('Invalid interview collection');}
+      for(const q of data.questions){
+        if(!q.id || !data.topics.includes(q.topic) || !q.question || !Array.isArray(q.options) || q.options.length!==4 || q.options.filter(o=>o.correct===true).length!==1 || q.options.some(o=>typeof o.correct!=='boolean' || !o.text || !o.explanation))throw new Error('Invalid question');
+        if(q.difficulty && !difficultyNames[q.difficulty])throw new Error('Invalid difficulty');
+        if(q.sourceIds && (!Array.isArray(q.sourceIds) || q.sourceIds.some(id=>!sourceIndex.has(id))))throw new Error('Missing source');
+        if(q.interviewSourceIds && (!Array.isArray(q.interviewSourceIds) || q.interviewSourceIds.some(id=>sourceIndex.get(id)?.kind!=='interview')))throw new Error('Invalid interview source');
+        if(q.origin==='authored' && (!q.sourceIds?.length || !q.difficulty))throw new Error('Incomplete authored question');
+      }
       if(new Set(data.questions.map(q=>q.id)).size!==data.questions.length)throw new Error('Duplicate question IDs');
       dataset=data;bank=new Map(data.questions.map(q=>[q.id,q]));
-      // Interleave the source topics so every ticket covers several subjects.
+      // Spread each topic across tickets, respecting the size of the final ticket.
       const groups=data.topics.map(topic=>data.questions.filter(q=>q.topic===topic));
-      const mixed=[];
-      for(let i=0;groups.some(group=>i<group.length);i++)groups.forEach(group=>{if(group[i])mixed.push(group[i].id);});
-      tickets=[];for(let i=0;i<mixed.length;i+=20)tickets.push(mixed.slice(i,i+20));
+      const capacities=Array.from({length:Math.ceil(data.questions.length/TICKET_SIZE)},(_,i)=>Math.min(TICKET_SIZE,data.questions.length-i*TICKET_SIZE));
+      tickets=capacities.map(()=>[]);
+      let ticketIndex=0;
+      for(const group of groups)for(const q of group){
+        while(tickets[ticketIndex].length>=capacities[ticketIndex])ticketIndex=(ticketIndex+1)%tickets.length;
+        tickets[ticketIndex].push(q.id);
+        ticketIndex=(ticketIndex+1)%tickets.length;
+      }
       $('#ticket-count').textContent=tickets.length;
-      $('#dataset-info').textContent=`${dataset.questions.length} вопросов · ${dataset.topics.length} тем`;
+      $('#topic-count').textContent=dataset.topics.length;
+      $('#dataset-info').textContent=`${questionCount(dataset.questions.length)} · ${dataset.topics.length} ${word(dataset.topics.length,['тема','темы','тем'])}`;
       bankSignature=getBankSignature(data);restoreProgress();saveProgress();updateStats();
       if(session && sessionOpen){if(session.finished)renderResult();else renderQuiz();}else renderHome();
       registerTools();

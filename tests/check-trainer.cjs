@@ -13,7 +13,10 @@ class Node {
   removeEventListener(name,fn){this.listeners.get(name)?.delete(fn);}
   dispatch(name){for(const fn of this.listeners.get(name)||[])fn({preventDefault(){}});}
   setAttribute(){} removeAttribute(){} focus(){}
-  querySelector(){return new Node();} querySelectorAll(){return [];}
+  get innerHTML(){return this._html;}
+  set innerHTML(value){this._html=value;this.children=new Map();}
+  querySelector(selector){if(!this.children.has(selector))this.children.set(selector,new Node());return this.children.get(selector);}
+  querySelectorAll(selector){return selector==='[data-action="random"]' && this.innerHTML.includes('data-action="random"') ? [this.querySelector(selector)] : [];}
   showModal(){this.open=true;} close(){this.open=false;}
 }
 
@@ -24,9 +27,9 @@ async function runtime(storage=new Map(),options={}) {
     getItem(k){if(options.blocked)throw new Error('Storage denied');return storage.get(k)??null;},
     setItem(k,value){if(options.blocked)throw new Error('Storage denied');storage.set(k,value);}
   };
-  const ctx={document,window:{localStorage,scrollTo(){},addEventListener(){}},fetch:async()=>({ok:true,json:async()=>options.data||data}),console,AbortController,Math,Map,Set,Promise};
+  const ctx={document,window:{localStorage,scrollTo(){},addEventListener(){}},fetch:async()=>({ok:true,json:async()=>options.data||data}),console,AbortController,Math,Map,Set,Promise,URL};
   vm.createContext(ctx);
-  const source=fs.readFileSync(path.join(root,'app.js'),'utf8').replace('  load();\n})();',`  globalThis.qa={startSession,requestStartSession,selectAnswer,checkAnswer,jump,finishSession,isCorrect,navigate,resetProgress,setMode:m=>{mode=m;},get:()=>({session,sessionOpen,tickets,bank,errors,ticketResults,total,correctTotal,page,mode,storageAvailable})};\n  load();\n})();`);
+  const source=fs.readFileSync(path.join(root,'app.js'),'utf8').replace('const TICKET_SIZE = 50;',`const TICKET_SIZE = ${options.ticketSize||50};`).replace('  load();\n})();',`  globalThis.qa={startSession,requestStartSession,selectAnswer,checkAnswer,jump,finishSession,isCorrect,navigate,resetProgress,setMode:m=>{mode=m;},get:()=>({session,sessionOpen,tickets,bank,errors,ticketResults,total,correctTotal,page,mode,storageAvailable})};\n  load();\n})();`);
   vm.runInContext(source,ctx);
   await new Promise(resolve=>setImmediate(resolve));
   assert(ctx.qa.get().bank,'The bank must load successfully');
@@ -45,8 +48,21 @@ function choose(a,correct) {
   let {a,nodes}=await runtime();
   let state=()=>a.get();
   const all=state().tickets.flat();
-  assert.equal(all.length,88);assert.equal(new Set(all).size,88);
-  assert.deepEqual(Array.from(state().tickets,t=>t.length),[20,20,20,20,8]);
+  assert.equal(all.length,400);assert.equal(new Set(all).size,400);
+  assert.deepEqual(Array.from(state().tickets,t=>t.length),Array(8).fill(50));
+  assert.equal(Number(nodes.get('#ticket-count').textContent),8);
+  assert.equal(Number(nodes.get('#topic-count').textContent),22);
+  assert(nodes.get('#dataset-info').textContent.includes('400 вопросов'));
+  for(const topic of data.topics){
+    const counts=Array.from(state().tickets,ticket=>ticket.filter(id=>state().bank.get(id).topic===topic).length);
+    assert(Math.max(...counts)-Math.min(...counts)<=1,`${topic} must be spread evenly across tickets`);
+    if(topic==='Модель OSI'){assert.equal(counts.reduce((a,b)=>a+b,0),41);assert(counts.every(n=>n===5||n===6));}
+  }
+  assert(nodes.get('#main').innerHTML.includes('50 вопросов из всех тем'));
+  nodes.get('#main').querySelector('[data-action="random"]').dispatch('click');
+  assert.equal(state().session.ids.length,50);assert.equal(new Set(state().session.ids).size,50);
+  a.jump(49);assert.equal(state().session.index,49);assert(nodes.get('#main').innerHTML.includes('Вопрос 50 / 50'));
+  a.jump(50);assert.equal(state().session.index,49,'Navigation must stop at question 50');
   const ids=data.questions.slice(0,3).map(q=>q.id);
   a.startSession(ids,'Practice');
   const {id:wrongId}=choose(a,false);a.checkAnswer();
@@ -71,8 +87,26 @@ function choose(a,correct) {
     a.jump(i);const {id}=choose(a,true);
     assert.equal(new Set(state().session.orders.get(id)).size,4);a.checkAnswer();assert(a.isCorrect(id));
   }
-  a.finishSession();assert.equal(state().correctTotal,perfectBefore+20);
+  a.finishSession();assert.equal(state().correctTotal,perfectBefore+50);
   assert(nodes.get('#main').innerHTML.includes('Билет пройден'));
+
+  // Interview and certification metadata are visible, while source links appear only after submission.
+  const interview=data.questions.find(q=>q.interviewSourceIds?.length);
+  assert(interview,'The bank must contain interview questions');
+  a.startSession([interview.id],'Interview practice');
+  assert(nodes.get('#main').innerHTML.includes('Собеседование'));
+  assert(!nodes.get('#main').innerHTML.includes('class="answer-sources"'));
+  choose(a,true);a.checkAnswer();
+  assert(nodes.get('#main').innerHTML.includes('class="answer-sources"'));
+  assert(nodes.get('#main').innerHTML.includes('Для разбора темы'));
+  assert(nodes.get('#main').innerHTML.includes('Тема из открытой подборки собеседований'));
+  const certQuestion=data.questions.find(q=>q.certifications?.length && q.difficulty);
+  a.startSession([certQuestion.id],'Certification practice');
+  assert(nodes.get('#main').innerHTML.includes('По тематике:'));
+  assert(nodes.get('#main').innerHTML.includes('class="level-tag"'));
+  a.setMode('exam');a.startSession([interview.id],'Interview exam');choose(a,true);
+  assert(!nodes.get('#main').innerHTML.includes('class="answer-sources"'));
+  a.finishSession();assert(nodes.get('#main').innerHTML.includes('class="answer-sources"'));
 
   // Simulate closing and reopening the page with the same browser storage.
   const storage=new Map();
@@ -136,9 +170,41 @@ function choose(a,correct) {
   ({a,nodes}=await runtime(new Map(),{blocked:true}));
   a.startSession(ids,'Storage unavailable');choose(a,true);a.checkAnswer();
   assert.equal(state().correctTotal,1);assert(!state().storageAvailable);assert(nodes.get('#storage-status').textContent.includes('не разрешает'));
+  const beforeUpdate=JSON.parse(storage.get(key));
   const changedData=JSON.parse(JSON.stringify(data));changedData.questions[0].question+=' (updated)';
   ({a,nodes}=await runtime(storage,{data:changedData}));
   assert.equal(state().session,null,'A changed bank must not restore potentially stale answers');assert.equal(state().ticketResults.size,0);
-  assert(state().total>0,'Aggregate history remains available after a bank update');
-  console.log('PASS: 88 questions, 5 tickets, training, exam secrecy, scoring, mistakes, reload/resume, answer order, completed results, reset, corrupt data and unavailable storage.');
+  assert.equal(state().total,beforeUpdate.total,'Aggregate history remains available after a bank update');
+  assert.equal(state().correctTotal,beforeUpdate.correctTotal);
+  assert.deepEqual([...state().errors].sort(),beforeUpdate.errors.sort());
+  assert(nodes.get('#main').innerHTML.includes('Банк вопросов обновлён'));
+  ({a,nodes}=await runtime(storage,{data:changedData}));
+  assert(!nodes.get('#main').innerHTML.includes('Банк вопросов обновлён'),'The update notice is not repeated on later visits');
+
+  // Version 1 storage from the original 88-question trainer retains history, never its 20-question session.
+  const legacyIds=['q001','q006','q011','q016','q023','q028','q033','q038','q043','q048','q056','q064','q070','q079','q002','q007','q012','q017','q024','q029'];
+  const legacy={version:1,bankSignature:'f103401f',total:31,correctTotal:22,page:'topics',mode:'exam',errors:['q001','removed-question'],ticketResults:[[0,{correct:20,length:20}]],sessionOpen:true,
+    session:{title:'Билет 1',ticket:0,mode:'practice',ids:legacyIds,index:1,finished:false,answers:[['q001',0]],orders:legacyIds.map(id=>[id,[0,1,2,3]]),recorded:['q001']}};
+  const legacyStorage=new Map([[key,JSON.stringify(legacy)]]);
+  ({a,nodes}=await runtime(legacyStorage));
+  assert.equal(state().total,31);assert.equal(state().correctTotal,22);
+  assert.deepEqual([...state().errors],['q001']);assert.equal(state().session,null);assert.equal(state().ticketResults.size,0);
+  assert.equal(state().page,'topics');assert.equal(state().mode,'exam');
+  assert(!nodes.get('#main').innerHTML.includes('Продолжить билет'));
+  assert(nodes.get('#main').innerHTML.includes('Банк вопросов обновлён'));
+  a.startSession(state().tickets[0],'New ticket',0);assert.equal(state().session.ids.length,50);
+  choose(a,true);a.finishSession();
+  assert.equal(state().total,81);assert.equal(state().correctTotal,23,'Only the new ticket is scored');
+  assert.equal(state().ticketResults.get(0).length,50);
+
+  // A ticket-layout change alone must invalidate numbered results, even when all question content is identical.
+  const layoutStorage=new Map();
+  ({a,nodes}=await runtime(layoutStorage,{ticketSize:20}));
+  a.startSession(state().tickets[0],'Old short ticket',0);choose(a,true);a.checkAnswer();a.finishSession();
+  a.startSession(state().tickets[1],'Old pending ticket',1);choose(a,false);
+  ({a,nodes}=await runtime(layoutStorage));
+  assert.equal(state().session,null);assert.equal(state().ticketResults.size,0);assert.equal(state().total,20);assert.equal(state().correctTotal,1);
+  assert.equal(state().errors.size,19,'Mistake IDs survive a ticket-layout change');
+  assert(nodes.get('#main').innerHTML.includes('Банк вопросов обновлён'));
+  console.log('PASS: 400 questions, 8 tickets × 50, balanced OSI/topics, random ticket, sources after checking, training, exam secrecy, scoring, mistakes, reload/resume, answer order, completed results, reset, corrupt/unavailable storage, legacy 88-question and ticket-layout migrations.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
