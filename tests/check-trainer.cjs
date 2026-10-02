@@ -8,11 +8,13 @@ const data=JSON.parse(fs.readFileSync(path.join(root,'questions.json'),'utf8'));
 const key='cs-bilets-ru.progress.v1';
 
 class Node {
-  constructor(){this.innerHTML='';this.textContent='';this.style={};this.dataset={};this.open=false;this.listeners=new Map();this.classList={toggle(){}};}
+  constructor(){this.innerHTML='';this.textContent='';this.style={};this.dataset={};this.open=false;this.isConnected=true;this.listeners=new Map();this.classList={toggle(){}};}
   addEventListener(name,fn){if(!this.listeners.has(name))this.listeners.set(name,new Set());this.listeners.get(name).add(fn);}
   removeEventListener(name,fn){this.listeners.get(name)?.delete(fn);}
-  dispatch(name){for(const fn of this.listeners.get(name)||[])fn({preventDefault(){}});}
-  setAttribute(){} removeAttribute(){} focus(){}
+  dispatch(name,extra={}){const event={target:this,preventDefault(){this.defaultPrevented=true;},stopPropagation(){this.propagationStopped=true;},...extra};for(const fn of this.listeners.get(name)||[])fn(event);return event;}
+  setAttribute(){} removeAttribute(){} focus(){this.focused=true;}
+  closest(selector){return selector==='[data-term]' && this.dataset.term ? this : null;}
+  contains(element){return [...this.children.values()].includes(element);}
   get innerHTML(){return this._html;}
   set innerHTML(value){this._html=value;this.children=new Map();}
   querySelector(selector){if(!this.children.has(selector))this.children.set(selector,new Node());return this.children.get(selector);}
@@ -26,13 +28,14 @@ class Node {
       return node;
     });
   }
-  showModal(){this.open=true;} close(){this.open=false;}
+  showModal(){this.open=true;} close(){this.open=false;this.dispatch('close');}
 }
 
 async function runtime(storage=new Map(),options={}) {
   const nodes=new Map();
   const loadErrors=[];
-  const document={querySelector:s=>{if(!nodes.has(s))nodes.set(s,new Node());return nodes.get(s);},querySelectorAll:()=>[],addEventListener(){},body:new Node()};
+  const listeners=new Map();
+  const document={querySelector:s=>{if(!nodes.has(s))nodes.set(s,new Node());return nodes.get(s);},querySelectorAll:()=>[],addEventListener(name,fn){if(!listeners.has(name))listeners.set(name,[]);listeners.get(name).push(fn);},body:new Node()};
   const localStorage={
     getItem(k){if(options.blocked)throw new Error('Storage denied');return storage.get(k)??null;},
     setItem(k,value){if(options.blocked)throw new Error('Storage denied');storage.set(k,value);}
@@ -41,6 +44,7 @@ async function runtime(storage=new Map(),options={}) {
   const randomMath=options.random ? Object.assign(Object.create(Math),{random:options.random}) : Math;
   const ctx={document,window:{localStorage,scrollTo(){},addEventListener(){}},fetch:async()=>({ok:true,json:async()=>options.data||data}),console:logger,AbortController,Math:randomMath,Map,Set,Promise,URL};
   vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(root,'glossary.js'),'utf8'),ctx);
   const source=fs.readFileSync(path.join(root,'app.js'),'utf8').replace('const TICKET_SIZE = 50;',`const TICKET_SIZE = ${options.ticketSize||50};`).replace('  load();\n})();',`  globalThis.qa={startSession,requestStartSession,selectAnswer,checkAnswer,jump,finishSession,isCorrect,navigate,resetProgress,setMode:m=>{mode=m;},get:()=>({session,sessionOpen,tickets,bank,errors,ticketResults,total,correctTotal,page,mode,storageAvailable})};\n  load();\n})();`);
   vm.runInContext(source,ctx);
   await new Promise(resolve=>setImmediate(resolve));
@@ -49,7 +53,7 @@ async function runtime(storage=new Map(),options={}) {
     assert.equal(loadErrors.length,1);
     assert(nodes.get('#main').innerHTML.includes('Не удалось загрузить вопросы'));
   } else assert(ctx.qa.get().bank,'The bank must load successfully');
-  return {a:ctx.qa,nodes,storage};
+  return {a:ctx.qa,nodes,storage,key(key){const event={key,target:document.body,preventDefault(){}};for(const fn of listeners.get('keydown')||[])fn(event);}};
 }
 
 function choose(a,correct) {
@@ -61,6 +65,31 @@ function choose(a,correct) {
 }
 
 (async()=>{
+  // Click help in the real screenshot question without touching its attempt or score.
+  const glossaryRun=await runtime();
+  glossaryRun.a.startSession(['q358'],'Справка');
+  const glossaryMain=glossaryRun.nodes.get('#main');
+  assert.equal((glossaryMain.innerHTML.match(/class="option-pick"/g)||[]).length,4);
+  assert([...glossaryMain.innerHTML.matchAll(/<button[^>]*data-option[^>]*>([\s\S]*?)<\/button>/g)].every(([,content])=>!/<button|<input|<a\b/.test(content)), 'Answer buttons must have no interactive descendants');
+  let launcher=glossaryMain.querySelectorAll('[data-term="nonce"]')[0];
+  const beforeHelp=glossaryRun.storage.get(key);
+  const helpClick=glossaryMain.dispatch('click',{target:launcher});
+  assert(helpClick.defaultPrevented && helpClick.propagationStopped);
+  assert(glossaryRun.nodes.get('#term-dialog').open);
+  glossaryRun.key('1');glossaryRun.key('Enter');
+  assert.equal(glossaryRun.a.get().session.answers.size,0);
+  assert.equal(glossaryRun.storage.get(key),beforeHelp,'Reading help must not change the saved attempt');
+  glossaryRun.nodes.get('#term-dialog').dispatch('cancel');
+  assert(launcher.focused);
+  const right=glossaryRun.a.get().bank.get('q358').options.findIndex(o=>o.correct);
+  glossaryMain.querySelector(`[data-option="${right}"]`).dispatch('click');glossaryRun.a.checkAnswer();
+  launcher=glossaryMain.querySelectorAll('[data-term="nonce"]')[0];
+  const checkedHelp=glossaryRun.storage.get(key);
+  glossaryMain.dispatch('click',{target:launcher});
+  assert(glossaryRun.nodes.get('#term-dialog').open,'Vocabulary remains usable after checking');
+  glossaryRun.key('2');assert.equal(glossaryRun.storage.get(key),checkedHelp);
+  assert.equal(glossaryRun.a.get().total,1);assert.equal(glossaryRun.a.get().correctTotal,1);
+  glossaryRun.nodes.get('#term-close').dispatch('click');
   let {a,nodes}=await runtime();
   let state=()=>a.get();
   const all=state().tickets.flat();

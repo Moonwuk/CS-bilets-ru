@@ -93,6 +93,7 @@
     saveProgress();renderHome();focusMain();announce('Прогресс сброшен.');
   }
   const esc = str => String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const termsMarkup = window.TrainerTerms.markup;
   const word = (n, forms) => forms[n%100>=11 && n%100<=14 ? 2 : n%10===1 ? 0 : n%10>=2 && n%10<=4 ? 1 : 2];
   const questionCount = n => `${n} ${word(n,['вопрос','вопроса','вопросов'])}`;
   const errorCount = n => `${n} ${word(n,['ошибка','ошибки','ошибок'])}`;
@@ -166,7 +167,7 @@
     } else if(!errors.size) {
       body=`<div class="empty-state"><div class="empty-icon">${icon('check')}</div><h2>Пока нет ошибок</h2><p>Ошибочные и пропущенные вопросы появятся здесь для повторения.</p><button class="button primary" data-action="random">Начать случайный билет</button></div>`;
     } else {
-      body=`<div class="mode-bar"><span class="mode-hint">${questionCount(errors.size)} для повторения</span><button class="button primary" data-action="errors">Повторить ошибки</button></div><div class="error-list">${[...errors].map(id=>{const q=bank.get(id);return `<div class="error-item">${icon('mistakes')}<div><span class="error-topic">${esc(q.topic)}</span><p>${esc(q.question)}</p></div><button class="button secondary" data-single="${id}">Повторить</button></div>`;}).join('')}</div>`;
+      body=`<div class="mode-bar"><span class="mode-hint">${questionCount(errors.size)} для повторения</span><button class="button primary" data-action="errors">Повторить ошибки</button></div><div class="error-list">${[...errors].map(id=>{const q=bank.get(id);return `<div class="error-item">${icon('mistakes')}<div><span class="error-topic">${esc(q.topic)}</span><p>${termsMarkup(q.question)}</p></div><button class="button secondary" data-single="${id}">Повторить</button></div>`;}).join('')}</div>`;
     }
     const updateNotice=bankUpdateNotice ? `<p class="bank-update-notice" role="status">${esc(bankUpdateNotice)}</p>` : '';
     const resume=session && !session.finished ? `<section class="resume-card" aria-label="Незавершённый билет"><div><strong>${esc(session.title)}</strong><p>${session.mode==='exam'?'Экзамен':'Тренировка'} · вопрос ${session.index+1} из ${session.ids.length}</p></div><button class="button primary" data-action="resume">Продолжить билет</button></section>` : '';
@@ -209,14 +210,14 @@
     const order=session.orders.get(q.id);
     return `<details class="explanation-details"><summary>Почему другие варианты неверны</summary>${order.map((oi,i)=>{
       const o=q.options[oi];if(o.correct || oi===selected)return '';
-      return `<div class="explanation-detail"><strong>${letters[i]}. ${esc(o.text)}</strong>${esc(o.explanation)}</div>`;
+      return `<div class="explanation-detail"><strong>${letters[i]}. ${termsMarkup(o.text)}</strong>${termsMarkup(o.explanation)}</div>`;
     }).join('')}</details>`;
   }
   function feedbackMarkup(q) {
     const selected=session.answers.get(q.id);
     const right=q.options.findIndex(o=>o.correct);
     const correct=isCorrect(q.id);
-    return `<section class="feedback${correct?'':' is-error'}" aria-label="Разбор ответа"><div class="feedback-heading">${icon(correct?'check':'mistakes')}${correct?'Верно':'Есть ошибка'}</div>${!correct ? `<span class="feedback-label">Почему ваш ответ неверен</span><p>${esc(q.options[selected].explanation)}</p><span class="feedback-label">Правильный ответ</span><p>${esc(q.options[right].text)}</p>`:''}<span class="feedback-label">${correct?'Пояснение':'Почему это верно'}</span><p>${esc(q.options[right].explanation)}</p>${detailsMarkup(q,selected)}${sourcesMarkup(q)}</section>`;
+    return `<section class="feedback${correct?'':' is-error'}" aria-label="Разбор ответа"><div class="feedback-heading">${icon(correct?'check':'mistakes')}${correct?'Верно':'Есть ошибка'}</div>${!correct ? `<span class="feedback-label">Почему ваш ответ неверен</span><p>${termsMarkup(q.options[selected].explanation)}</p><span class="feedback-label">Правильный ответ</span><p>${termsMarkup(q.options[right].text)}</p>`:''}<span class="feedback-label">${correct?'Пояснение':'Почему это верно'}</span><p>${termsMarkup(q.options[right].explanation)}</p>${detailsMarkup(q,selected)}${sourcesMarkup(q)}</section>`;
   }
   function renderQuiz() {
     const id=session.ids[session.index],q=bank.get(id),selected=session.answers.get(id);
@@ -228,7 +229,8 @@
       const o=q.options[oi];let style=selected===oi?' selected':'';
       if(checked && o.correct)style=' correct';
       if(checked && selected===oi && !o.correct)style=' wrong';
-      return `<button class="option${style}" data-option="${oi}" aria-pressed="${selected===oi}"${checked?' disabled':''}><span class="option-letter" aria-hidden="true">${letters[i]}</span><span class="option-text">${esc(o.text)}</span>${checked && (o.correct || selected===oi) ? icon(o.correct?'check':'cross'):''}</button>`;
+      // The answer control and help controls are siblings: never nest buttons.
+      return `<div class="option${style}${checked?' is-checked':''}"><button type="button" class="option-pick" data-option="${oi}" aria-label="${letters[i]}. ${esc(o.text)}" aria-pressed="${selected===oi}"${checked?' disabled':''}></button><span class="option-letter" aria-hidden="true">${letters[i]}</span><span class="option-text">${termsMarkup(o.text)}</span>${checked && (o.correct || selected===oi) ? icon(o.correct?'check':'cross'):''}</div>`;
     }).join('');
     const questionMap=session.ids.map((qid,i)=>{
       let status=session.answers.has(qid)?' answered':'';
@@ -239,7 +241,7 @@
     let primary='';
     if(session.mode==='practice' && !checked)primary=`<button class="button primary" data-action="check"${selected===undefined?' disabled':''}>Проверить</button>`;
     else primary=`<button class="button primary" data-action="${isLast?'finish':'next'}">${isLast?'Завершить билет':'Следующий вопрос'}</button>`;
-    main.innerHTML=`<div class="quiz-top"><div><span class="eyebrow">${session.mode==='exam'?'Экзамен':'Тренировка'}</span><h1>${esc(session.title)}</h1></div><button class="button secondary" data-action="leave">К билетам</button></div><div class="quiz-layout"><div class="question-panel"><div class="question-meta"><span class="topic-tag">${esc(q.topic)}</span><span>Вопрос ${session.index+1} / ${session.ids.length}</span></div>${questionContext(q)}<h2 class="question-title">${esc(q.question)}</h2><div class="options" role="group" aria-label="Варианты ответа">${options}</div>${checked ? feedbackMarkup(q):''}<div class="question-actions"><button class="button ghost" data-action="previous"${session.index===0?' disabled':''}>Назад</button><div class="action-right">${!checked && session.mode==='practice' ? `<button class="button secondary" data-action="${isLast?'finish':'next'}">${isLast?'Завершить':'Пропустить'}</button>` : !isLast && session.mode==='exam' ? '<button class="button secondary" data-action="finish">Завершить</button>':''}${primary}</div></div></div><aside class="quiz-map${session.ids.length>TICKET_SIZE?' long-session':''}" aria-label="Навигация по вопросам"><div class="quiz-map-title">Вопросы билета</div><div class="question-grid">${questionMap}</div><div class="map-legend">${session.mode==='practice' ? '<span class="legend-item"><span class="legend-square good"></span>Верно</span><span class="legend-item"><span class="legend-square bad"></span>Ошибка</span>':'<span class="legend-item"><span class="legend-square"></span>Ответ выбран</span>'}</div><div class="quiz-progress">${session.mode==='practice' ? session.recorded.size : answered} из ${session.ids.length} ${session.mode==='practice'?'проверено':'отвечено'}<div class="progress-track"><span style="width:${(session.mode==='practice'?session.recorded.size:answered)/session.ids.length*100}%"></span></div></div></aside></div><p class="keyboard-hint">Клавиши 1–4 — выбрать ответ · Enter — проверить или продолжить</p>`;
+    main.innerHTML=`<div class="quiz-top"><div><span class="eyebrow">${session.mode==='exam'?'Экзамен':'Тренировка'}</span><h1>${esc(session.title)}</h1></div><button class="button secondary" data-action="leave">К билетам</button></div><div class="quiz-layout"><div class="question-panel"><div class="question-meta"><span class="topic-tag">${esc(q.topic)}</span><span>Вопрос ${session.index+1} / ${session.ids.length}</span></div>${questionContext(q)}<h2 class="question-title">${termsMarkup(q.question)}</h2>${[q.question,...q.options.map(o=>o.text)].some(text=>termsMarkup(text).includes('data-term=')) ? '<p class="term-help-hint">Нажмите на подчёркнутый термин — объясним простыми словами.</p>' : ''}<div class="options" role="group" aria-label="Варианты ответа">${options}</div>${checked ? feedbackMarkup(q):''}<div class="question-actions"><button class="button ghost" data-action="previous"${session.index===0?' disabled':''}>Назад</button><div class="action-right">${!checked && session.mode==='practice' ? `<button class="button secondary" data-action="${isLast?'finish':'next'}">${isLast?'Завершить':'Пропустить'}</button>` : !isLast && session.mode==='exam' ? '<button class="button secondary" data-action="finish">Завершить</button>':''}${primary}</div></div></div><aside class="quiz-map${session.ids.length>TICKET_SIZE?' long-session':''}" aria-label="Навигация по вопросам"><div class="quiz-map-title">Вопросы билета</div><div class="question-grid">${questionMap}</div><div class="map-legend">${session.mode==='practice' ? '<span class="legend-item"><span class="legend-square good"></span>Верно</span><span class="legend-item"><span class="legend-square bad"></span>Ошибка</span>':'<span class="legend-item"><span class="legend-square"></span>Ответ выбран</span>'}</div><div class="quiz-progress">${session.mode==='practice' ? session.recorded.size : answered} из ${session.ids.length} ${session.mode==='practice'?'проверено':'отвечено'}<div class="progress-track"><span style="width:${(session.mode==='practice'?session.recorded.size:answered)/session.ids.length*100}%"></span></div></div></aside></div><p class="keyboard-hint">Клавиши 1–4 — выбрать ответ · Enter — проверить или продолжить</p>`;
     if(session.ids.length>TICKET_SIZE){
       const grid=main.querySelector('.question-grid'),current=main.querySelector('.question-number[aria-current="true"]');
       if(grid && current && grid.clientHeight)grid.scrollTop=Math.max(0,current.offsetTop-(grid.clientHeight-current.offsetHeight)/2);
@@ -311,7 +313,7 @@
     const title=wrong.length?'Есть что повторить':'Билет пройден';
     const review=session.ids.map((id,i)=>{
       const q=bank.get(id),selected=session.answers.get(id),right=q.options.find(o=>o.correct),good=isCorrect(id);
-      return `<details class="review-item"><summary><span class="review-symbol${good?'':' bad'}">${icon(good?'check':'cross')}</span><span class="review-summary-text"><small>${i+1}. ${esc(q.topic)}${selected===undefined?' · пропущен':''}</small><span>${esc(q.question)}</span></span><span class="review-toggle">${icon('chevron')}</span></summary><div class="review-body">${questionContext(q)}${!good ? `<div class="review-answer wrong"><strong>Ваш ответ:</strong> ${selected===undefined?'Нет ответа':esc(q.options[selected].text)}</div>`:''}<div class="review-answer"><strong>Правильный ответ:</strong> ${esc(right.text)}</div>${selected!==undefined && !good ? `<p><strong>Почему ваш ответ неверен:</strong> ${esc(q.options[selected].explanation)}</p>`:''}<p><strong>Пояснение:</strong> ${esc(right.explanation)}</p>${detailsMarkup(q,selected)}${sourcesMarkup(q)}</div></details>`;
+      return `<details class="review-item"><summary><span class="review-symbol${good?'':' bad'}">${icon(good?'check':'cross')}</span><span class="review-summary-text"><small>${i+1}. ${esc(q.topic)}${selected===undefined?' · пропущен':''}</small><span>${termsMarkup(q.question)}</span></span><span class="review-toggle">${icon('chevron')}</span></summary><div class="review-body">${questionContext(q)}${!good ? `<div class="review-answer wrong"><strong>Ваш ответ:</strong> ${selected===undefined?'Нет ответа':termsMarkup(q.options[selected].text)}</div>`:''}<div class="review-answer"><strong>Правильный ответ:</strong> ${termsMarkup(right.text)}</div>${selected!==undefined && !good ? `<p><strong>Почему ваш ответ неверен:</strong> ${termsMarkup(q.options[selected].explanation)}</p>`:''}<p><strong>Пояснение:</strong> ${termsMarkup(right.explanation)}</p>${detailsMarkup(q,selected)}${sourcesMarkup(q)}</div></details>`;
     }).join('');
     main.innerHTML=`<div class="page-heading"><div><span class="eyebrow">${session.mode==='exam'?'Результат экзамена':'Результат тренировки'}</span><h1>${esc(session.title)}</h1></div></div><section class="result-card"><div class="result-score">${correct}<span> / ${session.ids.length}</span></div><div class="result-copy"><h2>${title}</h2><p>${wrong.length ? `${errorCount(wrong.length)}${skipped?`, из них ${skipped} без ответа`:''}. Они добавлены в «Мои ошибки».`:'Все ответы верные. Можно перейти к следующему билету.'}</p><div class="result-actions">${wrong.length?'<button class="button primary" data-result="errors">Повторить ошибки</button>':''}<button class="button ${wrong.length?'secondary':'primary'}" data-result="retry">Решить снова</button><button class="button secondary" data-result="home">К билетам</button></div></div></section><div class="section-heading"><h2>Разбор всех вопросов</h2><span>Откройте вопрос</span></div><div class="result-review">${review}</div>`;
     main.querySelector('[data-result="retry"]').addEventListener('click',()=>startSession([...session.ids],session.title,session.ticket));
@@ -327,10 +329,10 @@
   $('#brand').addEventListener('click',event=>{event.preventDefault();navigate('tickets');});
   $('#reset-progress').addEventListener('click',resetProgress);
   document.addEventListener('keydown',event=>{
-    if(!session || !sessionOpen || session.finished || $('#confirm-dialog').open || event.ctrlKey || event.metaKey || event.altKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName))return;
+    if(!session || !sessionOpen || session.finished || $('#confirm-dialog').open || window.TrainerTerms.isOpen() || event.ctrlKey || event.metaKey || event.altKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName))return;
     if(/^[1-4]$/.test(event.key)){
       event.preventDefault();selectAnswer(session.orders.get(session.ids[session.index])[Number(event.key)-1]);
-    } else if(event.key==='Enter' && (event.target===document.body || event.target===main || event.target.matches('.option'))){
+    } else if(event.key==='Enter' && (event.target===document.body || event.target===main || event.target.matches('.option-pick'))){
       event.preventDefault();
       const id=session.ids[session.index];
       if(session.mode==='practice' && !session.recorded.has(id))checkAnswer();
