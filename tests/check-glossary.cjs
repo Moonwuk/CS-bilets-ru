@@ -55,6 +55,29 @@ assert(!escaped.includes('<img') && !escaped.includes('<script>'));
 assert(escaped.includes('&lt;img') && escaped.includes('&quot;') && escaped.includes('&amp;'));
 assert.deepEqual(termIds('CSP nonce'), termIds('CSP nonce'), 'Repeated rendering must retain matches');
 
+const bank = JSON.parse(fs.readFileSync(path.join(root, 'questions.json'), 'utf8'));
+const toolQuestions = bank.questions.filter(q => q.collection === 'security-tools');
+assert.equal(toolQuestions.length, 100);
+assert.equal(new Set(toolQuestions.map(q => q.topic)).size, 10);
+assert.equal(new Set(bank.questions.map(q => q.question.trim().toLowerCase())).size, bank.questions.length, 'No repeated question text');
+const sourceIds = new Set(bank.sources.map(s => s.id));
+for (const [index, q] of toolQuestions.entries()) {
+  assert.equal(q.id, `q${501 + index}`);
+  assert.equal(toolQuestions.filter(other => other.topic === q.topic).length, 10);
+  assert.equal(q.options.length, 4);
+  assert.equal(new Set(q.options.map(o => o.text.trim().toLowerCase())).size, 4);
+  assert.equal(q.options.filter(o => o.correct).length, 1);
+  assert(q.options.every(o => o.text.trim() && o.explanation.trim()));
+  assert(q.sourceIds.length && q.sourceIds.every(id => sourceIds.has(id)), `Missing source in ${q.id}`);
+  assert(q.conceptIds.length && new Set(q.conceptIds).size === q.conceptIds.length);
+  const visibleTerms = new Set([q.question, ...q.options.map(o => o.text)].flatMap(termIds));
+  for (const id of q.conceptIds) {
+    assert(context.entries.has(id), `Missing definition ${q.id}: ${id}`);
+    assert(visibleTerms.has(id), `Term is not clickable before answering ${q.id}: ${id}`);
+  }
+  assert(termIds(q.question).length, `Question ${q.id} must offer vocabulary help`);
+}
+
 const launcher = new Element();
 launcher.dataset = { term: 'csp-nonce' };
 launcher.closest = selector => selector === '[data-term]' ? launcher : null;
@@ -85,4 +108,4 @@ for (const page of ['index.html', 'senior.html', 'ai-security.html']) {
   assert(html.includes('id="term-dialog"') && html.includes('aria-describedby="term-description"'));
 }
 assert(fs.readFileSync(path.join(root, '.github/workflows/deploy-pages.yml'), 'utf8').includes('style.css glossary.js app.js'), 'Pages must include the shared dictionary');
-console.log(`PASS: ${context.entries.size} plain-language definitions, all aliases, phrase priority, word boundaries, safe markup, AI terms, dialog dismissal/focus and three-page publication.`);
+console.log(`PASS: ${context.entries.size} plain-language definitions, all aliases, 100 unique tools questions with clickable concept coverage and valid sources, phrase priority, word boundaries, safe markup, dialog dismissal/focus and three-page publication.`);
