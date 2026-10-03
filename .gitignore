@@ -5,3 +5,14 @@ __pycache__/
 *.pyc
 .env
 .env.*
+
+android/build/
+*.jks
+*.keystore
+*.apk
+*.apk.sha256
+*password*
+*signing-key*
+
+# Screenshots are distributed in the release kit.
+store/screenshots/
