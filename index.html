@@ -18,18 +18,11 @@
   <div class="app-shell">
     <aside class="sidebar" aria-label="Навигация">
       <a class="brand" href="#" id="brand"><span class="brand-mark" aria-hidden="true">ИБ</span><span>Тренажёр<span class="brand-sub">Билеты к собеседованию</span></span></a>
-      <nav class="navigation" aria-label="Режимы подготовки">
-        <button class="nav-item active" data-page="tickets" aria-current="page"><span data-icon="tickets" aria-hidden="true"></span><span>Билеты</span><span class="nav-count" id="ticket-count">…</span></button>
+<details class="mode-menu" open><summary>Режимы <span>Случайный билет</span></summary><div class="mode-menu-content">      <nav class="navigation primary-navigation" aria-label="Режимы подготовки">
+        <button class="nav-item active" data-page="tickets" aria-current="page"><span data-icon="tickets" aria-hidden="true"></span><span>Подготовка</span><span class="nav-count sr-only" id="ticket-count">…</span></button>
         <button class="nav-item" data-page="topics"><span data-icon="topics" aria-hidden="true"></span><span>По темам</span><span class="nav-count" id="topic-count">…</span></button>
         <button class="nav-item" data-page="mistakes"><span data-icon="mistakes" aria-hidden="true"></span><span>Мои ошибки</span><span class="nav-count" id="mistake-count">0</span></button>
-      </nav>
-      <nav class="navigation" aria-label="Банки вопросов" style="flex-wrap:wrap;margin-top:1rem">
-        <a class="nav-item" href="./topic-wheel.html" style="text-decoration:none;min-height:44px">Барабан тем</a>
-        <a class="nav-item" href="./all-questions.html" style="text-decoration:none;min-height:44px">Все вопросы</a>
-        <a class="nav-item" href="./senior.html" style="text-decoration:none;min-height:44px">Сеньор</a>
-        <a class="nav-item" href="./ai-security.html" style="text-decoration:none;min-height:44px">Защита ИИ</a>
-        <a class="nav-item" href="./scenarios.html" style="text-decoration:none;min-height:44px">Ситуационные задачи</a>
-      </nav>
+      </nav><nav class="navigation" aria-label="Практика"><span class="nav-group-label">Практика</span><a class="nav-item" href="./scenarios.html">Ситуационные задачи</a><a class="nav-item" href="./ai-security.html">Защита ИИ</a><a class="nav-item" href="./senior.html">Сеньор</a></nav><nav class="navigation" aria-label="Испытания"><span class="nav-group-label">Испытания</span><a class="nav-item" href="./topic-wheel.html">Барабан тем</a><a class="nav-item" href="./all-questions.html">Все вопросы</a></nav></div></details>
       <div class="session-stats">
         <span class="sidebar-label">Прогресс базового банка</span>
         <div class="stat-row"><span>Ответов</span><strong id="stat-total">0</strong></div>
@@ -42,7 +35,7 @@
     <div class="workspace">
       <header class="topbar"><span>Подготовка по ИБ</span><span class="dataset-info" id="dataset-info">Загружаем базу…</span></header>
       <main id="main" tabindex="-1"><div class="loading">Загружаем вопросы…</div></main>
-      <footer class="footer"><span id="storage-status" role="status">Прогресс сохраняется на этом устройстве автоматически.</span><button class="button ghost" id="reset-progress">Сбросить прогресс</button><button type="button" class="footer-feedback" data-question-feedback="suggestion">Предложения</button><a href="./privacy.html">О приложении и данных</a></footer>
+      <footer class="footer"><span id="storage-status" role="status">Прогресс сохраняется на этом устройстве автоматически.</span><details class="progress-settings"><summary>Управление прогрессом</summary><button class="button ghost" id="reset-progress">Сбросить прогресс</button></details><button type="button" class="footer-feedback" data-question-feedback="suggestion">Предложения</button><a href="./privacy.html">О приложении и данных</a></footer>
     </div>
   </div>
   <dialog id="term-dialog" class="term-dialog" aria-labelledby="term-title" aria-describedby="term-description">
@@ -55,5 +48,17 @@
     <div class="dialog-actions"><button class="button secondary" id="dialog-cancel">Продолжить</button><button class="button primary" id="dialog-ok">Завершить</button></div>
   </dialog>
   <div class="sr-only" id="announcement" aria-live="polite" aria-atomic="true"></div>
+  <script>
+    (() => {
+      const menu = document.querySelector('.mode-menu');
+      const mobile = matchMedia('(max-width: 800px)');
+      const syncMenu = () => { menu.open = !mobile.matches; };
+      syncMenu();
+      mobile.addEventListener('change', syncMenu);
+      menu.addEventListener('click', event => {
+        if (mobile.matches && event.target.closest('[data-page]')) menu.open = false;
+      });
+    })();
+  </script>
 </body>
 </html>
