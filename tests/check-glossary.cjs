@@ -102,10 +102,10 @@ nodes.get('#confirm-dialog').open = true;
 main.dispatch('click', { target: launcher });
 assert(!help.isOpen(), 'Do not open help over a confirmation dialog');
 
-for (const page of ['index.html', 'senior.html', 'ai-security.html']) {
+for (const page of ['index.html', 'senior.html', 'ai-security.html', 'scenarios.html', 'all-questions.html']) {
   const html = fs.readFileSync(path.join(root, page), 'utf8');
   assert(html.includes('src="./glossary.js" defer'));
   assert(html.includes('id="term-dialog"') && html.includes('aria-describedby="term-description"'));
 }
 assert(fs.readFileSync(path.join(root, '.github/workflows/deploy-pages.yml'), 'utf8').includes('style.css glossary.js app.js'), 'Pages must include the shared dictionary');
-console.log(`PASS: ${context.entries.size} plain-language definitions, all aliases, 100 unique tools questions with clickable concept coverage and valid sources, phrase priority, word boundaries, safe markup, dialog dismissal/focus and three-page publication.`);
+console.log(`PASS: ${context.entries.size} plain-language definitions, all aliases, 100 unique tools questions with clickable concept coverage and valid sources, phrase priority, word boundaries, safe markup, dialog dismissal/focus and five-page publication.`);

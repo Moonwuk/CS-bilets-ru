@@ -1,4 +1,4 @@
-/* Shared additions for the two independent scenario banks. */
+/* Shared additions for the independent scenario banks. */
 .nav-item{text-decoration:none}
 .case-intro{max-width:760px;color:var(--muted);margin-top:.8rem}
 .case-summary{display:flex;flex-wrap:wrap;gap:.65rem 1.5rem;margin:1.2rem 0 1.5rem;color:var(--muted);font-size:.875rem}
@@ -82,6 +82,7 @@
 .case-review-list .review-body{padding:0 1.2rem 1.3rem}
 .case-map .question-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:.4rem}
 .case-map .question-number{height:40px;font-size:.8125rem}
+.case-map.long-session .question-number{height:44px}
 .case-map .question-number[aria-current="step"]{border:2px solid var(--blue);font-weight:700}
 .case-map .button{width:100%;font-size:.8125rem;margin-top:1rem;padding:.6rem .4rem}
 .case-map .quiz-progress{margin-top:.8rem}

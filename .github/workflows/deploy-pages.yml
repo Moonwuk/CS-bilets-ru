@@ -32,16 +32,19 @@ jobs:
           node --check glossary.js
           node --check app.js
           node --check case-trainer.js
+          node --check all-questions.js
           node tests/check-glossary.cjs
           node tests/check-trainer.cjs
           node tests/check-case-trainer.cjs
+          node tests/check-scenarios.cjs
+          node tests/check-all-questions.cjs
 
       - name: Prepare static site
         run: |
           mkdir -p _site
           cp index.html style.css glossary.js app.js questions.json .nojekyll \
-            senior.html ai-security.html case-trainer.js case-trainer.css \
-            senior-questions.json ai-security-questions.json feedback.js feedback.css privacy.html _site/
+            senior.html ai-security.html scenarios.html all-questions.html all-questions.js case-trainer.js case-trainer.css \
+            senior-questions.json ai-security-questions.json scenarios-questions.json feedback.js feedback.css privacy.html _site/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6.0.0
