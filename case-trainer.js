@@ -13,6 +13,7 @@
   const itemLabel = aggregate ? 'Вопрос' : 'Сценарий';
   const itemsLabel = aggregate ? 'вопросов' : 'сценариев';
   const itemsFew = aggregate ? 'вопроса' : 'сценария';
+  const CHALLENGE_VERSION = 1;
   const NOTE_LIMIT = 6000;
   const LETTERS = ['А', 'Б', 'В', 'Г'];
   const $ = selector => document.querySelector(selector);
@@ -22,11 +23,11 @@
   const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
   const isObject = value => !!value && typeof value === 'object' && !Array.isArray(value);
   const nonempty = value => typeof value === 'string' && value.trim().length > 0;
-  const validMode = value => value === 'practice' || value === 'interview';
+  const validMode = value => aggregate ? value === 'challenge' : value === 'practice' || value === 'interview';
   const stringList = (value, minimum = 1) => Array.isArray(value) && value.length >= minimum && value.every(nonempty);
   const counter = value => Number.isSafeInteger(value) && value >= 0;
   const dateLabel = value => value.split('-').reverse().join('.');
-  const modeLabel = value => value === 'interview' ? (aggregate ? 'Экзамен' : 'Репетиция собеседования') : 'Обучение';
+  const modeLabel = value => aggregate ? 'До первой ошибки' : value === 'interview' ? 'Репетиция собеседования' : 'Обучение';
   let dataset = null;
   let questions = new Map();
   let sources = new Map();
@@ -39,7 +40,7 @@
   let loading = false;
 
   function emptyProgress() {
-    return { total: 0, correctTotal: 0, completed: 0, errors: new Set(), mode: 'practice', view: 'home', session: null };
+    return { total: 0, correctTotal: 0, completed: 0, errors: new Set(), mode: aggregate ? 'challenge' : 'practice', view: 'home', session: null };
   }
 
   function validDate(value) {
@@ -134,7 +135,7 @@
     const text = JSON.stringify(data);
     let hash = 2166136261;
     for (let index = 0; index < text.length; index++) hash = Math.imul(hash ^ text.charCodeAt(index), 16777619);
-    return `v1-${text.length}-${(hash >>> 0).toString(16)}`;
+    return `${aggregate ? `challenge-${CHALLENGE_VERSION}-` : ''}v1-${text.length}-${(hash >>> 0).toString(16)}`;
   }
 
   function shuffled(items) {
@@ -179,7 +180,8 @@
       notes[id] = note;
     }
     if (!Array.isArray(value.checked) || new Set(value.checked).size !== value.checked.length || !value.checked.every(id => ids.has(id) && has(answers, id)) || (value.mode === 'interview' && value.checked.length)) return null;
-    return { ids: [...value.ids], title: value.title, mode: value.mode, index: value.index, orders, answers, notes, checked: new Set(value.checked), finished: value.finished };
+    if (aggregate && !validChallengeState(value, answers, notes)) return null;
+    return { ids: [...value.ids], title: value.title, mode: value.mode, index: value.index, orders, answers, notes, checked: new Set(value.checked), finished: value.finished, ...(aggregate ? { outcome: value.outcome } : {}) };
   }
 
   function restoreProgress() {
@@ -197,11 +199,15 @@
       notice = 'Формат сохранения этого банка не распознан. Начата новая запись прогресса.';
       return;
     }
+    if (aggregate && saved.challengeVersion !== CHALLENGE_VERSION) {
+      notice = 'Правила общей попытки изменились: теперь первая ошибка завершает билет. Прежняя общая попытка и её счётчики сброшены, потому что они оценивались по другим правилам. Прогресс остальных банков сохранён.';
+      return;
+    }
     progress.total = saved.total;
     progress.correctTotal = saved.correctTotal;
     progress.completed = saved.completed;
     progress.errors = new Set(saved.errors.filter(id => typeof id === 'string' && questions.has(id)));
-    progress.mode = validMode(saved.mode) ? saved.mode : 'practice';
+    progress.mode = validMode(saved.mode) ? saved.mode : aggregate ? 'challenge' : 'practice';
     if (saved.signature !== signature) {
       notice = 'Банк обновился. Общие счётчики и известные ошибки сохранены. Предыдущая попытка и её заметки сброшены, чтобы не сопоставлять ответы с изменившимися сценариями.';
       return;
@@ -210,11 +216,11 @@
       progress.session = validateSession(saved.session);
       if (!progress.session) notice = 'Сохранённая попытка повреждена и сброшена. Общие счётчики и известные ошибки сохранены.';
       else {
-        const minimumScored = progress.session.finished ? progress.session.ids.length : progress.session.checked.size;
-        const minimumCorrect = progress.session.finished
+        const minimumScored = aggregate ? progress.session.checked.size : progress.session.finished ? progress.session.ids.length : progress.session.checked.size;
+        const minimumCorrect = !aggregate && progress.session.finished
           ? progress.session.ids.filter(id => isCorrect(id)).length
           : [...progress.session.checked].filter(id => isCorrect(id)).length;
-        if (progress.total < minimumScored || progress.correctTotal < minimumCorrect || progress.total - progress.correctTotal < minimumScored - minimumCorrect || (progress.session.finished && progress.completed === 0)) {
+        if (progress.total < minimumScored || progress.correctTotal < minimumCorrect || progress.total - progress.correctTotal < minimumScored - minimumCorrect || (progress.session.finished && progress.completed === 0) || (aggregate && [...progress.session.checked].some(id => isCorrect(id) === progress.errors.has(id)))) {
           progress.session = null;
           notice = 'Сохранённая попытка не согласуется со счётчиками и сброшена. Общие счётчики и известные ошибки сохранены.';
         }
@@ -227,7 +233,7 @@
     if (!dataset) return;
     const session = progress.session;
     const value = {
-      version: 1, bankId, signature, total: progress.total, correctTotal: progress.correctTotal,
+      version: 1, bankId, signature, ...(aggregate ? { challengeVersion: CHALLENGE_VERSION } : {}), total: progress.total, correctTotal: progress.correctTotal,
       completed: progress.completed, errors: [...progress.errors], mode: progress.mode, view: progress.view,
       session: session ? { ...session, checked: [...session.checked] } : null
     };
@@ -265,6 +271,7 @@
   }
 
   function renderHome() {
+    if (aggregate) return renderChallengeHome();
     const session = progress.session;
     const accuracy = progress.total ? `${Math.round(progress.correctTotal / progress.total * 100)}%` : '—';
     const mixedCard = `<section class="ticket-card${aggregate ? '' : ' quick-card'}"><h2>Смешанная десятка</h2><p>По ${Math.floor(10 / dataset.tracks.length)}–${Math.ceil(10 / dataset.tracks.length)} ${itemsFew} из каждого направления. Подходит для одной вдумчивой сессии.</p><button class="button ${aggregate ? 'secondary' : 'primary'}" data-start="mixed">Начать 10 ${itemsLabel}</button></section>`;
@@ -326,6 +333,7 @@
   }
 
   function renderQuiz() {
+    if (aggregate) return renderChallengeQuiz();
     const session = progress.session;
     if (!session) return renderHome();
     if (session.finished) return renderResults();
@@ -360,6 +368,7 @@
   }
 
   function renderResults() {
+    if (aggregate) return renderChallengeResults();
     const session = progress.session;
     if (!session || !session.finished) return renderQuiz();
     const correct = session.ids.filter(id => isCorrect(id)).length;
@@ -379,6 +388,90 @@
     else renderHome();
   }
 
+  function validChallengeState(value, answers, notes) {
+    if (value.ids.length !== dataset.questions.length || !['failed', 'passed', 'stopped', null].includes(value.outcome)) return false;
+    const checked = value.checked;
+    if (!checked.every((id, index) => id === value.ids[index])) return false;
+    const correctCount = checked.filter(id => questions.get(id).options[answers[id]].correct).length;
+    const confirmed = checked.length;
+    if (Object.keys(notes).some(id => value.ids.indexOf(id) > value.index)) return false;
+    if (!value.finished) {
+      if (value.outcome !== null || confirmed !== value.index || correctCount !== confirmed) return false;
+      return Object.keys(answers).every(id => checked.includes(id) || id === value.ids[value.index]);
+    }
+    if (Object.keys(answers).length !== confirmed) return false;
+    if (value.outcome === 'failed') return confirmed > 0 && value.index === confirmed - 1 && correctCount === confirmed - 1 && !questions.get(checked[confirmed - 1]).options[answers[checked[confirmed - 1]]].correct;
+    if (value.outcome === 'passed') return confirmed === value.ids.length && correctCount === confirmed && value.index === value.ids.length - 1;
+    if (value.outcome === 'stopped') return confirmed < value.ids.length && correctCount === confirmed && value.index === confirmed;
+    return false;
+  }
+
+  function renderChallengeHome() {
+    const session = progress.session;
+    const streak = session ? [...session.checked].filter(id => isCorrect(id)).length : 0;
+    main.innerHTML = `${noticeMarkup()}<header class="page-heading"><div><span class="eyebrow">До первой ошибки</span><h1>Все вопросы</h1><p class="case-intro">Один билет из ${dataset.questions.length} вопросов: базовый банк, защита ИИ и ситуационные задачи. Сеньор проходится отдельно.</p></div></header>
+      <div class="case-notice"><p>Выберите вариант и нажмите «Ответить». Верный ответ сразу открывает следующий вопрос. Первая ошибка завершает попытку и открывает разбор.</p><p>Чтобы пройти билет, нужно правильно ответить на все ${dataset.questions.length} вопросов подряд. Новая попытка перемешивает вопросы и варианты заново.</p></div>
+      ${session ? `<section class="resume-card" aria-label="Сохранённая попытка"><div><strong>${session.finished ? session.outcome === 'passed' ? 'Билет пройден' : session.outcome === 'failed' ? 'Попытка завершена ошибкой' : 'Попытка остановлена' : 'Есть незавершённая попытка'}</strong><p>Верных ответов подряд: ${streak} из ${session.ids.length}.</p></div><button class="button primary" data-action="resume">${session.finished ? 'Открыть результат' : 'Продолжить'}</button></section>` : ''}
+      <section class="ticket-card quick-card"><h2>Весь билет · ${dataset.questions.length} вопросов</h2><p>Пропускать вопросы нельзя. Кнопка «К наборам · пауза» сохраняет место и выбранный, но ещё не подтверждённый ответ.</p><button class="button primary" data-start="all">${session ? 'Начать новую попытку' : `Начать все ${dataset.questions.length} вопросов`}</button></section>
+      <p class="case-score-note">Пояснения терминов доступны по нажатию. В статистику попадают только подтверждённые ответы; неоткрытые вопросы не считаются ошибками.</p>`;
+    bindMain();
+    updateStats();
+  }
+
+  function renderChallengeQuiz() {
+    const session = progress.session;
+    if (!session) return renderChallengeHome();
+    if (session.finished) return renderChallengeResults();
+    const id = session.ids[session.index];
+    const question = questions.get(id);
+    const selected = has(session.answers, id);
+    main.innerHTML = `${noticeMarkup()}<div class="quiz-top"><button class="button ghost" data-action="home">← К наборам · пауза</button><span>Все вопросы</span><span class="quiz-tag">До первой ошибки</span></div>
+      <p class="case-progress-label" role="status">Вопрос ${session.index + 1} из ${session.ids.length} · Верных подряд: ${session.checked.size}</p>
+      <div class="case-layout"><article class="question-panel" aria-labelledby="case-title"><div class="question-context"><span>${esc(tracks.get(question.track).title)}</span><span>Первая ошибка завершает попытку</span></div>
+        <h1 class="case-title" id="case-title" tabindex="-1">${termsMarkup(question.title)}</h1>${scenarioMarkup(question)}
+        <p class="term-help-hint case-term-hint">Нажмите на подчёркнутый термин — объясним простыми словами.</p>
+        <fieldset class="case-options"><legend>Выберите ответ, затем подтвердите его</legend><div class="case-option-list">${session.orders[id].map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; const chosen = selected && session.answers[id] === optionIndex; return `<div class="case-option ${chosen ? 'selected' : ''}"><input type="radio" name="case-answer" id="answer-${optionIndex}" data-answer="${optionIndex}" value="${optionIndex}" aria-label="${LETTERS[displayIndex]}. ${esc(option.text)}" ${chosen ? 'checked' : ''}><label class="case-option-pick" for="answer-${optionIndex}" aria-hidden="true"></label><span class="case-option-copy"><strong>${LETTERS[displayIndex]}.</strong>${termsMarkup(option.text)}</span></div>`; }).join('')}</div></fieldset>
+        <div class="case-notes"><label for="reasoning-note">Мои рассуждения <span class="topic-count">Необязательно</span></label><p id="reasoning-help">Заметка сохраняется только на этом устройстве. Запишите мысль до подтверждения ответа.</p><textarea id="reasoning-note" aria-describedby="reasoning-help" maxlength="${NOTE_LIMIT}" rows="5" placeholder="Запишите ход мысли…">${esc(session.notes[id] || '')}</textarea></div>
+        <div class="case-actions"><button class="button primary" data-action="check" ${selected ? '' : 'disabled'}>Ответить</button></div>${window.TrainerFeedback?.actions(id) || ''}
+      </article><aside class="quiz-map case-map" aria-label="Прогресс билета"><p class="quiz-map-title">Верных подряд</p><strong>${session.checked.size} / ${session.ids.length}</strong><p class="case-score-note">Ответьте на текущий вопрос, чтобы перейти дальше.</p><button class="button secondary" data-action="finish">Остановить попытку</button></aside></div>
+      <p class="keyboard-hint">1–4 — выбрать вариант · Enter — ответить. Клавиши в заметке вводят текст.</p>`;
+    bindMain();
+    updateStats();
+  }
+
+  function renderChallengeResults() {
+    const session = progress.session;
+    if (!session || !session.finished) return renderChallengeQuiz();
+    const answered = [...session.checked];
+    const correct = answered.filter(id => isCorrect(id)).length;
+    const failedId = session.outcome === 'failed' ? session.ids[session.index] : null;
+    const title = session.outcome === 'passed' ? 'Билет пройден без ошибок' : failedId ? 'Первая ошибка — попытка завершена' : 'Попытка остановлена';
+    const review = id => {
+      const question = questions.get(id);
+      return `<div class="review-body"><h3>${termsMarkup(question.title)}</h3>${scenarioMarkup(question)}<p class="review-answer ${isCorrect(id) ? '' : 'wrong'}"><strong>Ваш ответ:</strong> ${termsMarkup(question.options[session.answers[id]].text)}</p>${session.notes[id] ? `<section><h3>Мои рассуждения</h3><div class="case-review-note">${esc(session.notes[id])}</div></section>` : ''}${deepReviewMarkup(question, session.orders[id])}${window.TrainerFeedback?.actions(id) || ''}</div>`;
+    };
+    main.innerHTML = `${noticeMarkup()}<header class="page-heading"><div><span class="eyebrow">До первой ошибки · результат</span><h1>${title}</h1></div></header>
+      <section class="result-card"><div class="result-score" aria-label="Верных подряд ${correct} из ${session.ids.length}">${correct}<span> / ${session.ids.length}</span></div><div class="result-copy"><h2>Верных ответов подряд: ${correct}</h2><p>${session.outcome === 'passed' ? 'Все вопросы подтверждены верно.' : failedId ? 'На этом билете продолжить нельзя. Неотвеченные вопросы не учтены как ошибки.' : 'Билет не пройден. Неподтверждённые и неотвеченные вопросы не учтены в результате.'}</p><div class="result-actions"><button class="button primary" data-action="retry">Начать новый билет</button><button class="button secondary" data-action="home">К наборам</button></div></div></section>
+      ${failedId ? `<section class="case-feedback is-error" id="case-feedback" tabindex="-1"><h2>Разбор ошибки</h2>${review(failedId)}</section>` : ''}
+      ${correct ? `<section><h2>Разбор подтверждённых верных ответов</h2><div class="case-review-list">${answered.filter(id => id !== failedId).map((id, index) => `<details class="review-item"><summary>${index + 1}. ${termsMarkup(questions.get(id).title)}</summary>${review(id)}</details>`).join('')}</div></section>` : ''}`;
+    bindMain();
+    updateStats();
+  }
+
+  function finishChallenge(outcome) {
+    const session = progress.session;
+    if (!session || session.finished) return;
+    if (outcome === 'stopped') delete session.answers[session.ids[session.index]];
+    session.finished = true;
+    session.outcome = outcome;
+    progress.completed++;
+    progress.view = 'session';
+    saveProgress();
+    renderChallengeResults();
+    focusMain();
+    announce(outcome === 'failed' ? 'Неверный ответ. Попытка завершена; открыт разбор ошибки.' : outcome === 'passed' ? 'Все ответы верны. Билет пройден.' : 'Попытка остановлена.');
+  }
+
   function recordDecision(id) {
     progress.total++;
     if (isCorrect(id)) { progress.correctTotal++; progress.errors.delete(id); }
@@ -386,13 +479,15 @@
   }
 
   function startSession(ids, title, mode = progress.mode) {
-    if (!dataset || !validMode(mode)) return false;
+    if (!dataset) return false;
+    if (aggregate) { ids = dataset.questions.map(question => question.id); title = 'Все вопросы'; mode = 'challenge'; }
+    if (!validMode(mode)) return false;
     const known = [...new Set(ids)].filter(id => questions.has(id));
     if (!known.length) return false;
     const order = shuffled(known);
     const orders = Object.create(null);
     order.forEach(id => { orders[id] = shuffled([0, 1, 2, 3]); });
-    progress.session = { ids: order, title, mode, index: 0, orders, answers: Object.create(null), notes: Object.create(null), checked: new Set(), finished: false };
+    progress.session = { ids: order, title, mode, index: 0, orders, answers: Object.create(null), notes: Object.create(null), checked: new Set(), finished: false, ...(aggregate ? { outcome: null } : {}) };
     progress.view = 'session';
     saveProgress();
     renderQuiz();
@@ -402,7 +497,7 @@
   }
 
   async function requestStart(kind, trackId) {
-    if (!dataset) return;
+    if (!dataset || (aggregate && kind !== 'all')) return;
     const previous = progress.session;
     if (previous && !previous.finished && !await askConfirmation('Начать новую попытку?', 'Новая попытка заменит текущую вместе с её заметками. Уже проверенные решения останутся в общих счётчиках; выбранные, но непроверенные ответы не будут оценены.', 'Начать новую')) return;
     if (kind === 'mixed') startSession(mixedIds(), 'Смешанная десятка');
@@ -431,11 +526,21 @@
 
   function checkAnswer() {
     const session = progress.session;
-    if (!session || session.finished || session.mode !== 'practice') return;
+    if (!session || session.finished || progress.view !== 'session' || (!aggregate && session.mode !== 'practice')) return;
     const id = session.ids[session.index];
     if (session.checked.has(id) || !has(session.answers, id)) return;
     recordDecision(id);
     session.checked.add(id);
+    if (aggregate) {
+      if (!isCorrect(id)) return finishChallenge('failed');
+      if (session.checked.size === session.ids.length) return finishChallenge('passed');
+      session.index++;
+      saveProgress();
+      renderChallengeQuiz();
+      focusMain();
+      announce(`Верно. Вопрос ${session.index + 1} из ${session.ids.length}.`);
+      return;
+    }
     saveProgress();
     renderQuiz();
     focusElement('#case-feedback', false);
@@ -443,6 +548,7 @@
   }
 
   function jump(index) {
+    if (aggregate) return;
     const session = progress.session;
     if (!session || session.finished || !Number.isInteger(index) || index < 0 || index >= session.ids.length) return;
     session.index = index;
@@ -454,6 +560,7 @@
   }
 
   function finishSession() {
+    if (aggregate) return finishChallenge('stopped');
     const session = progress.session;
     if (!session || session.finished) return;
     for (const id of session.ids) if (session.mode === 'interview' || !session.checked.has(id)) recordDecision(id);
@@ -469,6 +576,10 @@
   async function requestFinish() {
     const session = progress.session;
     if (!session || session.finished) return;
+    if (aggregate) {
+      if (await askConfirmation('Остановить попытку?', 'Билет будет завершён без прохождения. Неподтверждённые и неотвеченные вопросы не будут оценены. Для паузы отмените это действие и нажмите «К наборам · пауза».', 'Остановить попытку')) finishChallenge('stopped');
+      return;
+    }
     const skipped = session.ids.filter(id => !has(session.answers, id)).length;
     if (skipped && !await askConfirmation('Завершить с пропусками?', `Осталось без ответа: ${skipped}. Эти сценарии попадут в работу над ошибками и будут учтены как неверные. После завершения ответы этой попытки изменить нельзя.`, 'Завершить попытку')) return;
     finishSession();
@@ -490,7 +601,7 @@
   }
 
   function setMode(value) {
-    if (!validMode(value)) return;
+    if (aggregate || !validMode(value)) return;
     progress.mode = value;
     saveProgress();
     renderHome();
@@ -564,6 +675,7 @@
     }
     if (event.key !== 'Enter' || (target && ['BUTTON', 'A', 'SUMMARY'].includes(target.tagName))) return;
     event.preventDefault();
+    if (aggregate) { checkAnswer(); return; }
     const id = session.ids[session.index];
     if (session.mode === 'practice' && !session.checked.has(id)) checkAnswer();
     else if (session.index < session.ids.length - 1) jump(session.index + 1);

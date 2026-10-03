@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#132341">
-  <meta name="description" content="Все вопросы по информационной безопасности: базовый банк, защита ИИ и ситуационные задачи по MITRE ATT&CK, OWASP и CVE. Перемешивание каждой попытки, сохранение прогресса и пояснения терминов. Сеньор доступен отдельно.">
+  <meta name="description" content="Все вопросы по информационной безопасности: базовый банк, защита ИИ и ситуационные задачи по MITRE ATT&CK, OWASP и CVE. Один билет до первой ошибки, перемешивание каждой попытки, сохранение прогресса и пояснения терминов. Сеньор доступен отдельно.">
   <title>Все вопросы · Тренажёр по ИБ</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23132341'/%3E%3Cpath d='M9 16l5 5 10-11' fill='none' stroke='%2371b6ff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./style.css">
@@ -28,18 +28,18 @@
         <a class="nav-item" href="./scenarios.html">Ситуационные задачи</a>
       </nav>
       <div class="session-stats">
-        <span class="sidebar-label">Прогресс общей подборки</span>
+        <span class="sidebar-label">Прогресс режима</span>
         <div class="stat-row"><span>Проверено ответов</span><strong id="stat-total">0</strong></div>
         <div class="stat-row"><span>Верных</span><strong id="stat-correct">0</strong></div>
-        <div class="stat-row"><span>Ошибок к повторению</span><strong id="stat-errors">0</strong></div>
-        <p>Результаты и заметки этой подборки сохраняются отдельно от исходных банков.</p>
+        <div class="stat-row"><span>Вопросов с ошибками</span><strong id="stat-errors">0</strong></div>
+        <p>Результаты и заметки попыток сохраняются отдельно от исходных банков.</p>
       </div>
-      <div class="source-note">Базовый банк, защита ИИ и ситуационные задачи в одной попытке. Вопросы сеньорского режима доступны отдельно.</div>
+      <div class="source-note">Один билет на все вопросы базового банка, ИИ и ситуаций. Первая ошибка завершает попытку. Сеньор доступен отдельно.</div>
     </aside>
     <div class="workspace">
-      <header class="topbar"><span>Все вопросы · базовые / ИИ / ситуации</span><span class="dataset-info" id="dataset-info">Загружаем подборку…</span></header>
+      <header class="topbar"><span>Все вопросы · до первой ошибки</span><span class="dataset-info" id="dataset-info">Загружаем подборку…</span></header>
       <main id="main" tabindex="-1"><div class="loading" role="status">Загружаем все вопросы…</div></main>
-      <footer class="footer"><span id="storage-status" role="status">Прогресс сохраняется на этом устройстве.</span><button class="button ghost" id="reset-progress" disabled>Сбросить общую подборку</button><button type="button" class="footer-feedback" data-question-feedback="suggestion">Предложения</button><a href="./privacy.html">О приложении и данных</a></footer>
+      <footer class="footer"><span id="storage-status" role="status">Прогресс сохраняется на этом устройстве.</span><button class="button ghost" id="reset-progress" disabled>Сбросить прогресс режима</button><button type="button" class="footer-feedback" data-question-feedback="suggestion">Предложения</button><a href="./privacy.html">О приложении и данных</a></footer>
     </div>
   </div>
   <dialog id="term-dialog" class="term-dialog" aria-labelledby="term-title" aria-describedby="term-description">

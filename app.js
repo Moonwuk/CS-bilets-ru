@@ -157,7 +157,7 @@
     const [title,description]=headings[page];
     let body='';
     if(page==='tickets') {
-      const combinedQuestionsCard=`<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">Общая подборка</span></div><h3>Все вопросы</h3><p>Базовый банк, защита ИИ и ситуационные задачи. Сеньор — отдельно.</p><a class="button primary" href="./all-questions.html">Открыть подборку</a></article>`;
+      const combinedQuestionsCard=`<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">До первой ошибки</span></div><h3>Все вопросы</h3><p>Один билет на все вопросы базового банка, ИИ и ситуаций. Первая ошибка завершает попытку. Сеньор — отдельно.</p><a class="button primary" href="./all-questions.html">Открыть билет</a></article>`;
       const allQuestionsCard=`<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">Новый каждый раз</span></div><h3>Весь базовый банк</h3><p>${questionCount(dataset.questions.length)} · без повторов</p><button class="button secondary" data-action="all">Начать</button></article>`;
       const toolQuestions=dataset.questions.filter(q=>q.collection==='security-tools');
       const toolsCard=toolQuestions.length ? `<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shield')}</span><span class="ticket-status">Новый каждый раз</span></div><h3>Инструменты ИБ</h3><p>${questionCount(toolQuestions.length)} · назначение и ограничения</p><button class="button primary" data-action="tools">Начать</button></article>` : '';
