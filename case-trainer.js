@@ -204,7 +204,7 @@
     $('#stat-correct').textContent = progress.correctTotal;
     $('#stat-errors').textContent = progress.errors.size;
     $('#storage-status').textContent = storageAvailable
-      ? 'Текущая или последняя попытка и заметки сохраняются в этом браузере.'
+      ? 'Текущая или последняя попытка и заметки сохраняются на этом устройстве.'
       : 'Сохранение недоступно. Новые результаты и заметки могут потеряться при закрытии страницы.';
   }
 
@@ -292,9 +292,10 @@
         <h1 class="case-title" id="case-title" tabindex="-1">${termsMarkup(question.title)}</h1>${scenarioMarkup(question)}
         ${session.mode === 'practice' && !checked ? foundationsMarkup(question) : ''}
         <p class="term-help-hint case-term-hint">Нажмите на подчёркнутый термин — объясним простыми словами.</p><fieldset class="case-options"><legend>Выберите лучший ответ при этих условиях</legend><div class="case-option-list">${session.orders[id].map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; const chosen = selected && answer === optionIndex; const status = checked ? (option.correct ? 'Лучший ответ' : chosen ? 'Ваш ответ · неверно' : '') : ''; return `<div class="case-option ${chosen ? 'selected' : ''} ${checked ? `locked ${option.correct ? 'good' : chosen ? 'bad' : ''}` : ''}"><input type="radio" name="case-answer" id="answer-${optionIndex}" data-answer="${optionIndex}" value="${optionIndex}" aria-label="${LETTERS[displayIndex]}. ${esc(option.text)}" ${chosen ? 'checked' : ''} ${checked ? 'disabled' : ''}><label class="case-option-pick" for="answer-${optionIndex}" aria-hidden="true"></label><span class="case-option-copy"><strong>${LETTERS[displayIndex]}.</strong>${termsMarkup(option.text)}${status ? `<span class="case-option-status">${status}</span>` : ''}</span></div>`; }).join('')}</div></fieldset>
-        <div class="case-notes"><label for="reasoning-note">Мои рассуждения <span class="topic-count">Необязательно</span></label><p id="reasoning-help">Какие факты определяют решение? Какие допущения и риски остаются? До ${NOTE_LIMIT} символов. Заметка хранится только в этом браузере; сравните её с разбором самостоятельно.</p><textarea id="reasoning-note" aria-describedby="reasoning-help" maxlength="${NOTE_LIMIT}" rows="5" placeholder="Запишите ход мысли до просмотра ответа…">${esc(session.notes[id] || '')}</textarea></div>
+        <div class="case-notes"><label for="reasoning-note">Мои рассуждения <span class="topic-count">Необязательно</span></label><p id="reasoning-help">Какие факты определяют решение? Какие допущения и риски остаются? До ${NOTE_LIMIT} символов. Заметка хранится только на этом устройстве; сравните её с разбором самостоятельно.</p><textarea id="reasoning-note" aria-describedby="reasoning-help" maxlength="${NOTE_LIMIT}" rows="5" placeholder="Запишите ход мысли до просмотра ответа…">${esc(session.notes[id] || '')}</textarea></div>
         <div class="case-actions"><button class="button secondary" data-action="previous" ${session.index === 0 ? 'disabled' : ''}>Назад</button><div class="action-right">${session.mode === 'practice' && !checked ? `<button class="button primary" data-action="check" ${selected ? '' : 'disabled'}>Проверить решение</button>` : ''}<button class="button ${session.mode === 'interview' || checked ? 'primary' : 'secondary'}" data-action="${last ? 'finish' : 'next'}">${last ? 'К результатам' : 'Далее'}</button></div></div>
         ${checked ? `<section class="case-feedback ${isCorrect(id) ? '' : 'is-error'}" id="case-feedback" tabindex="-1"><h2>${isCorrect(id) ? 'Решение верное' : 'В выбранном решении есть проблема'}</h2><p>Сравните ход своих рассуждений с разбором. У правильного варианта тоже есть ограничения.</p>${deepReviewMarkup(question, session.orders[id])}</section>` : ''}
+        ${window.TrainerFeedback?.actions(question.id) || ''}
       </article><aside class="quiz-map case-map" aria-label="Навигация по сценариям"><p class="quiz-map-title">Сценарии попытки</p><div class="question-grid">${session.ids.map((questionId, index) => { const wasChecked = session.mode === 'practice' && session.checked.has(questionId); const wasAnswered = has(session.answers, questionId); const status = wasChecked ? (isCorrect(questionId) ? 'верно' : 'ошибка') : wasAnswered ? 'ответ выбран' : 'без ответа'; return `<button class="question-number ${wasChecked ? (isCorrect(questionId) ? 'good' : 'bad') : wasAnswered ? 'answered' : ''}" data-jump="${index}" aria-label="Сценарий ${index + 1}: ${status}" ${index === session.index ? 'aria-current="step"' : ''}>${index + 1}</button>`; }).join('')}</div><p class="quiz-progress">Выбрано ответов: ${answeredCount} / ${session.ids.length}${session.mode === 'practice' ? `<br>Проверено: ${session.checked.size}` : ''}</p><button class="button secondary" data-action="finish">Завершить попытку</button></aside></div>
       <p class="keyboard-hint">1–4 — выбрать вариант · Enter — проверить или перейти далее. В поле заметки клавиши вводят текст.</p>`;
     bindMain();
@@ -310,7 +311,7 @@
     main.innerHTML = `${noticeMarkup()}<header class="page-heading"><div><span class="eyebrow">Результат и самопроверка</span><h1>Разбор попытки</h1><p>${esc(session.title)} · ${esc(modeLabel(session.mode))}</p></div></header>
       <section class="result-card"><div class="result-score" aria-label="Верно ${correct} из ${session.ids.length}">${correct}<span> / ${session.ids.length}</span></div><div class="result-copy"><h2>Решения проверены</h2><p>Верно: ${correct}. Неверно: ${wrong - skipped}. Без ответа: ${skipped}.</p><div class="result-actions"><button class="button primary" data-action="retry">Повторить набор</button>${wrong ? '<button class="button secondary" data-action="repeat-wrong">Разобрать ошибки</button>' : ''}<button class="button secondary" data-action="home">К наборам</button></div></div></section>
       <p class="case-score-note">Оценён только выбор варианта. Ваши заметки не получили автоматическую оценку: сравните их с ходом рассуждений, компромиссами и ответами на дополнительные вопросы. Этот результат не является оценкой профессиональной квалификации.</p>
-      <section aria-labelledby="review-heading"><div class="section-heading"><h2 id="review-heading">Разбор всех сценариев</h2></div><div class="case-review-list">${session.ids.map((id, index) => { const question = questions.get(id); const chosen = session.answers[id]; const answered = has(session.answers, id); const correctAnswer = isCorrect(id); return `<details class="review-item"><summary><span class="case-review-state ${correctAnswer ? '' : 'bad'}">${correctAnswer ? 'Верно' : answered ? 'Ошибка' : 'Без ответа'}</span>${index + 1}. ${termsMarkup(question.title)}</summary><div class="review-body"><div class="question-context"><span>${esc(tracks.get(question.track).title)}</span></div>${scenarioMarkup(question)}<p class="review-answer ${correctAnswer ? '' : 'wrong'}"><strong>Ваш ответ:</strong> ${answered ? esc(question.options[chosen].text) : 'Не выбран; сценарий добавлен в работу над ошибками.'}</p><section><h3>Мои рассуждения</h3>${session.notes[id] ? `<div class="case-review-note">${esc(session.notes[id])}</div>` : '<p class="topic-count">Заметка не добавлена.</p>'}</section>${deepReviewMarkup(question, session.orders[id])}</div></details>`; }).join('')}</div></section>`;
+      <section aria-labelledby="review-heading"><div class="section-heading"><h2 id="review-heading">Разбор всех сценариев</h2></div><div class="case-review-list">${session.ids.map((id, index) => { const question = questions.get(id); const chosen = session.answers[id]; const answered = has(session.answers, id); const correctAnswer = isCorrect(id); return `<details class="review-item"><summary><span class="case-review-state ${correctAnswer ? '' : 'bad'}">${correctAnswer ? 'Верно' : answered ? 'Ошибка' : 'Без ответа'}</span>${index + 1}. ${termsMarkup(question.title)}</summary><div class="review-body"><div class="question-context"><span>${esc(tracks.get(question.track).title)}</span></div>${scenarioMarkup(question)}<p class="review-answer ${correctAnswer ? '' : 'wrong'}"><strong>Ваш ответ:</strong> ${answered ? esc(question.options[chosen].text) : 'Не выбран; сценарий добавлен в работу над ошибками.'}</p><section><h3>Мои рассуждения</h3>${session.notes[id] ? `<div class="case-review-note">${esc(session.notes[id])}</div>` : '<p class="topic-count">Заметка не добавлена.</p>'}</section>${deepReviewMarkup(question, session.orders[id])}${window.TrainerFeedback?.actions(question.id) || ''}</div></details>`; }).join('')}</div></section>`;
     bindMain();
     updateStats();
   }
@@ -496,7 +497,7 @@
 
   function keyboard(event) {
     const session = progress.session;
-    if (!session || session.finished || progress.view !== 'session' || confirmation || window.TrainerTerms.isOpen() || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (!session || session.finished || progress.view !== 'session' || confirmation || window.TrainerTerms.isOpen() || window.TrainerFeedback?.isOpen() || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
     const target = event.target;
     if (target && (target.isContentEditable || target.closest?.('[contenteditable="true"]') || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || (target.tagName === 'INPUT' && target.type !== 'radio'))) return;
     if (/^[1-4]$/.test(event.key)) {
@@ -520,6 +521,7 @@
       const response = await fetch(config.file);
       if (!response.ok) throw new Error(`Не удалось получить файл банка: HTTP ${response.status}.`);
       const data = validateBank(await response.json());
+      window.TrainerFeedback?.setBank(bankId === 'senior' ? 'Сеньор' : 'Защита ИИ', data.reviewedAt, data.questions);
       dataset = data;
       questions = new Map(data.questions.map(question => [question.id, question]));
       sources = new Map(data.sources.map(source => [source.id, source]));
@@ -546,5 +548,10 @@
   $('#confirm-dialog').addEventListener('cancel', event => { event.preventDefault(); closeConfirmation(false); });
   document.addEventListener('keydown', keyboard);
   window.addEventListener('pagehide', saveProgress);
+  window.trainerNativeBack = () => {
+    if (progress.view !== 'session') return false;
+    goHome();
+    return true;
+  };
   load();
 })();

@@ -25,11 +25,11 @@
   const ticketResults = new Map();
   function updateStorageStatus() {
     $('#storage-status').textContent = storageAvailable
-      ? 'Прогресс сохраняется в этом браузере автоматически.'
+      ? 'Прогресс сохраняется на этом устройстве автоматически.'
       : 'Браузер не разрешает сохранение. Прогресс доступен только до закрытия страницы.';
     $('#sidebar-storage-status').textContent = storageAvailable
       ? 'Результаты и ошибки сохраняются между посещениями.'
-      : 'Сохранение недоступно в этом браузере.';
+      : 'Сохранение недоступно на этом устройстве.';
   }
   function saveProgress() {
     if(!dataset)return;
@@ -88,7 +88,7 @@
     sessionOpen=saved.sessionOpen===true;
   }
   async function resetProgress() {
-    if(!dataset || !await confirmAction('Сбросить прогресс?','Результаты билетов, ошибки и незавершённый билет будут удалены из этого браузера.','Сбросить','Отмена'))return;
+    if(!dataset || !await confirmAction('Сбросить прогресс?','Результаты билетов, ошибки и незавершённый билет будут удалены с этого устройства.','Сбросить','Отмена'))return;
     total=0;correctTotal=0;errors.clear();ticketResults.clear();session=null;sessionOpen=false;page='tickets';mode='practice';bankUpdateNotice='';
     saveProgress();renderHome();focusMain();announce('Прогресс сброшен.');
   }
@@ -244,7 +244,7 @@
     let primary='';
     if(session.mode==='practice' && !checked)primary=`<button class="button primary" data-action="check"${selected===undefined?' disabled':''}>Проверить</button>`;
     else primary=`<button class="button primary" data-action="${isLast?'finish':'next'}">${isLast?'Завершить билет':'Следующий вопрос'}</button>`;
-    main.innerHTML=`<div class="quiz-top"><div><span class="eyebrow">${session.mode==='exam'?'Экзамен':'Тренировка'}</span><h1>${esc(session.title)}</h1></div><button class="button secondary" data-action="leave">К билетам</button></div><div class="quiz-layout"><div class="question-panel"><div class="question-meta"><span class="topic-tag">${esc(q.topic)}</span><span>Вопрос ${session.index+1} / ${session.ids.length}</span></div>${questionContext(q)}<h2 class="question-title">${termsMarkup(q.question)}</h2>${[q.question,...q.options.map(o=>o.text)].some(text=>termsMarkup(text).includes('data-term=')) ? '<p class="term-help-hint">Нажмите на подчёркнутый термин — объясним простыми словами.</p>' : ''}<div class="options" role="group" aria-label="Варианты ответа">${options}</div>${checked ? feedbackMarkup(q):''}<div class="question-actions"><button class="button ghost" data-action="previous"${session.index===0?' disabled':''}>Назад</button><div class="action-right">${!checked && session.mode==='practice' ? `<button class="button secondary" data-action="${isLast?'finish':'next'}">${isLast?'Завершить':'Пропустить'}</button>` : !isLast && session.mode==='exam' ? '<button class="button secondary" data-action="finish">Завершить</button>':''}${primary}</div></div></div><aside class="quiz-map${session.ids.length>TICKET_SIZE?' long-session':''}" aria-label="Навигация по вопросам"><div class="quiz-map-title">Вопросы билета</div><div class="question-grid">${questionMap}</div><div class="map-legend">${session.mode==='practice' ? '<span class="legend-item"><span class="legend-square good"></span>Верно</span><span class="legend-item"><span class="legend-square bad"></span>Ошибка</span>':'<span class="legend-item"><span class="legend-square"></span>Ответ выбран</span>'}</div><div class="quiz-progress">${session.mode==='practice' ? session.recorded.size : answered} из ${session.ids.length} ${session.mode==='practice'?'проверено':'отвечено'}<div class="progress-track"><span style="width:${(session.mode==='practice'?session.recorded.size:answered)/session.ids.length*100}%"></span></div></div></aside></div><p class="keyboard-hint">Клавиши 1–4 — выбрать ответ · Enter — проверить или продолжить</p>`;
+    main.innerHTML=`<div class="quiz-top"><div><span class="eyebrow">${session.mode==='exam'?'Экзамен':'Тренировка'}</span><h1>${esc(session.title)}</h1></div><button class="button secondary" data-action="leave">К билетам</button></div><div class="quiz-layout"><div class="question-panel"><div class="question-meta"><span class="topic-tag">${esc(q.topic)}</span><span>Вопрос ${session.index+1} / ${session.ids.length}</span></div>${questionContext(q)}<h2 class="question-title">${termsMarkup(q.question)}</h2>${[q.question,...q.options.map(o=>o.text)].some(text=>termsMarkup(text).includes('data-term=')) ? '<p class="term-help-hint">Нажмите на подчёркнутый термин — объясним простыми словами.</p>' : ''}<div class="options" role="group" aria-label="Варианты ответа">${options}</div>${checked ? feedbackMarkup(q):''}<div class="question-actions"><button class="button ghost" data-action="previous"${session.index===0?' disabled':''}>Назад</button><div class="action-right">${!checked && session.mode==='practice' ? `<button class="button secondary" data-action="${isLast?'finish':'next'}">${isLast?'Завершить':'Пропустить'}</button>` : !isLast && session.mode==='exam' ? '<button class="button secondary" data-action="finish">Завершить</button>':''}${primary}</div></div>${window.TrainerFeedback?.actions(q.id) || ''}</div><aside class="quiz-map${session.ids.length>TICKET_SIZE?' long-session':''}" aria-label="Навигация по вопросам"><div class="quiz-map-title">Вопросы билета</div><div class="question-grid">${questionMap}</div><div class="map-legend">${session.mode==='practice' ? '<span class="legend-item"><span class="legend-square good"></span>Верно</span><span class="legend-item"><span class="legend-square bad"></span>Ошибка</span>':'<span class="legend-item"><span class="legend-square"></span>Ответ выбран</span>'}</div><div class="quiz-progress">${session.mode==='practice' ? session.recorded.size : answered} из ${session.ids.length} ${session.mode==='practice'?'проверено':'отвечено'}<div class="progress-track"><span style="width:${(session.mode==='practice'?session.recorded.size:answered)/session.ids.length*100}%"></span></div></div></aside></div><p class="keyboard-hint">Клавиши 1–4 — выбрать ответ · Enter — проверить или продолжить</p>`;
     if(session.ids.length>TICKET_SIZE){
       const grid=main.querySelector('.question-grid'),current=main.querySelector('.question-number[aria-current="true"]');
       if(grid && current && grid.clientHeight)grid.scrollTop=Math.max(0,current.offsetTop-(grid.clientHeight-current.offsetHeight)/2);
@@ -316,7 +316,7 @@
     const title=wrong.length?'Есть что повторить':'Билет пройден';
     const review=session.ids.map((id,i)=>{
       const q=bank.get(id),selected=session.answers.get(id),right=q.options.find(o=>o.correct),good=isCorrect(id);
-      return `<details class="review-item"><summary><span class="review-symbol${good?'':' bad'}">${icon(good?'check':'cross')}</span><span class="review-summary-text"><small>${i+1}. ${esc(q.topic)}${selected===undefined?' · пропущен':''}</small><span>${termsMarkup(q.question)}</span></span><span class="review-toggle">${icon('chevron')}</span></summary><div class="review-body">${questionContext(q)}${!good ? `<div class="review-answer wrong"><strong>Ваш ответ:</strong> ${selected===undefined?'Нет ответа':termsMarkup(q.options[selected].text)}</div>`:''}<div class="review-answer"><strong>Правильный ответ:</strong> ${termsMarkup(right.text)}</div>${selected!==undefined && !good ? `<p><strong>Почему ваш ответ неверен:</strong> ${termsMarkup(q.options[selected].explanation)}</p>`:''}<p><strong>Пояснение:</strong> ${termsMarkup(right.explanation)}</p>${detailsMarkup(q,selected)}${sourcesMarkup(q)}</div></details>`;
+      return `<details class="review-item"><summary><span class="review-symbol${good?'':' bad'}">${icon(good?'check':'cross')}</span><span class="review-summary-text"><small>${i+1}. ${esc(q.topic)}${selected===undefined?' · пропущен':''}</small><span>${termsMarkup(q.question)}</span></span><span class="review-toggle">${icon('chevron')}</span></summary><div class="review-body">${questionContext(q)}${!good ? `<div class="review-answer wrong"><strong>Ваш ответ:</strong> ${selected===undefined?'Нет ответа':termsMarkup(q.options[selected].text)}</div>`:''}<div class="review-answer"><strong>Правильный ответ:</strong> ${termsMarkup(right.text)}</div>${selected!==undefined && !good ? `<p><strong>Почему ваш ответ неверен:</strong> ${termsMarkup(q.options[selected].explanation)}</p>`:''}<p><strong>Пояснение:</strong> ${termsMarkup(right.explanation)}</p>${detailsMarkup(q,selected)}${sourcesMarkup(q)}${window.TrainerFeedback?.actions(q.id) || ''}</div></details>`;
     }).join('');
     main.innerHTML=`<div class="page-heading"><div><span class="eyebrow">${session.mode==='exam'?'Результат экзамена':'Результат тренировки'}</span><h1>${esc(session.title)}</h1></div></div><section class="result-card"><div class="result-score">${correct}<span> / ${session.ids.length}</span></div><div class="result-copy"><h2>${title}</h2><p>${wrong.length ? `${errorCount(wrong.length)}${skipped?`, из них ${skipped} без ответа`:''}. Они добавлены в «Мои ошибки».`:'Все ответы верные. Можно перейти к следующему билету.'}</p><div class="result-actions">${wrong.length?'<button class="button primary" data-result="errors">Повторить ошибки</button>':''}<button class="button ${wrong.length?'secondary':'primary'}" data-result="retry">Решить снова</button><button class="button secondary" data-result="home">К билетам</button></div></div></section><div class="section-heading"><h2>Разбор всех вопросов</h2><span>Откройте вопрос</span></div><div class="result-review">${review}</div>`;
     main.querySelector('[data-result="retry"]').addEventListener('click',()=>startSession([...session.ids],session.title,session.ticket));
@@ -332,7 +332,7 @@
   $('#brand').addEventListener('click',event=>{event.preventDefault();navigate('tickets');});
   $('#reset-progress').addEventListener('click',resetProgress);
   document.addEventListener('keydown',event=>{
-    if(!session || !sessionOpen || session.finished || $('#confirm-dialog').open || window.TrainerTerms.isOpen() || event.ctrlKey || event.metaKey || event.altKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName))return;
+    if(!session || !sessionOpen || session.finished || $('#confirm-dialog').open || window.TrainerTerms.isOpen() || window.TrainerFeedback?.isOpen() || event.ctrlKey || event.metaKey || event.altKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName))return;
     if(/^[1-4]$/.test(event.key)){
       event.preventDefault();selectAnswer(session.orders.get(session.ids[session.index])[Number(event.key)-1]);
     } else if(event.key==='Enter' && (event.target===document.body || event.target===main || event.target.matches('.option-pick'))){
@@ -368,6 +368,7 @@
         if(q.origin==='authored' && (!q.sourceIds?.length || !q.difficulty))throw new Error('Incomplete authored question');
       }
       if(new Set(data.questions.map(q=>q.id)).size!==data.questions.length)throw new Error('Duplicate question IDs');
+      window.TrainerFeedback?.setBank('Базовые билеты', data.updatedAt, data.questions);
       dataset=data;bank=new Map(data.questions.map(q=>[q.id,q]));
       // Spread each topic across tickets, respecting the size of the final ticket.
       const groups=data.topics.map(topic=>data.questions.filter(q=>q.topic===topic));
@@ -402,5 +403,10 @@
     ];
     for(const tool of tools){try{Promise.resolve(context.registerTool(tool,{signal:lifecycle.signal})).catch(error=>console.warn('Training tool unavailable',error));}catch(error){console.warn('Training tool unavailable',error);}}
   }
+  window.trainerNativeBack = () => {
+    if (!sessionOpen) return false;
+    navigate('tickets');
+    return true;
+  };
   load();
 })();

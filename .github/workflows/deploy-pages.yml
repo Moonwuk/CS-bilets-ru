@@ -28,6 +28,7 @@ jobs:
 
       - name: Check trainers
         run: |
+          node --check feedback.js
           node --check glossary.js
           node --check app.js
           node --check case-trainer.js
@@ -40,7 +41,7 @@ jobs:
           mkdir -p _site
           cp index.html style.css glossary.js app.js questions.json .nojekyll \
             senior.html ai-security.html case-trainer.js case-trainer.css \
-            senior-questions.json ai-security-questions.json _site/
+            senior-questions.json ai-security-questions.json feedback.js feedback.css privacy.html _site/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6.0.0
