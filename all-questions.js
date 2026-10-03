@@ -25,7 +25,7 @@
     }
   }
 
-  async function load() {
+  async function load({ includeTopics = false } = {}) {
     const banks = await Promise.all(FILES.map(async file => {
       const response = await fetch(file.url);
       if (!response.ok) throw new Error(`Не удалось получить ${file.url}: HTTP ${response.status}.`);
@@ -57,12 +57,21 @@
       }
     });
     const dates = banks.map(bank => bank.reviewedAt || bank.updatedAt).sort();
-    return {
+    const result = {
       schemaVersion: 1, id: 'all-questions', title: 'Все вопросы', reviewedAt: dates[dates.length - 1],
       description: `Базовые вопросы (${banks[0].questions.length}), защита ИИ (${banks[1].questions.length}) и ситуационные задачи (${banks[2].questions.length}) в одном перемешанном билете. Первая ошибка завершает попытку. Раздел «Сеньор» проходится отдельно.`,
       methodology: 'Подборка загружается из исходных банков без копирования вопросов. Ответ подтверждается кнопкой «Ответить». Чтобы пройти билет, нужно ответить верно на все вопросы подряд. В разборе сохраняются исходные пояснения и источники; даты правовых норм и первоисточников указаны отдельно. Прогресс общей подборки не меняет результаты отдельных банков.',
       tracks: FILES.map(file => ({ id: file.id, title: file.title })), sources, questions
     };
+    if (includeTopics) {
+      result.topicGroups = banks.flatMap((bank, index) => {
+        const origin = FILES[index].id;
+        return origin === 'basic'
+          ? bank.topics.map(title => ({ id: `basic:${encodeURIComponent(title)}`, title, bankId: origin, questionIds: bank.questions.filter(question => question.topic === title).map(question => question.id) }))
+          : bank.tracks.map(track => ({ id: `${origin}:${track.id}`, title: track.title, bankId: origin, questionIds: bank.questions.filter(question => question.track === track.id).map(question => question.id) }));
+      });
+    }
+    return result;
   }
   window.TrainerAllQuestions = Object.freeze({ load });
 })();

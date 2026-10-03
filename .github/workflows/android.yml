@@ -32,6 +32,9 @@ jobs:
           node tests/check-case-trainer.cjs
           node tests/check-scenarios.cjs
           node tests/check-all-questions.cjs
+          node --check wheel-visual.js
+          node tests/check-topic-wheel.cjs
+          node tests/check-wheel-visual.cjs
       - name: Install Android build tools
         run: python3 android/install-sdk.py --sdk-dir "$RUNNER_TEMP/infosec-sdk"
       - name: Build unsigned APK for review
