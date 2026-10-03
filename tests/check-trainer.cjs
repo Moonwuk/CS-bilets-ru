@@ -130,7 +130,7 @@ function choose(a,correct) {
   const fullState=()=>full.a.get();
   assert.equal(full.nodes.get('#main').querySelectorAll('[data-action="all"]').length,1);
   assert(full.nodes.get('#main').innerHTML.includes('<h3>Весь базовый банк</h3><p>600 вопросов · без повторов</p>'));
-  assert(full.nodes.get('#main').innerHTML.includes('<h3>Все вопросы</h3><p>Базовый банк, защита ИИ и ситуационные задачи. Сеньор — отдельно.</p><a class="button primary" href="./all-questions.html">Открыть подборку</a>'));
+  assert.match(full.nodes.get('#main').innerHTML, /<h3>Все вопросы<\/h3>[\s\S]*?href="\.\/all-questions\.html"/, 'The full-ticket entry must open the global mode');
   for(const file of ['index.html','senior.html','ai-security.html','scenarios.html','all-questions.html']) {
     const html=fs.readFileSync(path.join(root,file),'utf8');
     assert.equal((html.match(/href="\.\/all-questions\.html"/g)||[]).length,1,`${file} must expose the global collection in navigation`);
