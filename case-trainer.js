@@ -2,11 +2,17 @@
   'use strict';
 
   const CONFIGS = {
-    senior: { file: './senior-questions.json', key: 'cs-bilets-ru.senior.v1', prefix: 's' },
-    'ai-security': { file: './ai-security-questions.json', key: 'cs-bilets-ru.ai-security.v1', prefix: 'ai' }
+    senior: { file: './senior-questions.json', key: 'cs-bilets-ru.senior.v1', prefix: 's', trackCount: 4, label: 'Сеньор' },
+    'ai-security': { file: './ai-security-questions.json', key: 'cs-bilets-ru.ai-security.v1', prefix: 'ai', trackCount: 4, label: 'Защита ИИ' },
+    scenarios: { file: './scenarios-questions.json', key: 'cs-bilets-ru.scenarios.v1', prefix: 'sc', trackCount: 3, label: 'Ситуационные задачи' },
+    'all-questions': { key: 'cs-bilets-ru.all-questions.v1', prefix: '(?:q|ai|sc)', trackCount: 3, label: 'Все вопросы' }
   };
   const bankId = document.body.dataset.bank;
   const config = Object.prototype.hasOwnProperty.call(CONFIGS, bankId) ? CONFIGS[bankId] : null;
+  const aggregate = bankId === 'all-questions';
+  const itemLabel = aggregate ? 'Вопрос' : 'Сценарий';
+  const itemsLabel = aggregate ? 'вопросов' : 'сценариев';
+  const itemsFew = aggregate ? 'вопроса' : 'сценария';
   const NOTE_LIMIT = 6000;
   const LETTERS = ['А', 'Б', 'В', 'Г'];
   const $ = selector => document.querySelector(selector);
@@ -20,7 +26,7 @@
   const stringList = (value, minimum = 1) => Array.isArray(value) && value.length >= minimum && value.every(nonempty);
   const counter = value => Number.isSafeInteger(value) && value >= 0;
   const dateLabel = value => value.split('-').reverse().join('.');
-  const modeLabel = value => value === 'interview' ? 'Репетиция собеседования' : 'Обучение';
+  const modeLabel = value => value === 'interview' ? (aggregate ? 'Экзамен' : 'Репетиция собеседования') : 'Обучение';
   let dataset = null;
   let questions = new Map();
   let sources = new Map();
@@ -54,7 +60,7 @@
     const require = (condition, message) => { if (!condition) throw new Error(message); };
     require(isObject(data) && data.schemaVersion === 1 && data.id === bankId, 'Неверный формат или идентификатор банка.');
     require(nonempty(data.title) && nonempty(data.description) && validDate(data.reviewedAt), 'Не заполнены сведения о банке.');
-    require(Array.isArray(data.tracks) && data.tracks.length === 4, 'Банк должен содержать четыре направления.');
+    require(Array.isArray(data.tracks) && data.tracks.length === config.trackCount, `Банк должен содержать ${config.trackCount} направления.`);
     const trackIds = new Set();
     for (const track of data.tracks) {
       require(isObject(track) && typeof track.id === 'string' && /^[a-z][a-z0-9-]{0,60}$/.test(track.id) && nonempty(track.title), 'Некорректное направление.');
@@ -62,12 +68,16 @@
       require(track.description === undefined || nonempty(track.description), 'Некорректное описание направления.');
       trackIds.add(track.id);
     }
+    if (bankId === 'scenarios') require(['mitre', 'owasp', 'cve'].every(id => trackIds.has(id)), 'Не заданы направления MITRE, OWASP и CVE.');
+    if (aggregate) require(['basic', 'ai-security', 'scenarios'].every(id => trackIds.has(id)), 'Не заданы разделы общей подборки.');
     require(Array.isArray(data.sources) && data.sources.length > 0, 'В банке отсутствуют источники.');
     const sourceIds = new Set();
+    const sourceById = new Map();
     for (const source of data.sources) {
       require(isObject(source) && typeof source.id === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,100}$/.test(source.id), 'Некорректный идентификатор источника.');
-      require(!sourceIds.has(source.id) && nonempty(source.title) && nonempty(source.publisher) && validUrl(source.url) && validDate(source.accessedAt), 'Невалидный или повторяющийся источник.');
+      require(!sourceIds.has(source.id) && nonempty(source.title) && validUrl(source.url) && ((aggregate && source.originalBank === 'basic' && source.id.startsWith('basic:')) || (nonempty(source.publisher) && validDate(source.accessedAt))), 'Невалидный или повторяющийся источник.');
       sourceIds.add(source.id);
+      sourceById.set(source.id, source);
     }
     require(Array.isArray(data.questions) && data.questions.length >= 10, 'В банке недостаточно сценариев.');
     const questionIds = new Set();
@@ -75,16 +85,43 @@
       require(isObject(question) && typeof question.id === 'string' && new RegExp(`^${config.prefix}\\d{3,5}$`).test(question.id) && !questionIds.has(question.id), 'Невалидный или повторяющийся идентификатор сценария.');
       questionIds.add(question.id);
       require(trackIds.has(question.track) && nonempty(question.title) && nonempty(question.question), 'Не заполнен сценарий или его направление.');
-      require(['intermediate', 'advanced'].includes(question.difficulty), 'Не указана сложность сценария.');
-      require(stringList(question.evidence) && stringList(question.constraints), 'Не заполнены факты или ограничения сценария.');
+      if (aggregate) {
+        const prefixes = { basic: 'q', 'ai-security': 'ai', scenarios: 'sc' };
+        require(question.originalBank === question.track && question.id.startsWith(prefixes[question.track]) && question.kind === (question.track === 'basic' ? 'basic' : 'case'), 'Неверный раздел или вид вопроса общей подборки.');
+      }
+      if (bankId === 'scenarios' || (aggregate && question.originalBank === 'scenarios')) {
+        require(isObject(question.basis) && question.basis.family === (aggregate ? question.originalTrack : question.track) && stringList(question.basis.identifiers) && new Set(question.basis.identifiers).size === question.basis.identifiers.length, 'Не заполнена основа ситуационной задачи.');
+        require(stringList(question.conceptIds) && new Set(question.conceptIds).size === question.conceptIds.length && question.conceptIds.every(id => /^[a-z][a-z0-9-]*$/.test(id)), 'Не заполнены понятия ситуационной задачи.');
+      }
+      const basic = aggregate && question.kind === 'basic';
+      if (basic) {
+        require(question.difficulty === undefined || ['basic', 'intermediate', 'advanced'].includes(question.difficulty), 'Неверная сложность базового вопроса.');
+        require(nonempty(question.topic), 'Не указана тема базового вопроса.');
+      } else {
+        require(['intermediate', 'advanced'].includes(question.difficulty), 'Не указана сложность сценария.');
+        require(stringList(question.evidence) && stringList(question.constraints), 'Не заполнены факты или ограничения сценария.');
+      }
       require(Array.isArray(question.options) && question.options.length === 4, 'Требуются четыре варианта ответа.');
       require(question.options.every((option, index) => isObject(option) && option.sourceLetter === LETTERS[index] && nonempty(option.text) && typeof option.correct === 'boolean' && nonempty(option.explanation)), 'Некорректный вариант ответа.');
       require(new Set(question.options.map(option => option.text.trim().toLocaleLowerCase('ru-RU'))).size === 4, 'Варианты ответа не должны повторяться.');
       require(question.options.filter(option => option.correct).length === 1, 'В сценарии должен быть один лучший ответ.');
-      require(Array.isArray(question.prerequisites) && question.prerequisites.length > 0 && question.prerequisites.every(item => isObject(item) && nonempty(item.term) && nonempty(item.explanation)), 'Не заполнены опорные понятия.');
-      require(stringList(question.reasoning) && stringList(question.tradeoffs) && nonempty(question.whatChangesAnswer), 'Не заполнен подробный разбор.');
-      require(Array.isArray(question.followUps) && question.followUps.length > 0 && question.followUps.every(item => isObject(item) && nonempty(item.question) && nonempty(item.answer)), 'Не заполнены дополнительные вопросы.');
-      require(Array.isArray(question.references) && question.references.length > 0 && question.references.every(ref => isObject(ref) && sourceIds.has(ref.sourceId) && nonempty(ref.locator)), 'Не заполнены ссылки на технические источники.');
+      if (!basic) {
+        require(Array.isArray(question.prerequisites) && question.prerequisites.length > 0 && question.prerequisites.every(item => isObject(item) && nonempty(item.term) && nonempty(item.explanation)), 'Не заполнены опорные понятия.');
+        require(stringList(question.reasoning) && stringList(question.tradeoffs) && nonempty(question.whatChangesAnswer), 'Не заполнен подробный разбор.');
+        require(Array.isArray(question.followUps) && question.followUps.length > 0 && question.followUps.every(item => isObject(item) && nonempty(item.question) && nonempty(item.answer)), 'Не заполнены дополнительные вопросы.');
+      }
+      require(Array.isArray(question.references) && (question.references.length > 0 || (basic && nonempty(question.documentSource))) && question.references.every(ref => isObject(ref) && sourceIds.has(ref.sourceId) && (basic ? ref.locator === undefined || nonempty(ref.locator) : nonempty(ref.locator))), 'Не заполнены ссылки на источники.');
+      if (basic) {
+        require(Array.isArray(question.sourceIds) && Array.isArray(question.interviewSourceIds) && [...question.sourceIds, ...question.interviewSourceIds].every(id => sourceIds.has(id)), 'Неизвестный источник базового вопроса.');
+        require(question.interviewSourceIds.every(id => sourceById.get(id)?.kind === 'interview'), 'Некорректная подборка собеседований.');
+        require(question.origin !== 'authored' || (question.sourceIds.length > 0 && nonempty(question.difficulty)), 'Не заполнен авторский базовый вопрос.');
+        const legalSourceIds = question.sourceIds.filter(id => sourceById.get(id)?.kind === 'legal');
+        require(!legalSourceIds.length || isObject(question.legal), 'Нет сведений о правовых источниках.');
+        require(question.certifications === undefined || stringList(question.certifications, 0), 'Некорректные тематические метки.');
+        if (question.legal !== undefined) {
+          require(isObject(question.legal) && ['RU', 'EU'].includes(question.legal.jurisdiction) && validDate(question.legal.reviewedAt) && Array.isArray(question.legal.references) && question.legal.references.length > 0 && question.legal.references.every(ref => isObject(ref) && question.sourceIds.includes(ref.sourceId) && sourceById.get(ref.sourceId)?.kind === 'legal' && nonempty(ref.locator)) && legalSourceIds.every(id => question.legal.references.some(ref => ref.sourceId === id)), 'Некорректные правовые источники.');
+        }
+      }
     }
     for (const id of trackIds) require(data.questions.filter(question => question.track === id).length >= 3, 'В каждом направлении нужны хотя бы три сценария.');
     require(data.methodology === undefined || nonempty(data.methodology), 'Некорректное описание методики.');
@@ -216,11 +253,11 @@
 
   function methodologyMarkup() {
     const collections = dataset.interviewCollections || [];
-    return `<details class="case-methodology"><summary>О сценариях и источниках</summary>
-      <p>Это авторские учебные ситуации. Они помогают разбирать технические решения и готовиться к обсуждению на собеседовании. Их формулировки не являются заданиями конкретного работодателя или официального экзамена.</p>
+    return `<details class="case-methodology"><summary>${aggregate ? 'О вопросах и источниках' : 'О сценариях и источниках'}</summary>
+      <p>${aggregate ? 'Это учебные вопросы и авторские ситуации.' : 'Это авторские учебные ситуации.'} Они помогают разбирать технические решения и готовиться к обсуждению на собеседовании. Их формулировки не являются заданиями конкретного работодателя или официального экзамена.</p>
       ${dataset.methodology ? `<p>${esc(dataset.methodology)}</p>` : ''}
-      <p>После проверки доступны объяснения всех вариантов, ход рассуждений, компромиссы, изменённые условия и вопросы для устного ответа. Технические положения сопровождаются ссылками на первичные источники и указанием раздела.</p>
-      <p>Материалы проверены <time datetime="${esc(dataset.reviewedAt)}">${dateLabel(dataset.reviewedAt)}</time>. Реальная система может иметь другие ограничения: сравнивайте их с условиями сценария.</p>
+      <p>После проверки доступны объяснения всех вариантов.${aggregate ? ' У ситуационных задач также сохранены подробные разборы, ограничения и дополнительные вопросы.' : ' Также доступны ход рассуждений, компромиссы, изменённые условия и вопросы для устного ответа.'} Технические положения сопровождаются ссылками на первичные источники и указанием раздела.</p>
+      <p>${aggregate ? 'Последнее обновление подборки:' : 'Материалы проверены'} <time datetime="${esc(dataset.reviewedAt)}">${dateLabel(dataset.reviewedAt)}</time>. Реальная система может иметь другие ограничения: сравнивайте их с условиями сценария.</p>
       ${collections.length ? `<p>Открытые подборки для изучения тем технических собеседований:</p><ul>${collections.map(collection => `<li><a href="${esc(collection.url)}" target="_blank" rel="noopener noreferrer">${esc(collection.title)}</a>${collection.note ? ` — ${esc(collection.note)}` : ''}</li>`).join('')}</ul>` : ''}
       <p>Заметки проверяются самостоятельно по разбору. Автоматически оценивается только выбранный вариант. Процент верных решений не подтверждает квалификацию или рабочий опыт.</p>
       <p>Сохраняется одна текущая или последняя попытка. Новая попытка заменяет предыдущую; общие счётчики и список ошибок остаются. Каждый банк хранит свой прогресс отдельно.</p>
@@ -230,18 +267,19 @@
   function renderHome() {
     const session = progress.session;
     const accuracy = progress.total ? `${Math.round(progress.correctTotal / progress.total * 100)}%` : '—';
+    const mixedCard = `<section class="ticket-card${aggregate ? '' : ' quick-card'}"><h2>Смешанная десятка</h2><p>По ${Math.floor(10 / dataset.tracks.length)}–${Math.ceil(10 / dataset.tracks.length)} ${itemsFew} из каждого направления. Подходит для одной вдумчивой сессии.</p><button class="button ${aggregate ? 'secondary' : 'primary'}" data-start="mixed">Начать 10 ${itemsLabel}</button></section>`;
+    const allCard = `<section class="ticket-card${aggregate ? ' quick-card' : ''}"><h2>${aggregate ? 'Все вопросы' : 'Весь банк'}</h2><p>Все ${dataset.questions.length} ${itemsLabel}. Порядок вопросов и вариантов перемешивается в каждой попытке.</p><button class="button ${aggregate ? 'primary' : 'secondary'}" data-start="all">${aggregate ? `Начать все ${dataset.questions.length} ${itemsLabel}` : 'Пройти весь банк'}</button></section>`;
     main.innerHTML = `${noticeMarkup()}
       <header class="page-heading"><div><span class="eyebrow">От фактов к решению</span><h1>${esc(dataset.title)}</h1><p class="case-intro">${esc(dataset.description)}</p></div></header>
-      <div class="case-notice"><p>Сначала разберите факты и ограничения, выберите лучший вариант и при желании запишите ход мысли. Затем сравните своё решение с подробным разбором.</p><p>Если тема новая, в режиме обучения можно раскрыть опорные понятия до ответа.</p></div>
-      <div class="case-summary"><span><strong>${dataset.questions.length}</strong> сценариев</span><span><strong>${dataset.tracks.length}</strong> направления</span><span>Завершено попыток: <strong>${progress.completed}</strong></span><span>Верных решений: <strong>${accuracy}</strong></span><span>Ошибок: <strong>${progress.errors.size}</strong></span></div>
+      <div class="case-notice"><p>Сначала разберите факты и ограничения, выберите лучший вариант и при желании запишите ход мысли. Затем сравните своё решение с подробным разбором.</p><p>Нажатие на термин открывает пояснение. У ситуационных задач в режиме обучения также доступны опорные понятия до ответа.</p></div>
+      <div class="case-summary"><span><strong>${dataset.questions.length}</strong> ${itemsLabel}</span><span><strong>${dataset.tracks.length}</strong> направления</span><span>Завершено попыток: <strong>${progress.completed}</strong></span><span>Верных решений: <strong>${accuracy}</strong></span><span>Ошибок: <strong>${progress.errors.size}</strong></span></div>
       ${session ? `<section class="resume-card" aria-label="Сохранённая попытка"><div><strong>${session.finished ? 'Разбор последней попытки' : 'Есть незавершённая попытка'}</strong><p>${esc(session.title)} · ${esc(modeLabel(session.mode))} · ${session.finished ? `${session.ids.filter(id => isCorrect(id)).length} из ${session.ids.length} верно` : `выбрано ответов ${Object.keys(session.answers).length} из ${session.ids.length}`}</p></div><button class="button primary" data-action="resume">${session.finished ? 'Открыть разбор' : 'Продолжить'}</button></section>` : ''}
-      <div class="mode-bar"><div class="mode-switch case-mode-switch" role="group" aria-label="Когда показывать разбор"><button data-mode="practice" aria-pressed="${progress.mode === 'practice'}">Обучение</button><button data-mode="interview" aria-pressed="${progress.mode === 'interview'}">Собеседование</button></div><p class="mode-hint case-mode-help">${progress.mode === 'practice' ? 'Разбор после проверки каждого решения. Опорные понятия доступны заранее.' : 'Вся обратная связь — после завершения. Опорные понятия и источники до этого скрыты.'}</p></div>
+      <div class="mode-bar"><div class="mode-switch case-mode-switch" role="group" aria-label="Когда показывать разбор"><button data-mode="practice" aria-pressed="${progress.mode === 'practice'}">Обучение</button><button data-mode="interview" aria-pressed="${progress.mode === 'interview'}">${aggregate ? 'Экзамен' : 'Собеседование'}</button></div><p class="mode-hint case-mode-help">${progress.mode === 'practice' ? 'Разбор после проверки каждого решения. Опорные понятия доступны заранее.' : 'Вся обратная связь — после завершения. Опорные понятия и источники до этого скрыты.'}</p></div>
       <div class="case-choice-grid">
-        <section class="ticket-card quick-card"><h2>Смешанная десятка</h2><p>По 2–3 сценария из каждого направления. Подходит для одной вдумчивой сессии.</p><button class="button primary" data-start="mixed">Начать 10 сценариев</button></section>
-        <section class="ticket-card"><h2>Весь банк</h2><p>Все ${dataset.questions.length} сценариев. Порядок вопросов и вариантов перемешивается в каждой попытке.</p><button class="button secondary" data-start="all">Пройти весь банк</button></section>
-        <section class="ticket-card"><h2>Работа над ошибками</h2><p>${progress.errors.size ? `Сценариев для повторения: ${progress.errors.size}. Верное решение убирает сценарий из списка ошибок.` : 'После проверки сюда попадут неверные решения и вопросы, пропущенные при завершении.'}</p><button class="button secondary" data-start="mistakes" ${progress.errors.size ? '' : 'disabled'}>Повторить ошибки</button></section>
+        ${aggregate ? allCard + mixedCard : mixedCard + allCard}
+        <section class="ticket-card"><h2>Работа над ошибками</h2><p>${progress.errors.size ? `${aggregate ? 'Вопросов' : 'Сценариев'} для повторения: ${progress.errors.size}. Верное решение убирает ${aggregate ? 'вопрос' : 'сценарий'} из списка ошибок.` : 'После проверки сюда попадут неверные решения и вопросы, пропущенные при завершении.'}</p><button class="button secondary" data-start="mistakes" ${progress.errors.size ? '' : 'disabled'}>Повторить ошибки</button></section>
       </div>
-      <section class="case-tracks" aria-labelledby="tracks-heading"><div class="section-heading"><h2 id="tracks-heading">Выбрать направление</h2></div><div class="topic-grid">${dataset.tracks.map(track => `<button class="topic-card" data-track="${esc(track.id)}"><span class="case-track-copy"><span class="topic-name">${esc(track.title)}</span><span class="topic-count">${dataset.questions.filter(question => question.track === track.id).length} сценариев${track.description ? ` · ${esc(track.description)}` : ''}</span></span><span class="case-track-arrow" aria-hidden="true">→</span></button>`).join('')}</div></section>
+      <section class="case-tracks" aria-labelledby="tracks-heading"><div class="section-heading"><h2 id="tracks-heading">Выбрать направление</h2></div><div class="topic-grid">${dataset.tracks.map(track => `<button class="topic-card" data-track="${esc(track.id)}"><span class="case-track-copy"><span class="topic-name">${esc(track.title)}</span><span class="topic-count">${dataset.questions.filter(question => question.track === track.id).length} ${itemsLabel}${track.description ? ` · ${esc(track.description)}` : ''}</span></span><span class="case-track-arrow" aria-hidden="true">→</span></button>`).join('')}</div></section>
       <p class="case-score-note">Объясните решающий факт, назовите оставшийся риск и проверьте, как ответ изменится при других условиях.</p>
       ${methodologyMarkup()}`;
     bindMain();
@@ -249,23 +287,37 @@
   }
 
   function foundationsMarkup(question) {
+    if (question.kind === 'basic') return '';
     return `<details class="case-foundations"><summary>Опорные понятия</summary><dl>${question.prerequisites.map(item => `<dt>${termsMarkup(item.term)}</dt><dd>${termsMarkup(item.explanation)}</dd>`).join('')}</dl></details>`;
   }
 
   function scenarioMarkup(question) {
+    if (question.kind === 'basic') return `${question.legal ? `<p class="question-context"><span class="level-tag legal-tag">${question.legal.jurisdiction === 'RU' ? 'РФ' : 'ЕС · GDPR'}</span><span>Нормы проверены: <time datetime="${esc(question.legal.reviewedAt)}">${dateLabel(question.legal.reviewedAt)}</time></span></p>` : ''}<p class="case-prompt">${termsMarkup(question.question)}</p>`;
     return `<p class="case-prompt">${termsMarkup(question.question)}</p><div class="case-context"><section><h3>Известные факты</h3>${listMarkup(question.evidence)}</section><section><h3>Ограничения и условия</h3>${listMarkup(question.constraints)}</section></div>`;
   }
 
   function deepReviewMarkup(question, order) {
-    return `<div class="case-review">
-      <section><h3>Почему выбран этот ответ</h3>${order.map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; return `<div class="case-option-reason ${option.correct ? 'best' : ''}"><strong>${LETTERS[displayIndex]}. ${termsMarkup(option.text)}</strong>${option.correct ? '<span class="case-option-status">Лучший ответ при заданных условиях</span>' : ''}<p>${termsMarkup(option.explanation)}</p></div>`; }).join('')}</section>
+    const families = { mitre: 'MITRE ATT&CK', owasp: 'OWASP', cve: 'CVE' };
+    const basis = bankId === 'scenarios' || (aggregate && question.originalBank === 'scenarios') ? `<section class="case-basis"><h3>Основа задачи</h3><p><strong>${esc(families[question.basis.family])}</strong> · ${question.basis.identifiers.map(esc).join(' · ')}</p></section>` : '';
+    const options = `<section><h3>Почему выбран этот ответ</h3>${order.map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; return `<div class="case-option-reason ${option.correct ? 'best' : ''}"><strong>${LETTERS[displayIndex]}. ${termsMarkup(option.text)}</strong>${option.correct ? '<span class="case-option-status">Лучший ответ при заданных условиях</span>' : ''}<p>${termsMarkup(option.explanation)}</p></div>`; }).join('')}</section>`;
+    const details = question.kind === 'basic' ? basicMetadataMarkup(question) : `
       <section><h3>Ход рассуждений</h3>${listMarkup(question.reasoning, true)}</section>
       <section><h3>Компромиссы и остаточные риски</h3>${listMarkup(question.tradeoffs)}</section>
       <section><h3>Что изменит ответ</h3><p>${termsMarkup(question.whatChangesAnswer)}</p></section>
       <section><h3>Углублённые вопросы для собеседования</h3><p>Сначала попробуйте ответить вслух, затем раскройте ориентир для самопроверки.</p>${question.followUps.map(item => `<details class="case-followup"><summary>${termsMarkup(item.question)}</summary><p>${termsMarkup(item.answer)}</p></details>`).join('')}</section>
-      ${foundationsMarkup(question)}
-      <section><h3>Технические источники</h3><ul class="case-source-list">${question.references.map(reference => { const source = sources.get(reference.sourceId); return `<li><a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a><small>${esc(source.publisher)} · ${esc(reference.locator)}<br>Проверено: <time datetime="${esc(source.accessedAt)}">${dateLabel(source.accessedAt)}</time></small></li>`; }).join('')}</ul></section>
-    </div>`;
+      ${foundationsMarkup(question)}`;
+    const references = question.references.length ? `<ul class="case-source-list">${question.references.map(reference => { const source = sources.get(reference.sourceId); return `<li><a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>${source.publisher || reference.locator || source.accessedAt ? `<small>${[source.publisher, reference.locator].filter(Boolean).map(esc).join(' · ')}${source.accessedAt ? `<br>Проверено: <time datetime="${esc(source.accessedAt)}">${dateLabel(source.accessedAt)}</time>` : ''}</small>` : ''}</li>`; }).join('')}</ul>` : `<p>Источник: ${esc(question.documentSource)}.</p>`;
+    return `<div class="case-review">${basis}${options}${details}<section><h3>${aggregate ? 'Источники' : 'Технические источники'}</h3>${references}</section></div>`;
+  }
+
+  function basicMetadataMarkup(question) {
+    const legal = question.legal;
+    const entries = [];
+    if (legal) entries.push(`<p>Юрисдикция: ${legal.jurisdiction === 'RU' ? 'РФ' : 'ЕС · GDPR'}. Нормы проверены: <time datetime="${esc(legal.reviewedAt)}">${dateLabel(legal.reviewedAt)}</time>. Применимость зависит от условий вопроса.</p>`);
+    if (question.certifications?.length) entries.push(`<p>По тематике: ${question.certifications.map(esc).join(' · ')}. Это учебные вопросы, а не официальный экзамен.</p>`);
+    if (question.interviewSourceIds?.length) entries.push('<p>Тема из открытой подборки собеседований; ссылки включены в источники ниже.</p>');
+    if (question.revisionNote) entries.push(`<p>Уточнение формулировки: ${esc(question.revisionNote)}</p>`);
+    return entries.length ? `<section><h3>О вопросе</h3>${entries.join('')}</section>` : '';
   }
 
   function isCorrect(id) {
@@ -286,9 +338,9 @@
     const last = session.index === session.ids.length - 1;
     main.innerHTML = `${noticeMarkup()}
       <div class="quiz-top"><button class="button ghost" data-action="home">← К наборам</button><span>${esc(session.title)}</span><span class="quiz-tag">${esc(modeLabel(session.mode))}</span></div>
-      <p class="case-progress-label" role="status">Сценарий ${session.index + 1} из ${session.ids.length} · ${esc(tracks.get(question.track).title)}</p>
+      <p class="case-progress-label" role="status">${itemLabel} ${session.index + 1} из ${session.ids.length} · ${esc(tracks.get(question.track).title)}</p>
       <div class="case-layout"><article class="question-panel" aria-labelledby="case-title">
-        <div class="question-context"><span class="level-tag">${question.difficulty === 'advanced' ? 'Углублённый' : 'Переход к сложным задачам'}</span><span>${session.mode === 'interview' ? 'Разбор появится после завершения попытки' : 'Можно учиться в своём темпе'}</span></div>
+        <div class="question-context"><span class="level-tag">${question.kind === 'basic' ? 'Базовый банк' : question.difficulty === 'advanced' ? 'Углублённый' : 'Переход к сложным задачам'}</span><span>${session.mode === 'interview' ? 'Разбор появится после завершения попытки' : 'Можно учиться в своём темпе'}</span></div>
         <h1 class="case-title" id="case-title" tabindex="-1">${termsMarkup(question.title)}</h1>${scenarioMarkup(question)}
         ${session.mode === 'practice' && !checked ? foundationsMarkup(question) : ''}
         <p class="term-help-hint case-term-hint">Нажмите на подчёркнутый термин — объясним простыми словами.</p><fieldset class="case-options"><legend>Выберите лучший ответ при этих условиях</legend><div class="case-option-list">${session.orders[id].map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; const chosen = selected && answer === optionIndex; const status = checked ? (option.correct ? 'Лучший ответ' : chosen ? 'Ваш ответ · неверно' : '') : ''; return `<div class="case-option ${chosen ? 'selected' : ''} ${checked ? `locked ${option.correct ? 'good' : chosen ? 'bad' : ''}` : ''}"><input type="radio" name="case-answer" id="answer-${optionIndex}" data-answer="${optionIndex}" value="${optionIndex}" aria-label="${LETTERS[displayIndex]}. ${esc(option.text)}" ${chosen ? 'checked' : ''} ${checked ? 'disabled' : ''}><label class="case-option-pick" for="answer-${optionIndex}" aria-hidden="true"></label><span class="case-option-copy"><strong>${LETTERS[displayIndex]}.</strong>${termsMarkup(option.text)}${status ? `<span class="case-option-status">${status}</span>` : ''}</span></div>`; }).join('')}</div></fieldset>
@@ -296,9 +348,14 @@
         <div class="case-actions"><button class="button secondary" data-action="previous" ${session.index === 0 ? 'disabled' : ''}>Назад</button><div class="action-right">${session.mode === 'practice' && !checked ? `<button class="button primary" data-action="check" ${selected ? '' : 'disabled'}>Проверить решение</button>` : ''}<button class="button ${session.mode === 'interview' || checked ? 'primary' : 'secondary'}" data-action="${last ? 'finish' : 'next'}">${last ? 'К результатам' : 'Далее'}</button></div></div>
         ${checked ? `<section class="case-feedback ${isCorrect(id) ? '' : 'is-error'}" id="case-feedback" tabindex="-1"><h2>${isCorrect(id) ? 'Решение верное' : 'В выбранном решении есть проблема'}</h2><p>Сравните ход своих рассуждений с разбором. У правильного варианта тоже есть ограничения.</p>${deepReviewMarkup(question, session.orders[id])}</section>` : ''}
         ${window.TrainerFeedback?.actions(question.id) || ''}
-      </article><aside class="quiz-map case-map" aria-label="Навигация по сценариям"><p class="quiz-map-title">Сценарии попытки</p><div class="question-grid">${session.ids.map((questionId, index) => { const wasChecked = session.mode === 'practice' && session.checked.has(questionId); const wasAnswered = has(session.answers, questionId); const status = wasChecked ? (isCorrect(questionId) ? 'верно' : 'ошибка') : wasAnswered ? 'ответ выбран' : 'без ответа'; return `<button class="question-number ${wasChecked ? (isCorrect(questionId) ? 'good' : 'bad') : wasAnswered ? 'answered' : ''}" data-jump="${index}" aria-label="Сценарий ${index + 1}: ${status}" ${index === session.index ? 'aria-current="step"' : ''}>${index + 1}</button>`; }).join('')}</div><p class="quiz-progress">Выбрано ответов: ${answeredCount} / ${session.ids.length}${session.mode === 'practice' ? `<br>Проверено: ${session.checked.size}` : ''}</p><button class="button secondary" data-action="finish">Завершить попытку</button></aside></div>
+      </article><aside class="quiz-map case-map${session.ids.length > 50 ? ' long-session' : ''}" aria-label="${aggregate ? 'Навигация по вопросам' : 'Навигация по сценариям'}"><p class="quiz-map-title">${aggregate ? 'Вопросы попытки' : 'Сценарии попытки'}</p><div class="question-grid">${session.ids.map((questionId, index) => { const wasChecked = session.mode === 'practice' && session.checked.has(questionId); const wasAnswered = has(session.answers, questionId); const status = wasChecked ? (isCorrect(questionId) ? 'верно' : 'ошибка') : wasAnswered ? 'ответ выбран' : 'без ответа'; return `<button class="question-number ${wasChecked ? (isCorrect(questionId) ? 'good' : 'bad') : wasAnswered ? 'answered' : ''}" data-jump="${index}" aria-label="${itemLabel} ${index + 1}: ${status}" ${index === session.index ? 'aria-current="step"' : ''}>${index + 1}</button>`; }).join('')}</div><p class="quiz-progress">Выбрано ответов: ${answeredCount} / ${session.ids.length}${session.mode === 'practice' ? `<br>Проверено: ${session.checked.size}` : ''}</p><button class="button secondary" data-action="finish">Завершить попытку</button></aside></div>
       <p class="keyboard-hint">1–4 — выбрать вариант · Enter — проверить или перейти далее. В поле заметки клавиши вводят текст.</p>`;
     bindMain();
+    if (session.ids.length > 50) {
+      const grid = main.querySelector('.question-grid');
+      const current = main.querySelector(`[data-jump="${session.index}"]`);
+      if (grid && current && grid.clientHeight) grid.scrollTop = Math.max(0, current.offsetTop - (grid.clientHeight - current.offsetHeight) / 2);
+    }
     updateStats();
   }
 
@@ -311,7 +368,7 @@
     main.innerHTML = `${noticeMarkup()}<header class="page-heading"><div><span class="eyebrow">Результат и самопроверка</span><h1>Разбор попытки</h1><p>${esc(session.title)} · ${esc(modeLabel(session.mode))}</p></div></header>
       <section class="result-card"><div class="result-score" aria-label="Верно ${correct} из ${session.ids.length}">${correct}<span> / ${session.ids.length}</span></div><div class="result-copy"><h2>Решения проверены</h2><p>Верно: ${correct}. Неверно: ${wrong - skipped}. Без ответа: ${skipped}.</p><div class="result-actions"><button class="button primary" data-action="retry">Повторить набор</button>${wrong ? '<button class="button secondary" data-action="repeat-wrong">Разобрать ошибки</button>' : ''}<button class="button secondary" data-action="home">К наборам</button></div></div></section>
       <p class="case-score-note">Оценён только выбор варианта. Ваши заметки не получили автоматическую оценку: сравните их с ходом рассуждений, компромиссами и ответами на дополнительные вопросы. Этот результат не является оценкой профессиональной квалификации.</p>
-      <section aria-labelledby="review-heading"><div class="section-heading"><h2 id="review-heading">Разбор всех сценариев</h2></div><div class="case-review-list">${session.ids.map((id, index) => { const question = questions.get(id); const chosen = session.answers[id]; const answered = has(session.answers, id); const correctAnswer = isCorrect(id); return `<details class="review-item"><summary><span class="case-review-state ${correctAnswer ? '' : 'bad'}">${correctAnswer ? 'Верно' : answered ? 'Ошибка' : 'Без ответа'}</span>${index + 1}. ${termsMarkup(question.title)}</summary><div class="review-body"><div class="question-context"><span>${esc(tracks.get(question.track).title)}</span></div>${scenarioMarkup(question)}<p class="review-answer ${correctAnswer ? '' : 'wrong'}"><strong>Ваш ответ:</strong> ${answered ? esc(question.options[chosen].text) : 'Не выбран; сценарий добавлен в работу над ошибками.'}</p><section><h3>Мои рассуждения</h3>${session.notes[id] ? `<div class="case-review-note">${esc(session.notes[id])}</div>` : '<p class="topic-count">Заметка не добавлена.</p>'}</section>${deepReviewMarkup(question, session.orders[id])}${window.TrainerFeedback?.actions(question.id) || ''}</div></details>`; }).join('')}</div></section>`;
+      <section aria-labelledby="review-heading"><div class="section-heading"><h2 id="review-heading">${aggregate ? 'Разбор всех вопросов' : 'Разбор всех сценариев'}</h2></div><div class="case-review-list">${session.ids.map((id, index) => { const question = questions.get(id); const chosen = session.answers[id]; const answered = has(session.answers, id); const correctAnswer = isCorrect(id); return `<details class="review-item"><summary><span class="case-review-state ${correctAnswer ? '' : 'bad'}">${correctAnswer ? 'Верно' : answered ? 'Ошибка' : 'Без ответа'}</span>${index + 1}. ${termsMarkup(question.title)}</summary><div class="review-body"><div class="question-context"><span>${esc(tracks.get(question.track).title)}</span></div>${scenarioMarkup(question)}<p class="review-answer ${correctAnswer ? '' : 'wrong'}"><strong>Ваш ответ:</strong> ${answered ? esc(question.options[chosen].text) : 'Не выбран; сценарий добавлен в работу над ошибками.'}</p><section><h3>Мои рассуждения</h3>${session.notes[id] ? `<div class="case-review-note">${esc(session.notes[id])}</div>` : '<p class="topic-count">Заметка не добавлена.</p>'}</section>${deepReviewMarkup(question, session.orders[id])}${window.TrainerFeedback?.actions(question.id) || ''}</div></details>`; }).join('')}</div></section>`;
     bindMain();
     updateStats();
   }
@@ -340,7 +397,7 @@
     saveProgress();
     renderQuiz();
     focusMain();
-    announce(`${modeLabel(mode)}. В попытке ${order.length} сценариев.`);
+    announce(`${modeLabel(mode)}. В попытке ${order.length} ${itemsLabel}.`);
     return true;
   }
 
@@ -393,7 +450,7 @@
     saveProgress();
     renderQuiz();
     focusMain();
-    announce(`Сценарий ${index + 1} из ${session.ids.length}.`);
+    announce(`${itemLabel} ${index + 1} из ${session.ids.length}.`);
   }
 
   function finishSession() {
@@ -462,7 +519,7 @@
   }
 
   async function resetProgress() {
-    if (!dataset || !await askConfirmation('Сбросить прогресс этого банка?', 'Будут удалены его счётчики, ошибки, текущая или последняя попытка и заметки. Прогресс двух других банков останется.', 'Сбросить этот банк')) return;
+    if (!dataset || !await askConfirmation('Сбросить прогресс этого банка?', 'Будут удалены его счётчики, ошибки, текущая или последняя попытка и заметки. Прогресс остальных банков останется.', 'Сбросить этот банк')) return;
     progress = emptyProgress();
     notice = 'Прогресс этого банка сброшен.';
     saveProgress();
@@ -518,17 +575,24 @@
     loading = true;
     try {
       if (!config) throw new Error('Неизвестный банк сценариев.');
-      const response = await fetch(config.file);
-      if (!response.ok) throw new Error(`Не удалось получить файл банка: HTTP ${response.status}.`);
-      const data = validateBank(await response.json());
-      window.TrainerFeedback?.setBank(bankId === 'senior' ? 'Сеньор' : 'Защита ИИ', data.reviewedAt, data.questions);
+      let loaded;
+      if (aggregate) {
+        if (!window.TrainerAllQuestions) throw new Error('Загрузчик общей подборки недоступен.');
+        loaded = await window.TrainerAllQuestions.load();
+      } else {
+        const response = await fetch(config.file);
+        if (!response.ok) throw new Error(`Не удалось получить файл банка: HTTP ${response.status}.`);
+        loaded = await response.json();
+      }
+      const data = validateBank(loaded);
+      window.TrainerFeedback?.setBank(config.label, data.reviewedAt, data.questions);
       dataset = data;
       questions = new Map(data.questions.map(question => [question.id, question]));
       sources = new Map(data.sources.map(source => [source.id, source]));
       tracks = new Map(data.tracks.map(track => [track.id, track]));
       signature = bankSignature(data);
       restoreProgress();
-      $('#dataset-info').textContent = `${data.questions.length} сценариев · ${data.tracks.length} направления`;
+      $('#dataset-info').textContent = `${data.questions.length} ${itemsLabel} · ${data.tracks.length} направления`;
       $('#reset-progress').disabled = false;
       saveProgress();
       render();

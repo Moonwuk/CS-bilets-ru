@@ -157,10 +157,11 @@
     const [title,description]=headings[page];
     let body='';
     if(page==='tickets') {
-      const allQuestionsCard=`<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">Новый каждый раз</span></div><h3>Все вопросы</h3><p>${questionCount(dataset.questions.length)} · без повторов</p><button class="button primary" data-action="all">Начать</button></article>`;
+      const combinedQuestionsCard=`<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">Общая подборка</span></div><h3>Все вопросы</h3><p>Базовый банк, защита ИИ и ситуационные задачи. Сеньор — отдельно.</p><a class="button primary" href="./all-questions.html">Открыть подборку</a></article>`;
+      const allQuestionsCard=`<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">Новый каждый раз</span></div><h3>Весь базовый банк</h3><p>${questionCount(dataset.questions.length)} · без повторов</p><button class="button secondary" data-action="all">Начать</button></article>`;
       const toolQuestions=dataset.questions.filter(q=>q.collection==='security-tools');
       const toolsCard=toolQuestions.length ? `<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shield')}</span><span class="ticket-status">Новый каждый раз</span></div><h3>Инструменты ИБ</h3><p>${questionCount(toolQuestions.length)} · назначение и ограничения</p><button class="button primary" data-action="tools">Начать</button></article>` : '';
-      body=`<div class="section-heading"><h2>Все билеты</h2><span>${dataset.questions.length} вопросов без повторов</span></div><div class="tickets-grid">${allQuestionsCard}${toolsCard}${tickets.map((ids,i)=>{
+      body=`<div class="section-heading"><h2>Подборки и билеты</h2><span>${dataset.questions.length} вопросов в базовом банке</span></div><div class="tickets-grid">${combinedQuestionsCard}${allQuestionsCard}${toolsCard}${tickets.map((ids,i)=>{
         const result=ticketResults.get(i);
         return `<article class="ticket-card"><div class="ticket-head"><span class="ticket-no">${String(i+1).padStart(2,'0')}</span><span class="ticket-status${result && result.correct===result.length?' success':''}">${result ? `${result.correct}/${result.length} верно`:'Не решён'}</span></div><h3>Билет ${i+1}</h3><p>${questionCount(ids.length)} · разные темы</p><button class="button secondary" data-ticket="${i}">${result?'Решить снова':'Решать билет'}</button></article>`;
       }).join('')}<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">Новый каждый раз</span></div><h3>Случайный билет</h3><p>${questionCount(Math.min(TICKET_SIZE,dataset.questions.length))} из всех тем</p><button class="button primary" data-action="random">Начать</button></article></div>`;
@@ -183,7 +184,7 @@
     main.querySelectorAll('[data-topic]').forEach(el=>el.addEventListener('click',()=>{const topic=dataset.topics[Number(el.dataset.topic)];requestStartSession(dataset.questions.filter(q=>q.topic===topic).map(q=>q.id),topic);}));
     main.querySelectorAll('[data-single]').forEach(el=>el.addEventListener('click',()=>requestStartSession([el.dataset.single],'Повторение ошибки')));
     main.querySelectorAll('[data-action="random"]').forEach(el=>el.addEventListener('click',()=>requestStartSession(shuffled(dataset.questions.map(q=>q.id)).slice(0,TICKET_SIZE),'Случайный билет')));
-    main.querySelectorAll('[data-action="all"]').forEach(el=>el.addEventListener('click',()=>requestStartSession([...bank.keys()],'Все вопросы')));
+    main.querySelectorAll('[data-action="all"]').forEach(el=>el.addEventListener('click',()=>requestStartSession([...bank.keys()],'Весь базовый банк')));
     main.querySelectorAll('[data-action="tools"]').forEach(el=>el.addEventListener('click',()=>requestStartSession(dataset.questions.filter(q=>q.collection==='security-tools').map(q=>q.id),'Инструменты ИБ')));
     main.querySelectorAll('[data-action="errors"]').forEach(el=>el.addEventListener('click',()=>requestStartSession([...errors],'Работа над ошибками')));
     main.querySelectorAll('[data-action="resume"]').forEach(el=>el.addEventListener('click',()=>{sessionOpen=true;saveProgress();renderQuiz();focusMain();}));

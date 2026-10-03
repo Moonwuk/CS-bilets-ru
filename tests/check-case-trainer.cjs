@@ -7,7 +7,8 @@ const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'case-trainer.js'), 'utf8');
 const baseKey = 'cs-bilets-ru.progress.v1';
-const keys = { senior: 'cs-bilets-ru.senior.v1', 'ai-security': 'cs-bilets-ru.ai-security.v1' };
+const keys = { senior: 'cs-bilets-ru.senior.v1', 'ai-security': 'cs-bilets-ru.ai-security.v1', scenarios: 'cs-bilets-ru.scenarios.v1' };
+const bankFiles = { senior: 'senior-questions.json', 'ai-security': 'ai-security-questions.json', scenarios: 'scenarios-questions.json' };
 const copy = value => JSON.parse(JSON.stringify(value));
 const plain = value => JSON.parse(JSON.stringify(value));
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -15,10 +16,10 @@ const htmlEsc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;',
 const decode = value => value.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
 
 function fixture(id = 'senior') {
-  const prefix = id === 'senior' ? 's' : 'ai';
+  const prefix = id === 'senior' ? 's' : id === 'ai-security' ? 'ai' : 'sc';
   const trackIds = id === 'senior'
     ? ['net-crypto', 'appsec-identity', 'cloud-platform', 'soc-ir']
-    : ['ai-agents', 'ai-rag-data', 'ai-mlops', 'ai-evaluation'];
+    : id === 'ai-security' ? ['ai-agents', 'ai-rag-data', 'ai-mlops', 'ai-evaluation'] : ['mitre', 'owasp', 'cve'];
   return {
     schemaVersion: 1, id, title: `Учебный банк ${id}`, description: 'Тестовые сценарии для проверки поведения интерфейса.', reviewedAt: '2026-10-02',
     tracks: trackIds.map((track, index) => ({ id: track, title: `Направление ${index + 1}` })),
@@ -26,12 +27,13 @@ function fixture(id = 'senior') {
     interviewCollections: [{ title: 'COLLECTION_SENTINEL', url: 'https://example.org/interviews', note: 'Темы, не экзамен.', tracks: [trackIds[0]] }],
     sources: [{ id: 'test-source', title: 'SOURCE_SENTINEL', publisher: 'Maintainer', url: 'https://example.org/primary?first=1&second=2', accessedAt: '2026-10-02' }],
     questions: Array.from({ length: 12 }, (_, index) => ({
-      id: `${prefix}${String(index + 1).padStart(3, '0')}`, track: trackIds[Math.floor(index / 3)], title: `Сценарий ${index + 1}`, difficulty: index % 2 ? 'advanced' : 'intermediate',
+      id: `${prefix}${String(index + 1).padStart(3, '0')}`, track: trackIds[Math.floor(index / (12 / trackIds.length))], title: `Сценарий ${index + 1}`, difficulty: index % 2 ? 'advanced' : 'intermediate',
       question: `Выберите решение ${index + 1} с учётом наблюдений.`, evidence: ['Известен факт 1.', 'Известен факт 2.'], constraints: ['Нельзя нарушать условие 1.'],
       options: ['А', 'Б', 'В', 'Г'].map((letter, option) => ({ sourceLetter: letter, text: `Вариант ${option + 1} сценария ${index + 1}`, correct: option === index % 4, explanation: `OPTION_EXPLANATION_SENTINEL_${index}_${option}` })),
       prerequisites: [{ term: 'FOUNDATION_TERM_SENTINEL', explanation: 'FOUNDATION_EXPLANATION_SENTINEL' }],
       reasoning: ['REASONING_SENTINEL_1', 'REASONING_SENTINEL_2', 'REASONING_SENTINEL_3'], tradeoffs: ['TRADEOFF_SENTINEL'], whatChangesAnswer: 'CHANGED_ASSUMPTION_SENTINEL',
-      followUps: [{ question: 'FOLLOWUP_QUESTION_SENTINEL', answer: 'FOLLOWUP_ANSWER_SENTINEL' }], references: [{ sourceId: 'test-source', locator: 'LOCATOR_SENTINEL' }]
+      followUps: [{ question: 'FOLLOWUP_QUESTION_SENTINEL', answer: 'FOLLOWUP_ANSWER_SENTINEL' }], references: [{ sourceId: 'test-source', locator: 'LOCATOR_SENTINEL' }],
+      ...(id === 'scenarios' ? { basis: { family: trackIds[Math.floor(index / 4)], identifiers: ['BASIS_IDENTIFIER_SENTINEL'] }, conceptIds: ['api'] } : {})
     }))
   };
 }
@@ -90,7 +92,7 @@ class Element {
   querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
 }
 
-async function runtime({ id = 'senior', bank = fixture(id), storage = new Map(), blocked = false, failedHttp = false, expectFailure = false, seed = 2026 } = {}) {
+async function runtime({ id = 'senior', bank = fixture(id), storage = new Map(), blocked = false, failedHttp = false, expectFailure = false, seed = 2026, banks, failedFile } = {}) {
   const nodes = new Map();
   const listeners = new Map();
   const windowListeners = new Map();
@@ -100,12 +102,18 @@ async function runtime({ id = 'senior', bank = fixture(id), storage = new Map(),
     querySelector(selector) { return nodes.get(selector) || null; },
     addEventListener(name, fn) { if (!listeners.has(name)) listeners.set(name, new Set()); listeners.get(name).add(fn); }
   };
-  const html = fs.readFileSync(path.join(root, id === 'senior' ? 'senior.html' : 'ai-security.html'), 'utf8');
+  const html = fs.readFileSync(path.join(root, `${id}.html`), 'utf8');
   for (const match of html.matchAll(/<([a-z][a-z0-9-]*)\b[^>]*\bid="([^"]+)"[^>]*>/gi)) nodes.set(`#${match[2]}`, new Element(document, match[1], { id: match[2] }));
   document.body = new Element(document, 'body');
   document.body.dataset.bank = id;
   document.activeElement = document.body;
+  const feedback = { open: false, label: '', version: '', questions: [] };
   const window = {
+    TrainerFeedback: {
+      setBank(label, version, questions) { Object.assign(feedback, { label, version, questions }); },
+      actions(id) { return `<button data-question-feedback="error" data-question-id="${htmlEsc(id)}">Сообщить об ошибке</button><button data-question-feedback="suggestion" data-question-id="${htmlEsc(id)}">Предложить улучшение</button>`; },
+      isOpen() { return feedback.open; }
+    },
     localStorage: {
       getItem(key) { if (blocked) throw new Error('Storage blocked'); return storage.get(key) ?? null; },
       setItem(key, value) { if (blocked) throw new Error('Storage blocked'); storage.set(key, value); }
@@ -119,10 +127,11 @@ async function runtime({ id = 'senior', bank = fixture(id), storage = new Map(),
   const fetched = [];
   const context = {
     document, window, console: { error(...args) { errors.push(args); } }, Math: math, URL, Map, Set, Promise,
-    fetch: async url => { fetched.push(url); return { ok: !failedHttp, status: failedHttp ? 404 : 200, json: async () => bank }; }
+    fetch: async url => { fetched.push(url); const fail = failedHttp || url === failedFile; return { ok: !fail, status: fail ? 404 : 200, json: async () => banks ? banks[url] : bank }; }
   };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(root,'glossary.js'),'utf8'),context);
+  if (id === 'all-questions') vm.runInContext(fs.readFileSync(path.join(root,'all-questions.js'),'utf8'),context);
   const expose = `  globalThis.qa = { startSession, requestStart, selectAnswer, saveNote, checkAnswer, jump, finishSession, requestFinish, goHome, resume, setMode, resetProgress, mixedIds, keyboard, render, validateBank, get: () => ({ dataset, questions, sources, tracks, signature, progress, storageAvailable, notice, confirmation }) };\n  load();\n})();`;
   assert(source.includes('  load();\n})();'), 'The harness must expose the actual trainer functions');
   vm.runInContext(source.replace('  load();\n})();', expose), context);
@@ -134,10 +143,10 @@ async function runtime({ id = 'senior', bank = fixture(id), storage = new Map(),
   } else {
     assert(context.qa.get().dataset, `Bank ${id} must load: ${errors.map(error => String(error[1])).join('; ')}`);
     assert.equal(errors.length, 0);
-    assert.deepEqual(fetched, [id === 'senior' ? './senior-questions.json' : './ai-security-questions.json']);
+    assert.deepEqual(fetched, id === 'all-questions' ? ['./questions.json', './ai-security-questions.json', './scenarios-questions.json'] : [`./${bankFiles[id]}`]);
   }
   return {
-    a: context.qa, nodes, document, storage, windowListeners,
+    a: context.qa, nodes, document, storage, windowListeners, feedback, fetched,
     html: () => nodes.get('#main').innerHTML,
     click(selector) { const element = nodes.get('#main').querySelector(selector); assert(element, `${selector} must exist`); assert(!element.disabled, `${selector} must be enabled`); element.dispatch('click'); },
     key(key, target = document.activeElement, extra = {}) { const event = { key, target, preventDefault() { this.defaultPrevented = true; }, ...extra }; for (const fn of listeners.get('keydown') || []) fn(event); return event; }
@@ -166,19 +175,25 @@ function assertHidden(run, hidden) {
   }
 }
 
-(async () => {
-  // The two public pages load their own bank and never mount the 500-question engine.
+async function main() {
+  // Each scenario page loads its own bank and never mounts the main ticket engine.
   for (const id of Object.keys(keys)) {
-    const name = id === 'senior' ? 'senior.html' : 'ai-security.html';
+    const name = `${id}.html`;
     const html = fs.readFileSync(path.join(root, name), 'utf8');
     assert(html.includes(`data-bank="${id}"`));
     assert(html.includes('src="./case-trainer.js" defer'));
     assert(!html.includes('src="./app.js"'));
     assert(html.includes('href="./style.css"') && html.includes('href="./case-trainer.css"'));
-    for (const link of ['index.html', 'senior.html', 'ai-security.html']) assert(html.includes(`href="./${link}"`));
+    for (const link of ['index.html', 'senior.html', 'ai-security.html', 'scenarios.html']) assert(html.includes(`href="./${link}"`));
     assert(html.includes('aria-describedby="dialog-message"'));
+    assert(html.includes('src="./feedback.js" defer') && html.includes('src="./glossary.js" defer'));
+    assert(html.includes('data-question-feedback="suggestion"'));
+    assert.equal((html.match(/aria-current="page"/g) || []).length, 1);
+    assert(html.includes(`href="./${id}.html" aria-current="page"`));
     assert(html.includes('id="main" tabindex="-1"'));
   }
+  const mainPage = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  assert(mainPage.includes('href="./scenarios.html"'));
   const css = fs.readFileSync(path.join(root, 'case-trainer.css'), 'utf8');
   assert(css.includes('.navigation{flex-wrap:wrap}'));
   assert(css.includes('.case-map .question-number{width:100%;height:44px}'));
@@ -347,6 +362,92 @@ function assertHidden(run, hidden) {
   assert.equal(storage.get(keys.senior), seniorSaved);
   assert.equal(storage.get(baseKey), initial500);
 
+  // MITRE/OWASP/CVE has three balanced tracks and its own storage, feedback context and review metadata.
+  const independentStorage = new Map([
+    [baseKey, 'main-progress-sentinel'], [keys.senior, 'senior-progress-sentinel'],
+    [keys['ai-security'], 'ai-progress-sentinel']
+  ]);
+  const otherProgress = [...independentStorage.entries()];
+  let scenarioRun = await runtime({ id: 'scenarios', storage: independentStorage });
+  assert(scenarioRun.html().includes('По 3–4 сценария'));
+  assert(!scenarioRun.html().includes('По 2–3 сценария'));
+  assert.equal(scenarioRun.feedback.label, 'Ситуационные задачи');
+  assert.equal(scenarioRun.feedback.questions.length, 12);
+  const bonusTracks = new Set();
+  for (let attempt = 0; attempt < 9; attempt++) {
+    const ids = scenarioRun.a.mixedIds();
+    assert.equal(new Set(ids).size, 10);
+    const counts = new Map();
+    for (const id of ids) {
+      const track = scenarioRun.a.get().questions.get(id).track;
+      counts.set(track, (counts.get(track) || 0) + 1);
+    }
+    assert.deepEqual([...counts.values()].sort(), [3, 3, 4]);
+    bonusTracks.add([...counts].find(([, count]) => count === 4)[0]);
+  }
+  assert(bonusTracks.size > 1, 'The extra case must not always belong to the first track');
+  scenarioRun.click('[data-track="mitre"]');
+  assert.equal(scenarioRun.a.get().progress.session.ids.length, 4);
+  assert(scenarioRun.a.get().progress.session.ids.every(id => scenarioRun.a.get().questions.get(id).track === 'mitre'));
+  assert(!scenarioRun.html().includes('BASIS_IDENTIFIER_SENTINEL'), 'Basis must not give away an unchecked practice answer');
+  const scenarioFirst = scenarioRun.a.get().progress.session.ids[0];
+  const reportButton = scenarioRun.nodes.get('#main').querySelector('[data-question-feedback="error"]');
+  assert.equal(reportButton.dataset.questionId, scenarioFirst);
+  scenarioRun.feedback.open = true;
+  const beforeFeedbackKeys = independentStorage.get(keys.scenarios);
+  scenarioRun.key('1', scenarioRun.document.body); scenarioRun.key('Enter', scenarioRun.document.body);
+  assert.equal(independentStorage.get(keys.scenarios), beforeFeedbackKeys, 'Feedback dialog must block quiz shortcuts');
+  scenarioRun.feedback.open = false;
+  choose(scenarioRun, false); scenarioRun.a.saveNote('Сначала проверю факты и ограничения.'); scenarioRun.a.checkAnswer();
+  assert(scenarioRun.html().includes('BASIS_IDENTIFIER_SENTINEL'));
+  assert(scenarioRun.html().includes('MITRE ATT&amp;CK'));
+  const savedScenario = plain(scenarioRun.a.get().progress.session);
+  scenarioRun = await runtime({ id: 'scenarios', storage: independentStorage });
+  assert.deepEqual(plain(scenarioRun.a.get().progress.session), savedScenario);
+  assert.equal(scenarioRun.a.get().progress.total, 1);
+  assert(scenarioRun.a.get().progress.errors.has(scenarioFirst));
+  scenarioRun.a.startSession(['sc005', 'sc009'], 'Ситуации без подсказок', 'interview');
+  choose(scenarioRun, true); scenarioRun.a.saveNote('Моё решение до просмотра источника.');
+  assertHidden(scenarioRun, true);
+  assert(!scenarioRun.html().includes('BASIS_IDENTIFIER_SENTINEL'));
+  const interviewScenario = plain(scenarioRun.a.get().progress.session);
+  scenarioRun = await runtime({ id: 'scenarios', storage: independentStorage });
+  assert.deepEqual(plain(scenarioRun.a.get().progress.session), interviewScenario);
+  assertHidden(scenarioRun, true);
+  assert(!scenarioRun.html().includes('BASIS_IDENTIFIER_SENTINEL'));
+  scenarioRun.a.finishSession();
+  assert(scenarioRun.html().includes('BASIS_IDENTIFIER_SENTINEL'));
+  assert(scenarioRun.html().includes('OWASP') && scenarioRun.html().includes('CVE'));
+  assert.equal(scenarioRun.nodes.get('#main').querySelectorAll('[data-question-feedback="error"]').length, 2);
+  const resetScenarios = scenarioRun.a.resetProgress();
+  assert(scenarioRun.nodes.get('#dialog-message').textContent.includes('Прогресс остальных банков останется'));
+  scenarioRun.nodes.get('#dialog-ok').dispatch('click'); await resetScenarios;
+  assert.equal(scenarioRun.a.get().progress.session, null);
+  assert.equal(scenarioRun.a.get().progress.total, 0);
+  for (const [key, original] of otherProgress) assert.equal(independentStorage.get(key), original, 'Scenario actions must leave all existing banks untouched');
+
+  // New metadata is mandatory only in the situational bank; original banks retain four-track validation.
+  for (const mutation of [
+    bank => { bank.tracks[2].id = 'other'; },
+    bank => { bank.tracks.push({ id: 'fourth', title: 'Лишнее направление' }); },
+    bank => { delete bank.questions[0].basis; },
+    bank => { bank.questions[0].basis.family = 'cve'; },
+    bank => { bank.questions[0].basis.identifiers = ['']; },
+    bank => { bank.questions[0].basis.identifiers = ['T0000', 'T0000']; },
+    bank => { bank.questions[0].conceptIds = []; },
+    bank => { bank.questions[0].conceptIds = ['api', 'api']; },
+    bank => { bank.questions[0].conceptIds = ['<script>']; }
+  ]) {
+    const invalid = fixture('scenarios'); mutation(invalid);
+    const untouched = new Map([[keys.scenarios, 'existing-scenario-progress']]);
+    await runtime({ id: 'scenarios', bank: invalid, storage: untouched, expectFailure: true });
+    assert.equal(untouched.get(keys.scenarios), 'existing-scenario-progress');
+  }
+  for (const id of ['senior', 'ai-security']) {
+    const invalid = fixture(id); invalid.tracks.pop();
+    await runtime({ id, bank: invalid, expectFailure: true });
+  }
+
   // Corrupt state is handled per bank. A content update preserves aggregates and known errors, but invalidates attempt ordering.
   const stateStore = new Map();
   run = await runtime({ storage: stateStore });
@@ -417,7 +518,7 @@ function assertHidden(run, hidden) {
   assert(!run.html().includes('<img src=x') && !run.html().includes('<svg onload='));
 
   // Help is independent of a case answer, including in interview mode and after a locked choice.
-  for(const id of ['senior','ai-security']) {
+  for(const id of Object.keys(keys)) {
     const vocabularyBank=fixture(id);
     vocabularyBank.questions[0].question='Как защитить API, использующий LLM и RAG?';
     vocabularyBank.questions[0].options[0].text='Проверить JSON tool call перед выполнением';
@@ -445,15 +546,20 @@ function assertHidden(run, hidden) {
   const selectedBank = process.argv.find(argument => argument.startsWith('--bank='))?.slice('--bank='.length);
   if (selectedBank) assert(Object.hasOwn(keys, selectedBank), 'Unknown --bank value');
   if (!process.argv.includes('--fixtures-only')) {
-    for (const [id, expected] of [['senior', 60], ['ai-security', 40]]) {
+    for (const [id, expected] of [['senior', 60], ['ai-security', 40], ['scenarios', 36]]) {
       if (selectedBank && selectedBank !== id) continue;
-      const filename = path.join(root, `${id === 'senior' ? 'senior-questions' : 'ai-security-questions'}.json`);
+      const filename = path.join(root, bankFiles[id]);
       assert(fs.existsSync(filename), `Published bank is missing: ${filename}`);
       const bank = JSON.parse(fs.readFileSync(filename, 'utf8'));
       const actual = await runtime({ id, bank });
       assert.equal(bank.questions.length, expected);
       assert.equal(new Set(bank.questions.map(question => question.id)).size, expected);
-      for (const track of bank.tracks) assert.equal(bank.questions.filter(question => question.track === track.id).length, expected / 4);
+      for (const track of bank.tracks) assert.equal(bank.questions.filter(question => question.track === track.id).length, expected / bank.tracks.length);
+      const actualMix = actual.a.mixedIds();
+      assert.equal(actualMix.length, 10);
+      assert.equal(new Set(actualMix).size, 10);
+      const counts = bank.tracks.map(track => actualMix.filter(questionId => actual.a.get().questions.get(questionId).track === track.id).length).sort();
+      assert.deepEqual(counts, id === 'scenarios' ? [3, 3, 4] : [2, 2, 3, 3]);
       actual.a.startSession(bank.questions.map(question => question.id), 'Весь реальный банк', 'interview');
       assert.equal(actual.a.get().progress.session.ids.length, expected);
       assert.equal(new Set(actual.a.get().progress.session.ids).size, expected);
@@ -466,5 +572,7 @@ function assertHidden(run, hidden) {
       checkedBanks.push(`${expected} ${id}`);
     }
   }
-  console.log(`Case trainer checks passed: separate storage, 3/3/2/2 mixed sets, full-bank shuffle, practice/interview visibility, notes and XSS, resume/scoring, confirmations, migrations, validation, keyboard and responsive markup${process.argv.includes('--fixtures-only') ? ' (fixtures only; published banks not checked)' : `, plus published banks: ${checkedBanks.join(', ')}`}.`);
-})().catch(error => { console.error(error); process.exitCode = 1; });
+  console.log(`Case trainer checks passed: separate storage, 3/3/2/2 and 4/3/3 mixed sets, basis visibility and feedback integration, full-bank shuffle, practice/interview visibility, notes and XSS, resume/scoring, confirmations, migrations, validation, keyboard and responsive markup${process.argv.includes('--fixtures-only') ? ' (fixtures only; published banks not checked)' : `, plus published banks: ${checkedBanks.join(', ')}`}.`);
+}
+module.exports = { runtime, fixture, choose, assertHidden, keys, plain, htmlEsc };
+if (require.main === module) main().catch(error => { console.error(error); process.exitCode = 1; });

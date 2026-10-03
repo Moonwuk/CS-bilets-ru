@@ -37,10 +37,10 @@ public final class MainActivity extends Activity {
     private static final String HOME = "https://" + HOST + "/assets/index.html";
     private static final String ABOUT = "https://" + HOST + "/assets/privacy.html";
     private static final Set<String> ASSETS = new HashSet<>(Arrays.asList(
-        "index.html", "senior.html", "ai-security.html", "privacy.html",
-        "style.css", "case-trainer.css", "feedback.css", "app.js", "case-trainer.js",
+        "index.html", "senior.html", "ai-security.html", "scenarios.html", "all-questions.html", "privacy.html",
+        "style.css", "case-trainer.css", "feedback.css", "app.js", "case-trainer.js", "all-questions.js",
         "feedback.js", "glossary.js", "android-adapter.js",
-        "questions.json", "senior-questions.json", "ai-security-questions.json"
+        "questions.json", "senior-questions.json", "ai-security-questions.json", "scenarios-questions.json"
     ));
     private WebView webView;
 
@@ -106,6 +106,8 @@ public final class MainActivity extends Activity {
         return localOrigin(uri) && ("/assets/index.html".equals(uri.getPath())
             || "/assets/privacy.html".equals(uri.getPath())
             || "/assets/senior.html".equals(uri.getPath())
+            || "/assets/scenarios.html".equals(uri.getPath())
+            || "/assets/all-questions.html".equals(uri.getPath())
             || "/assets/ai-security.html".equals(uri.getPath()));
     }
 

@@ -123,14 +123,26 @@ function choose(a,correct) {
   assert.equal(state().session.ids.length,50);assert.equal(new Set(state().session.ids).size,50);
   a.jump(49);assert.equal(state().session.index,49);assert(nodes.get('#main').innerHTML.includes('Вопрос 50 / 50'));
   a.jump(50);assert.equal(state().session.index,49,'Navigation must stop at question 50');
-  // Use the actual new UI control to start the whole bank in both verification modes.
+  // The global collection is a separate page; the internal control still starts only the basic bank.
   const allStorage=new Map();
   let randomValue=0;
   let full=await runtime(allStorage,{random:()=>randomValue});
   const fullState=()=>full.a.get();
   assert.equal(full.nodes.get('#main').querySelectorAll('[data-action="all"]').length,1);
-  assert(full.nodes.get('#main').innerHTML.includes('<h3>Все вопросы</h3><p>600 вопросов · без повторов</p>'));
+  assert(full.nodes.get('#main').innerHTML.includes('<h3>Весь базовый банк</h3><p>600 вопросов · без повторов</p>'));
+  assert(full.nodes.get('#main').innerHTML.includes('<h3>Все вопросы</h3><p>Базовый банк, защита ИИ и ситуационные задачи. Сеньор — отдельно.</p><a class="button primary" href="./all-questions.html">Открыть подборку</a>'));
+  for(const file of ['index.html','senior.html','ai-security.html','scenarios.html','all-questions.html']) {
+    const html=fs.readFileSync(path.join(root,file),'utf8');
+    assert.equal((html.match(/href="\.\/all-questions\.html"/g)||[]).length,1,`${file} must expose the global collection in navigation`);
+    const activeGlobal=/<a class="nav-item active" href="\.\/all-questions\.html" aria-current="page">Все вопросы<\/a>/.test(html);
+    assert.equal(activeGlobal,file==='all-questions.html',`${file} must identify the current bank correctly`);
+  }
+  const combinedPage=fs.readFileSync(path.join(root,'all-questions.html'),'utf8');
+  assert(combinedPage.includes('data-bank="all-questions"'));
+  assert(combinedPage.indexOf('src="./all-questions.js" defer')<combinedPage.indexOf('src="./case-trainer.js" defer'),'The aggregate loader must run before the trainer');
+  assert(combinedPage.includes('src="./all-questions.js" defer'),'The global page must load its aggregate bank loader');
   full.nodes.get('#main').querySelector('[data-action="all"]').dispatch('click');
+  assert.equal(fullState().session.title,'Весь базовый банк');
   const firstOrder=Array.from(fullState().session.ids);
   const firstAnswers=Array.from(fullState().session.orders.get(firstOrder[0]));
   assert.equal(firstOrder.length,600);assert.equal(new Set(firstOrder).size,600);
