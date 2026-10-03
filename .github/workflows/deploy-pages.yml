@@ -38,12 +38,16 @@ jobs:
           node tests/check-case-trainer.cjs
           node tests/check-scenarios.cjs
           node tests/check-all-questions.cjs
+          node --check wheel-visual.js
+          node tests/check-topic-wheel.cjs
+          node tests/check-wheel-visual.cjs
 
       - name: Prepare static site
         run: |
           mkdir -p _site
           cp index.html style.css glossary.js app.js questions.json .nojekyll \
             senior.html ai-security.html scenarios.html all-questions.html all-questions.js case-trainer.js case-trainer.css \
+            topic-wheel.html wheel-visual.js wheel-visual.css \
             senior-questions.json ai-security-questions.json scenarios-questions.json feedback.js feedback.css privacy.html _site/
 
       - name: Configure GitHub Pages

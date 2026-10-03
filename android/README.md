@@ -3,6 +3,8 @@
 Релиз 1.0.0 упаковывает текущий сайт и 600 базовых вопросов, 60 сценариев Senior, 40 сценариев по защите ИИ и 36 ситуационных задач по MITRE ATT&CK, OWASP и CVE в автономное Android-приложение.
 Общий режим «Все вопросы» — один билет на все 676 заданий базового банка, ИИ и ситуаций до первой ошибки; «Сеньор» доступен отдельно.
 
+«Барабан тем» выбирает одну из 43 тем тех же трёх банков. Тема исчезает после полного прохождения без ошибок; при ошибках остаётся в барабане. Выбранная тема, ответы и закрытые темы сохраняются локально, режим работает офлайн.
+
 Минимальная версия — Android 8.0 (API 26), целевая — Android 16 (API 36).
 Нужен системный WebView версии 100 или новее. Google Play Services не требуются.
 
@@ -28,6 +30,10 @@ Gradle, Node-зависимости, AndroidX и сервер для сборк�
     node tests/check-glossary.cjs
     node tests/check-trainer.cjs
     node tests/check-case-trainer.cjs
+    node tests/check-scenarios.cjs
+    node tests/check-all-questions.cjs
+    node tests/check-topic-wheel.cjs
+    node tests/check-wheel-visual.cjs
 
 ## Подпись релиза
 

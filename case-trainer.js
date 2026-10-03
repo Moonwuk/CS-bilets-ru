@@ -5,14 +5,19 @@
     senior: { file: './senior-questions.json', key: 'cs-bilets-ru.senior.v1', prefix: 's', trackCount: 4, label: 'Сеньор' },
     'ai-security': { file: './ai-security-questions.json', key: 'cs-bilets-ru.ai-security.v1', prefix: 'ai', trackCount: 4, label: 'Защита ИИ' },
     scenarios: { file: './scenarios-questions.json', key: 'cs-bilets-ru.scenarios.v1', prefix: 'sc', trackCount: 3, label: 'Ситуационные задачи' },
-    'all-questions': { key: 'cs-bilets-ru.all-questions.v1', prefix: '(?:q|ai|sc)', trackCount: 3, label: 'Все вопросы' }
+    'all-questions': { key: 'cs-bilets-ru.all-questions.v1', prefix: '(?:q|ai|sc)', trackCount: 3, label: 'Все вопросы' },
+    'topic-wheel': { key: 'cs-bilets-ru.topic-wheel.v1', prefix: '(?:q|ai|sc)', trackCount: 3, label: 'Барабан тем' }
   };
   const bankId = document.body.dataset.bank;
   const config = Object.prototype.hasOwnProperty.call(CONFIGS, bankId) ? CONFIGS[bankId] : null;
   const aggregate = bankId === 'all-questions';
-  const itemLabel = aggregate ? 'Вопрос' : 'Сценарий';
-  const itemsLabel = aggregate ? 'вопросов' : 'сценариев';
-  const itemsFew = aggregate ? 'вопроса' : 'сценария';
+  const wheel = bankId === 'topic-wheel';
+  const combined = aggregate || wheel;
+  const WHEEL_VERSION = 1;
+  let wheelBusy = false;
+  const itemLabel = combined ? 'Вопрос' : 'Сценарий';
+  const itemsLabel = combined ? 'вопросов' : 'сценариев';
+  const itemsFew = combined ? 'вопроса' : 'сценария';
   const CHALLENGE_VERSION = 1;
   const NOTE_LIMIT = 6000;
   const LETTERS = ['А', 'Б', 'В', 'Г'];
@@ -23,11 +28,11 @@
   const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
   const isObject = value => !!value && typeof value === 'object' && !Array.isArray(value);
   const nonempty = value => typeof value === 'string' && value.trim().length > 0;
-  const validMode = value => aggregate ? value === 'challenge' : value === 'practice' || value === 'interview';
+  const validMode = value => wheel ? value === 'topic' : aggregate ? value === 'challenge' : value === 'practice' || value === 'interview';
   const stringList = (value, minimum = 1) => Array.isArray(value) && value.length >= minimum && value.every(nonempty);
   const counter = value => Number.isSafeInteger(value) && value >= 0;
   const dateLabel = value => value.split('-').reverse().join('.');
-  const modeLabel = value => aggregate ? 'До первой ошибки' : value === 'interview' ? 'Репетиция собеседования' : 'Обучение';
+  const modeLabel = value => wheel ? 'Барабан тем' : aggregate ? 'До первой ошибки' : value === 'interview' ? 'Репетиция собеседования' : 'Обучение';
   let dataset = null;
   let questions = new Map();
   let sources = new Map();
@@ -40,7 +45,7 @@
   let loading = false;
 
   function emptyProgress() {
-    return { total: 0, correctTotal: 0, completed: 0, errors: new Set(), mode: aggregate ? 'challenge' : 'practice', view: 'home', session: null };
+    return { total: 0, correctTotal: 0, completed: 0, errors: new Set(), mode: wheel ? 'topic' : aggregate ? 'challenge' : 'practice', view: 'home', session: null, ...(wheel ? { clearedTopics: new Set(), selectedTopicId: null, pendingSpin: false } : {}) };
   }
 
   function validDate(value) {
@@ -70,13 +75,13 @@
       trackIds.add(track.id);
     }
     if (bankId === 'scenarios') require(['mitre', 'owasp', 'cve'].every(id => trackIds.has(id)), 'Не заданы направления MITRE, OWASP и CVE.');
-    if (aggregate) require(['basic', 'ai-security', 'scenarios'].every(id => trackIds.has(id)), 'Не заданы разделы общей подборки.');
+    if (combined) require(['basic', 'ai-security', 'scenarios'].every(id => trackIds.has(id)), 'Не заданы разделы общей подборки.');
     require(Array.isArray(data.sources) && data.sources.length > 0, 'В банке отсутствуют источники.');
     const sourceIds = new Set();
     const sourceById = new Map();
     for (const source of data.sources) {
       require(isObject(source) && typeof source.id === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,100}$/.test(source.id), 'Некорректный идентификатор источника.');
-      require(!sourceIds.has(source.id) && nonempty(source.title) && validUrl(source.url) && ((aggregate && source.originalBank === 'basic' && source.id.startsWith('basic:')) || (nonempty(source.publisher) && validDate(source.accessedAt))), 'Невалидный или повторяющийся источник.');
+      require(!sourceIds.has(source.id) && nonempty(source.title) && validUrl(source.url) && ((combined && source.originalBank === 'basic' && source.id.startsWith('basic:')) || (nonempty(source.publisher) && validDate(source.accessedAt))), 'Невалидный или повторяющийся источник.');
       sourceIds.add(source.id);
       sourceById.set(source.id, source);
     }
@@ -86,15 +91,15 @@
       require(isObject(question) && typeof question.id === 'string' && new RegExp(`^${config.prefix}\\d{3,5}$`).test(question.id) && !questionIds.has(question.id), 'Невалидный или повторяющийся идентификатор сценария.');
       questionIds.add(question.id);
       require(trackIds.has(question.track) && nonempty(question.title) && nonempty(question.question), 'Не заполнен сценарий или его направление.');
-      if (aggregate) {
+      if (combined) {
         const prefixes = { basic: 'q', 'ai-security': 'ai', scenarios: 'sc' };
         require(question.originalBank === question.track && question.id.startsWith(prefixes[question.track]) && question.kind === (question.track === 'basic' ? 'basic' : 'case'), 'Неверный раздел или вид вопроса общей подборки.');
       }
-      if (bankId === 'scenarios' || (aggregate && question.originalBank === 'scenarios')) {
-        require(isObject(question.basis) && question.basis.family === (aggregate ? question.originalTrack : question.track) && stringList(question.basis.identifiers) && new Set(question.basis.identifiers).size === question.basis.identifiers.length, 'Не заполнена основа ситуационной задачи.');
+      if (bankId === 'scenarios' || (combined && question.originalBank === 'scenarios')) {
+        require(isObject(question.basis) && question.basis.family === (combined ? question.originalTrack : question.track) && stringList(question.basis.identifiers) && new Set(question.basis.identifiers).size === question.basis.identifiers.length, 'Не заполнена основа ситуационной задачи.');
         require(stringList(question.conceptIds) && new Set(question.conceptIds).size === question.conceptIds.length && question.conceptIds.every(id => /^[a-z][a-z0-9-]*$/.test(id)), 'Не заполнены понятия ситуационной задачи.');
       }
-      const basic = aggregate && question.kind === 'basic';
+      const basic = combined && question.kind === 'basic';
       if (basic) {
         require(question.difficulty === undefined || ['basic', 'intermediate', 'advanced'].includes(question.difficulty), 'Неверная сложность базового вопроса.');
         require(nonempty(question.topic), 'Не указана тема базового вопроса.');
@@ -127,6 +132,7 @@
     for (const id of trackIds) require(data.questions.filter(question => question.track === id).length >= 3, 'В каждом направлении нужны хотя бы три сценария.');
     require(data.methodology === undefined || nonempty(data.methodology), 'Некорректное описание методики.');
     require(data.interviewCollections === undefined || (Array.isArray(data.interviewCollections) && data.interviewCollections.every(collection => isObject(collection) && nonempty(collection.title) && validUrl(collection.url) && (collection.note === undefined || nonempty(collection.note)) && (collection.tracks === undefined || (Array.isArray(collection.tracks) && collection.tracks.every(id => trackIds.has(id)))))), 'Некорректная подборка собеседований.');
+    if (wheel) validateTopicGroups(data, require);
     return data;
   }
 
@@ -135,7 +141,7 @@
     const text = JSON.stringify(data);
     let hash = 2166136261;
     for (let index = 0; index < text.length; index++) hash = Math.imul(hash ^ text.charCodeAt(index), 16777619);
-    return `${aggregate ? `challenge-${CHALLENGE_VERSION}-` : ''}v1-${text.length}-${(hash >>> 0).toString(16)}`;
+    return `${wheel ? `wheel-${WHEEL_VERSION}-` : aggregate ? `challenge-${CHALLENGE_VERSION}-` : ''}v1-${text.length}-${(hash >>> 0).toString(16)}`;
   }
 
   function shuffled(items) {
@@ -181,7 +187,8 @@
     }
     if (!Array.isArray(value.checked) || new Set(value.checked).size !== value.checked.length || !value.checked.every(id => ids.has(id) && has(answers, id)) || (value.mode === 'interview' && value.checked.length)) return null;
     if (aggregate && !validChallengeState(value, answers, notes)) return null;
-    return { ids: [...value.ids], title: value.title, mode: value.mode, index: value.index, orders, answers, notes, checked: new Set(value.checked), finished: value.finished, ...(aggregate ? { outcome: value.outcome } : {}) };
+    if (wheel && !validWheelSession(value, answers, notes)) return null;
+    return { ids: [...value.ids], title: value.title, mode: value.mode, index: value.index, orders, answers, notes, checked: new Set(value.checked), finished: value.finished, ...(aggregate || wheel ? { outcome: value.outcome } : {}) };
   }
 
   function restoreProgress() {
@@ -203,29 +210,35 @@
       notice = 'Правила общей попытки изменились: теперь первая ошибка завершает билет. Прежняя общая попытка и её счётчики сброшены, потому что они оценивались по другим правилам. Прогресс остальных банков сохранён.';
       return;
     }
+    if (wheel && saved.wheelVersion !== WHEEL_VERSION) { notice = 'Правила барабана обновились. Его прежний круг сброшен; прогресс остальных режимов сохранён.'; return; }
     progress.total = saved.total;
     progress.correctTotal = saved.correctTotal;
     progress.completed = saved.completed;
     progress.errors = new Set(saved.errors.filter(id => typeof id === 'string' && questions.has(id)));
-    progress.mode = validMode(saved.mode) ? saved.mode : aggregate ? 'challenge' : 'practice';
+    progress.mode = validMode(saved.mode) ? saved.mode : wheel ? 'topic' : aggregate ? 'challenge' : 'practice';
     if (saved.signature !== signature) {
+      if (wheel) { notice = 'Вопросы барабана обновились. Круг и текущая тема начаты заново; общие счётчики сохранены.'; return; }
       notice = 'Банк обновился. Общие счётчики и известные ошибки сохранены. Предыдущая попытка и её заметки сброшены, чтобы не сопоставлять ответы с изменившимися сценариями.';
       return;
+    }
+    if (wheel && !restoreWheelRound(saved)) {
+      progress = emptyProgress(); notice = 'Сохранение барабана повреждено. Начат новый круг; остальные режимы не изменены.'; return;
     }
     if (saved.session !== null && saved.session !== undefined) {
       progress.session = validateSession(saved.session);
       if (!progress.session) notice = 'Сохранённая попытка повреждена и сброшена. Общие счётчики и известные ошибки сохранены.';
       else {
-        const minimumScored = aggregate ? progress.session.checked.size : progress.session.finished ? progress.session.ids.length : progress.session.checked.size;
-        const minimumCorrect = !aggregate && progress.session.finished
+        const minimumScored = aggregate || wheel ? progress.session.checked.size : progress.session.finished ? progress.session.ids.length : progress.session.checked.size;
+        const minimumCorrect = !aggregate && !wheel && progress.session.finished
           ? progress.session.ids.filter(id => isCorrect(id)).length
           : [...progress.session.checked].filter(id => isCorrect(id)).length;
-        if (progress.total < minimumScored || progress.correctTotal < minimumCorrect || progress.total - progress.correctTotal < minimumScored - minimumCorrect || (progress.session.finished && progress.completed === 0) || (aggregate && [...progress.session.checked].some(id => isCorrect(id) === progress.errors.has(id)))) {
+        if (progress.total < minimumScored || progress.correctTotal < minimumCorrect || progress.total - progress.correctTotal < minimumScored - minimumCorrect || (progress.session.finished && progress.completed === 0) || ((aggregate || wheel) && [...progress.session.checked].some(id => isCorrect(id) === progress.errors.has(id)))) {
           progress.session = null;
           notice = 'Сохранённая попытка не согласуется со счётчиками и сброшена. Общие счётчики и известные ошибки сохранены.';
         }
       }
     }
+    if (wheel && !consistentWheelRound()) { progress = emptyProgress(); notice = 'Сохранённая тема не согласуется с кругом. Барабан начат заново; остальные режимы не изменены.'; return; }
     progress.view = saved.view === 'session' && progress.session ? 'session' : 'home';
   }
 
@@ -233,7 +246,7 @@
     if (!dataset) return;
     const session = progress.session;
     const value = {
-      version: 1, bankId, signature, ...(aggregate ? { challengeVersion: CHALLENGE_VERSION } : {}), total: progress.total, correctTotal: progress.correctTotal,
+      version: 1, bankId, signature, ...(aggregate ? { challengeVersion: CHALLENGE_VERSION } : {}), ...(wheel ? { wheelVersion: WHEEL_VERSION, clearedTopicIds: [...progress.clearedTopics], selectedTopicId: progress.selectedTopicId, pendingSpin: progress.pendingSpin } : {}), total: progress.total, correctTotal: progress.correctTotal,
       completed: progress.completed, errors: [...progress.errors], mode: progress.mode, view: progress.view,
       session: session ? { ...session, checked: [...session.checked] } : null
     };
@@ -271,6 +284,7 @@
   }
 
   function renderHome() {
+    if (wheel) return renderWheelHome();
     if (aggregate) return renderChallengeHome();
     const session = progress.session;
     const accuracy = progress.total ? `${Math.round(progress.correctTotal / progress.total * 100)}%` : '—';
@@ -305,7 +319,7 @@
 
   function deepReviewMarkup(question, order) {
     const families = { mitre: 'MITRE ATT&CK', owasp: 'OWASP', cve: 'CVE' };
-    const basis = bankId === 'scenarios' || (aggregate && question.originalBank === 'scenarios') ? `<section class="case-basis"><h3>Основа задачи</h3><p><strong>${esc(families[question.basis.family])}</strong> · ${question.basis.identifiers.map(esc).join(' · ')}</p></section>` : '';
+    const basis = bankId === 'scenarios' || (combined && question.originalBank === 'scenarios') ? `<section class="case-basis"><h3>Основа задачи</h3><p><strong>${esc(families[question.basis.family])}</strong> · ${question.basis.identifiers.map(esc).join(' · ')}</p></section>` : '';
     const options = `<section><h3>Почему выбран этот ответ</h3>${order.map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; return `<div class="case-option-reason ${option.correct ? 'best' : ''}"><strong>${LETTERS[displayIndex]}. ${termsMarkup(option.text)}</strong>${option.correct ? '<span class="case-option-status">Лучший ответ при заданных условиях</span>' : ''}<p>${termsMarkup(option.explanation)}</p></div>`; }).join('')}</section>`;
     const details = question.kind === 'basic' ? basicMetadataMarkup(question) : `
       <section><h3>Ход рассуждений</h3>${listMarkup(question.reasoning, true)}</section>
@@ -314,7 +328,7 @@
       <section><h3>Углублённые вопросы для собеседования</h3><p>Сначала попробуйте ответить вслух, затем раскройте ориентир для самопроверки.</p>${question.followUps.map(item => `<details class="case-followup"><summary>${termsMarkup(item.question)}</summary><p>${termsMarkup(item.answer)}</p></details>`).join('')}</section>
       ${foundationsMarkup(question)}`;
     const references = question.references.length ? `<ul class="case-source-list">${question.references.map(reference => { const source = sources.get(reference.sourceId); return `<li><a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>${source.publisher || reference.locator || source.accessedAt ? `<small>${[source.publisher, reference.locator].filter(Boolean).map(esc).join(' · ')}${source.accessedAt ? `<br>Проверено: <time datetime="${esc(source.accessedAt)}">${dateLabel(source.accessedAt)}</time>` : ''}</small>` : ''}</li>`; }).join('')}</ul>` : `<p>Источник: ${esc(question.documentSource)}.</p>`;
-    return `<div class="case-review">${basis}${options}${details}<section><h3>${aggregate ? 'Источники' : 'Технические источники'}</h3>${references}</section></div>`;
+    return `<div class="case-review">${basis}${options}${details}<section><h3>${combined ? 'Источники' : 'Технические источники'}</h3>${references}</section></div>`;
   }
 
   function basicMetadataMarkup(question) {
@@ -333,6 +347,7 @@
   }
 
   function renderQuiz() {
+    if (wheel) return renderWheelQuiz();
     if (aggregate) return renderChallengeQuiz();
     const session = progress.session;
     if (!session) return renderHome();
@@ -368,6 +383,7 @@
   }
 
   function renderResults() {
+    if (wheel) return renderWheelResults();
     if (aggregate) return renderChallengeResults();
     const session = progress.session;
     if (!session || !session.finished) return renderQuiz();
@@ -386,6 +402,175 @@
     if (!dataset) return;
     if (progress.view === 'session' && progress.session) renderQuiz();
     else renderHome();
+  }
+
+  function validateTopicGroups(data, require) {
+    require(Array.isArray(data.topicGroups) && data.topicGroups.length > 0, 'Нет тем для барабана.');
+    const ids = new Set(), assigned = new Set();
+    const byId = new Map(data.questions.map(question => [question.id, question]));
+    for (const group of data.topicGroups) {
+      require(isObject(group) && nonempty(group.id) && !ids.has(group.id) && nonempty(group.title) && ['basic', 'ai-security', 'scenarios'].includes(group.bankId), 'Некорректная тема барабана.');
+      require(group.id.startsWith(`${group.bankId}:`) && stringList(group.questionIds) && new Set(group.questionIds).size === group.questionIds.length, 'Некорректный состав темы.');
+      ids.add(group.id);
+      for (const id of group.questionIds) {
+        const question = byId.get(id);
+        require(question && !assigned.has(id) && question.originalBank === group.bankId, 'Вопрос повторяется или находится не в своей теме.');
+        const expected = group.bankId === 'basic' ? `basic:${encodeURIComponent(question.topic)}` : `${group.bankId}:${question.originalTrack}`;
+        require(group.id === expected && (group.bankId !== 'basic' || group.title === question.topic), 'Нарушена связь вопроса с исходной темой.');
+        assigned.add(id);
+      }
+    }
+    require(assigned.size === data.questions.length, 'Не все вопросы распределены по темам.');
+  }
+
+  function wheelGroups() { return new Map(dataset.topicGroups.map(group => [group.id, group])); }
+  function eligibleWheelTopics() { return dataset.topicGroups.filter(group => !progress.clearedTopics.has(group.id)); }
+  function wheelWon() { return dataset && progress.clearedTopics.size === dataset.topicGroups.length; }
+
+  function restoreWheelRound(saved) {
+    const known = wheelGroups();
+    if (!Array.isArray(saved.clearedTopicIds) || new Set(saved.clearedTopicIds).size !== saved.clearedTopicIds.length || !saved.clearedTopicIds.every(id => typeof id === 'string' && known.has(id))) return false;
+    if (!(saved.selectedTopicId === null || (typeof saved.selectedTopicId === 'string' && known.has(saved.selectedTopicId))) || typeof saved.pendingSpin !== 'boolean') return false;
+    const clearedIds = saved.clearedTopicIds.flatMap(id => known.get(id).questionIds);
+    if (saved.completed < saved.clearedTopicIds.length || saved.correctTotal < clearedIds.length || saved.errors.some(id => clearedIds.includes(id))) return false;
+    progress.clearedTopics = new Set(saved.clearedTopicIds);
+    progress.selectedTopicId = saved.selectedTopicId;
+    progress.pendingSpin = saved.pendingSpin;
+    return true;
+  }
+
+  function validWheelSession(value, answers, notes) {
+    const group = wheelGroups().get(progress.selectedTopicId);
+    if (!group || value.ids.length !== group.questionIds.length || !value.ids.every(id => group.questionIds.includes(id)) || ![null, 'passed', 'failed', 'stopped'].includes(value.outcome)) return false;
+    const checked = value.checked;
+    if (!checked.every((id, index) => id === value.ids[index]) || Object.keys(notes).some(id => value.ids.indexOf(id) > value.index)) return false;
+    const confirmed = checked.length;
+    const correct = checked.filter(id => questions.get(id).options[answers[id]].correct).length;
+    if (!value.finished) {
+      if (value.outcome !== null || confirmed >= value.ids.length || !(confirmed === value.index || confirmed === value.index + 1)) return false;
+      return Object.keys(answers).every(id => checked.includes(id) || id === value.ids[value.index]);
+    }
+    if (Object.keys(answers).length !== confirmed) return false;
+    if (value.outcome === 'stopped') return confirmed < value.ids.length && (value.index === confirmed || (confirmed > 0 && value.index === confirmed - 1));
+    if (confirmed !== value.ids.length || value.index !== value.ids.length - 1) return false;
+    return value.outcome === (correct === confirmed ? 'passed' : 'failed');
+  }
+
+  function consistentWheelRound() {
+    const session = progress.session;
+    if (!session) return progress.selectedTopicId === null && !progress.pendingSpin;
+    const isCleared = progress.clearedTopics.has(progress.selectedTopicId);
+    if (isCleared !== (session.finished && session.outcome === 'passed')) return false;
+    if (progress.pendingSpin && (session.finished || session.index !== 0 || session.checked.size || Object.keys(session.answers).length || Object.keys(session.notes).length)) return false;
+    return true;
+  }
+
+  async function spinWheel() {
+    if (!wheel || !dataset || wheelBusy || progress.pendingSpin || (progress.session && !progress.session.finished)) return;
+    const eligible = eligibleWheelTopics();
+    if (!eligible.length) return renderWheelHome();
+    wheelBusy = true;
+    const selected = eligible[Math.floor(Math.random() * eligible.length)];
+    const ids = shuffled(selected.questionIds);
+    const orders = Object.create(null);
+    for (const id of ids) orders[id] = shuffled([0, 1, 2, 3]);
+    progress.selectedTopicId = selected.id;
+    progress.session = { ids, title: selected.title, mode: 'topic', index: 0, orders, answers: Object.create(null), notes: Object.create(null), checked: new Set(), finished: false, outcome: null };
+    progress.pendingSpin = true;
+    progress.view = 'home';
+    const chosenSession = progress.session;
+    saveProgress(); // Commit the outcome and question order before any animation starts.
+    renderWheelHome();
+    try {
+      if (window.TrainerWheelView) await window.TrainerWheelView.animate(main.querySelector('#topic-wheel-view'), eligible.map(group => ({ id: group.id, title: group.title, count: group.questionIds.length })), selected.id);
+    } catch (_) { /* A visual failure must never redraw or discard the persisted choice. */ }
+    finally {
+      wheelBusy = false;
+      if (progress.session === chosenSession && progress.pendingSpin) {
+        progress.pendingSpin = false;
+        progress.view = 'session';
+        saveProgress(); renderWheelQuiz(); focusMain();
+        announce(`Выпала тема: ${selected.title}. Вопросов: ${ids.length}.`);
+      }
+    }
+  }
+
+  function renderWheelHome() {
+    const eligible = eligibleWheelTopics();
+    const won = wheelWon();
+    const session = progress.session;
+    const active = !!session && !session.finished;
+    const topicViews = eligible.map(group => ({ id: group.id, title: group.title, count: group.questionIds.length }));
+    main.innerHTML = `${noticeMarkup()}<header class="page-heading"><div><span class="eyebrow">Случайная тема · полный набор</span><h1>Барабан тем</h1><p class="case-intro">В этом круге ${dataset.topicGroups.length} темы и ${dataset.questions.length} вопросов. Все оставшиеся темы имеют одинаковый шанс выпадения, независимо от числа вопросов.</p></div></header>
+      <div class="case-notice"><p>Пройдите все вопросы выпавшей темы. Она исчезнет из барабана, только если все ответы верны в одной попытке.</p><p>Ошибка не прерывает тему: можно разобрать ответ и продолжить. После ошибки или остановки тема остаётся в барабане.</p></div>
+      <p class="case-summary">Пройдено без ошибок: <strong>${progress.clearedTopics.size} / ${dataset.topicGroups.length}</strong> · Осталось тем: <strong>${eligible.length}</strong></p>
+      ${won ? `<section class="result-card"><div class="result-copy"><h2>Все темы пройдены!</h2><p>В каждой теме все вопросы решены верно за одну попытку.</p><button class="button primary" data-action="new-round">Начать новый круг</button></div></section>` : `
+        ${session && !progress.pendingSpin ? `<section class="resume-card"><div><strong>${active ? 'Тема на паузе' : session.outcome === 'passed' ? 'Тема убрана из барабана' : 'Тема остаётся в барабане'}</strong><p>${esc(session.title)} · Подтверждено ответов: ${session.checked.size} из ${session.ids.length}</p></div><button class="button ${active ? 'primary' : 'secondary'}" data-action="resume">${active ? 'Продолжить тему' : 'Открыть разбор'}</button></section>` : ''}
+        <div id="topic-wheel-view">${window.TrainerWheelView ? window.TrainerWheelView.markup(topicViews) : `<ul>${topicViews.map(topic => `<li>${esc(topic.title)} · ${topic.count} вопросов</li>`).join('')}</ul>`}</div>
+        <button class="button primary" data-action="spin" ${active || wheelBusy || progress.pendingSpin ? 'disabled' : ''}>${progress.pendingSpin ? 'Барабан вращается…' : 'Крутить барабан'}</button>
+        ${active && !progress.pendingSpin ? '<p class="case-score-note">Продолжите или остановите текущую тему перед следующим вращением.</p>' : ''}`}`;
+    bindMain(); updateStats();
+  }
+
+  function renderWheelQuiz() {
+    const session = progress.session;
+    if (!session) return renderWheelHome();
+    if (session.finished) return renderWheelResults();
+    if (progress.pendingSpin) return renderWheelHome();
+    const id = session.ids[session.index], question = questions.get(id);
+    const checked = session.checked.has(id), selected = has(session.answers, id);
+    main.innerHTML = `${noticeMarkup()}<div class="quiz-top"><button class="button ghost" data-action="home">← К барабану · пауза</button><span>${esc(session.title)}</span><span class="quiz-tag">Вся тема</span></div>
+      <p class="case-progress-label" role="status">Вопрос ${session.index + 1} из ${session.ids.length} · Подтверждено: ${session.checked.size}</p>
+      <article class="question-panel" aria-labelledby="case-title"><h1 class="case-title" id="case-title" tabindex="-1">${termsMarkup(question.title)}</h1>${scenarioMarkup(question)}
+        <p class="term-help-hint">Нажмите на подчёркнутый термин — объясним простыми словами.</p>
+        <fieldset class="case-options"><legend>Выберите ответ, затем подтвердите его</legend><div class="case-option-list">${session.orders[id].map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; const chosen = selected && session.answers[id] === optionIndex; return `<div class="case-option ${chosen ? 'selected' : ''} ${checked ? `locked ${option.correct ? 'good' : chosen ? 'bad' : ''}` : ''}"><input type="radio" name="case-answer" id="answer-${optionIndex}" data-answer="${optionIndex}" value="${optionIndex}" aria-label="${LETTERS[displayIndex]}. ${esc(option.text)}" ${chosen ? 'checked' : ''} ${checked ? 'disabled' : ''}><label class="case-option-pick" for="answer-${optionIndex}" aria-hidden="true"></label><span class="case-option-copy"><strong>${LETTERS[displayIndex]}.</strong>${termsMarkup(option.text)}${checked && option.correct ? '<span class="case-option-status">Правильный ответ</span>' : ''}</span></div>`; }).join('')}</div></fieldset>
+        <div class="case-notes"><label for="reasoning-note">Мои рассуждения</label><textarea id="reasoning-note" maxlength="${NOTE_LIMIT}" rows="4">${esc(session.notes[id] || '')}</textarea></div>
+        <div class="case-actions">${checked ? '<button class="button primary" data-action="next">Следующий вопрос</button>' : `<button class="button primary" data-action="check" ${selected ? '' : 'disabled'}>Ответить</button>`}<button class="button secondary" data-action="finish">Остановить тему</button></div>
+        ${checked ? `<section class="case-feedback ${isCorrect(id) ? '' : 'is-error'}" id="case-feedback" tabindex="-1"><h2>${isCorrect(id) ? 'Верно' : 'Есть ошибка — тему можно продолжить'}</h2>${deepReviewMarkup(question, session.orders[id])}</section>` : ''}
+        ${window.TrainerFeedback?.actions(id) || ''}</article>`;
+    bindMain(); updateStats();
+  }
+
+  function nextWheelQuestion() {
+    const session = progress.session;
+    if (!wheel || !session || session.finished || progress.pendingSpin || progress.view !== 'session' || !session.checked.has(session.ids[session.index]) || session.index >= session.ids.length - 1) return;
+    session.index++; saveProgress(); renderWheelQuiz(); focusMain();
+  }
+
+  function finishWheelTopic(stopped) {
+    const session = progress.session;
+    if (!wheel || !session || session.finished || progress.pendingSpin) return;
+    if (stopped !== 'stopped' && session.checked.size !== session.ids.length) return;
+    for (const id of Object.keys(session.answers)) if (!session.checked.has(id)) delete session.answers[id];
+    const perfect = session.checked.size === session.ids.length && session.ids.every(id => isCorrect(id));
+    session.finished = true;
+    session.outcome = stopped === 'stopped' ? 'stopped' : perfect ? 'passed' : 'failed';
+    if (session.outcome === 'passed') progress.clearedTopics.add(progress.selectedTopicId);
+    progress.completed++; progress.view = 'session';
+    saveProgress(); renderWheelResults(); focusMain();
+    announce(session.outcome === 'passed' ? 'Все ответы верны. Тема убрана из барабана.' : 'Тема остаётся в барабане.');
+  }
+
+  async function requestStopWheelTopic() {
+    if (!progress.session || progress.session.finished || progress.pendingSpin) return;
+    if (await askConfirmation('Остановить тему?', 'Тема останется в барабане. Только подтверждённые ответы сохранятся в статистике. Для паузы отмените действие и вернитесь к барабану.', 'Остановить тему')) finishWheelTopic('stopped');
+  }
+
+  function renderWheelResults() {
+    const session = progress.session;
+    if (!session || !session.finished) return renderWheelQuiz();
+    const answered = [...session.checked], correct = answered.filter(id => isCorrect(id)).length;
+    main.innerHTML = `${noticeMarkup()}<header class="page-heading"><div><span class="eyebrow">Барабан тем · результат</span><h1>${wheelWon() ? 'Все темы пройдены!' : session.outcome === 'passed' ? 'Тема пройдена без ошибок' : session.outcome === 'stopped' ? 'Тема остановлена' : 'Тема завершена с ошибками'}</h1><p>${esc(session.title)}</p></div></header>
+      <section class="result-card"><div class="result-score">${correct}<span> / ${session.ids.length}</span></div><div class="result-copy"><p>${session.outcome === 'passed' ? 'Тема убрана из барабана до нового круга.' : 'Тема остаётся в барабане и может выпасть снова. Неотвеченные вопросы не считаются ошибками.'}</p><p>Убрано тем: ${progress.clearedTopics.size} из ${dataset.topicGroups.length}.</p><div class="result-actions"><button class="button primary" data-action="${wheelWon() ? 'new-round' : 'home'}">${wheelWon() ? 'Начать новый круг' : 'К барабану'}</button></div></div></section>
+      ${answered.length ? `<section><h2>Разбор подтверждённых ответов</h2><div class="case-review-list">${answered.map((id, index) => { const question = questions.get(id); return `<details class="review-item" ${id === session.ids[session.index] ? 'open' : ''}><summary>${index + 1}. ${isCorrect(id) ? 'Верно' : 'Ошибка'} · ${termsMarkup(question.title)}</summary><div class="review-body">${scenarioMarkup(question)}<p><strong>Ваш ответ:</strong> ${termsMarkup(question.options[session.answers[id]].text)}</p>${session.notes[id] ? `<div class="case-review-note">${esc(session.notes[id])}</div>` : ''}${deepReviewMarkup(question, session.orders[id])}${window.TrainerFeedback?.actions(id) || ''}</div></details>`; }).join('')}</div></section>` : ''}`;
+    bindMain(); updateStats();
+  }
+
+  async function requestNewWheelRound() {
+    if (!wheel || !wheelWon() || wheelBusy || progress.pendingSpin) return;
+    if (!await askConfirmation('Начать новый круг?', 'Все темы вернутся в барабан. Разбор последней темы заменится новым кругом; общие счётчики и прогресс других режимов сохранятся.', 'Начать круг')) return;
+    progress.clearedTopics = new Set(); progress.selectedTopicId = null; progress.session = null; progress.pendingSpin = false; progress.view = 'home';
+    notice = 'Начат новый круг барабана.'; saveProgress(); renderWheelHome(); focusMain();
   }
 
   function validChallengeState(value, answers, notes) {
@@ -479,6 +664,7 @@
   }
 
   function startSession(ids, title, mode = progress.mode) {
+    if (wheel) return false;
     if (!dataset) return false;
     if (aggregate) { ids = dataset.questions.map(question => question.id); title = 'Все вопросы'; mode = 'challenge'; }
     if (!validMode(mode)) return false;
@@ -497,7 +683,7 @@
   }
 
   async function requestStart(kind, trackId) {
-    if (!dataset || (aggregate && kind !== 'all')) return;
+    if (!dataset || wheel || (aggregate && kind !== 'all')) return;
     const previous = progress.session;
     if (previous && !previous.finished && !await askConfirmation('Начать новую попытку?', 'Новая попытка заменит текущую вместе с её заметками. Уже проверенные решения останутся в общих счётчиках; выбранные, но непроверенные ответы не будут оценены.', 'Начать новую')) return;
     if (kind === 'mixed') startSession(mixedIds(), 'Смешанная десятка');
@@ -508,9 +694,9 @@
 
   function selectAnswer(optionIndex) {
     const session = progress.session;
-    if (!session || session.finished || progress.view !== 'session' || !Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex > 3) return;
+    if (!session || session.finished || (wheel && progress.pendingSpin) || progress.view !== 'session' || !Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex > 3) return;
     const id = session.ids[session.index];
-    if (session.mode === 'practice' && session.checked.has(id)) return;
+    if ((session.mode === 'practice' || wheel) && session.checked.has(id)) return;
     session.answers[id] = optionIndex;
     saveProgress();
     renderQuiz();
@@ -519,18 +705,23 @@
 
   function saveNote(value) {
     const session = progress.session;
-    if (!session || session.finished || typeof value !== 'string') return;
+    if (!session || session.finished || (wheel && progress.pendingSpin) || typeof value !== 'string') return;
     session.notes[session.ids[session.index]] = value.slice(0, NOTE_LIMIT);
     saveProgress();
   }
 
   function checkAnswer() {
     const session = progress.session;
-    if (!session || session.finished || progress.view !== 'session' || (!aggregate && session.mode !== 'practice')) return;
+    if (!session || session.finished || (wheel && progress.pendingSpin) || progress.view !== 'session' || (!aggregate && !wheel && session.mode !== 'practice')) return;
     const id = session.ids[session.index];
     if (session.checked.has(id) || !has(session.answers, id)) return;
     recordDecision(id);
     session.checked.add(id);
+    if (wheel) {
+      if (session.checked.size === session.ids.length) return finishWheelTopic();
+      saveProgress(); renderWheelQuiz(); focusElement('#case-feedback', false);
+      announce(isCorrect(id) ? 'Верно. Можно перейти к следующему вопросу.' : 'Есть ошибка. Разберите её и продолжите тему.'); return;
+    }
     if (aggregate) {
       if (!isCorrect(id)) return finishChallenge('failed');
       if (session.checked.size === session.ids.length) return finishChallenge('passed');
@@ -548,6 +739,7 @@
   }
 
   function jump(index) {
+    if (wheel) return;
     if (aggregate) return;
     const session = progress.session;
     if (!session || session.finished || !Number.isInteger(index) || index < 0 || index >= session.ids.length) return;
@@ -560,6 +752,7 @@
   }
 
   function finishSession() {
+    if (wheel) return finishWheelTopic('stopped');
     if (aggregate) return finishChallenge('stopped');
     const session = progress.session;
     if (!session || session.finished) return;
@@ -574,6 +767,7 @@
   }
 
   async function requestFinish() {
+    if (wheel) return requestStopWheelTopic();
     const session = progress.session;
     if (!session || session.finished) return;
     if (aggregate) {
@@ -601,7 +795,7 @@
   }
 
   function setMode(value) {
-    if (aggregate || !validMode(value)) return;
+    if (wheel || aggregate || !validMode(value)) return;
     progress.mode = value;
     saveProgress();
     renderHome();
@@ -630,13 +824,14 @@
   }
 
   async function resetProgress() {
-    if (!dataset || !await askConfirmation('Сбросить прогресс этого банка?', 'Будут удалены его счётчики, ошибки, текущая или последняя попытка и заметки. Прогресс остальных банков останется.', 'Сбросить этот банк')) return;
+    if (!dataset || !await askConfirmation(wheel ? 'Сбросить прогресс барабана?' : 'Сбросить прогресс этого банка?', wheel ? 'Все пройденные темы вернутся в барабан. Будут удалены счётчики, ошибки, текущая или последняя попытка и заметки этого режима. Прогресс остальных режимов останется.' : 'Будут удалены его счётчики, ошибки, текущая или последняя попытка и заметки. Прогресс остальных банков останется.', wheel ? 'Сбросить барабан' : 'Сбросить этот банк')) return;
+    if (wheel) wheelBusy = false;
     progress = emptyProgress();
-    notice = 'Прогресс этого банка сброшен.';
+    notice = wheel ? 'Прогресс барабана сброшен. Все темы снова доступны.' : 'Прогресс этого банка сброшен.';
     saveProgress();
     renderHome();
     focusMain();
-    announce('Прогресс этого банка сброшен.');
+    announce(notice);
   }
 
   function bindMain() {
@@ -648,11 +843,13 @@
     main.querySelectorAll('[data-action]').forEach(element => element.addEventListener('click', () => {
       const session = progress.session;
       switch (element.dataset.action) {
+        case 'spin': spinWheel(); break;
+        case 'new-round': requestNewWheelRound(); break;
         case 'home': goHome(); break;
         case 'resume': resume(); break;
         case 'check': checkAnswer(); break;
         case 'previous': if (session) jump(session.index - 1); break;
-        case 'next': if (session) jump(session.index + 1); break;
+        case 'next': if (wheel) nextWheelQuestion(); else if (session) jump(session.index + 1); break;
         case 'finish': requestFinish(); break;
         case 'retry': if (session && session.finished) startSession(session.ids, session.title, session.mode); break;
         case 'repeat-wrong': if (session && session.finished) startSession(session.ids.filter(id => !isCorrect(id)), 'Работа над ошибками попытки', 'practice'); break;
@@ -675,6 +872,7 @@
     }
     if (event.key !== 'Enter' || (target && ['BUTTON', 'A', 'SUMMARY'].includes(target.tagName))) return;
     event.preventDefault();
+    if (wheel) { if (session.checked.has(session.ids[session.index])) nextWheelQuestion(); else checkAnswer(); return; }
     if (aggregate) { checkAnswer(); return; }
     const id = session.ids[session.index];
     if (session.mode === 'practice' && !session.checked.has(id)) checkAnswer();
@@ -688,9 +886,9 @@
     try {
       if (!config) throw new Error('Неизвестный банк сценариев.');
       let loaded;
-      if (aggregate) {
+      if (combined) {
         if (!window.TrainerAllQuestions) throw new Error('Загрузчик общей подборки недоступен.');
-        loaded = await window.TrainerAllQuestions.load();
+        loaded = wheel ? { ...await window.TrainerAllQuestions.load({ includeTopics: true }), id: 'topic-wheel' } : await window.TrainerAllQuestions.load();
       } else {
         const response = await fetch(config.file);
         if (!response.ok) throw new Error(`Не удалось получить файл банка: HTTP ${response.status}.`);
@@ -704,7 +902,8 @@
       tracks = new Map(data.tracks.map(track => [track.id, track]));
       signature = bankSignature(data);
       restoreProgress();
-      $('#dataset-info').textContent = `${data.questions.length} ${itemsLabel} · ${data.tracks.length} направления`;
+      if (wheel && progress.pendingSpin) { progress.pendingSpin = false; progress.view = 'session'; }
+      $('#dataset-info').textContent = wheel ? `${data.questions.length} вопросов · ${data.topicGroups.length} темы` : `${data.questions.length} ${itemsLabel} · ${data.tracks.length} направления`;
       $('#reset-progress').disabled = false;
       saveProgress();
       render();

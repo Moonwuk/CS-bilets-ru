@@ -92,7 +92,7 @@ class Element {
   querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
 }
 
-async function runtime({ id = 'senior', bank = fixture(id), storage = new Map(), blocked = false, failedHttp = false, expectFailure = false, seed = 2026, banks, failedFile } = {}) {
+async function runtime({ id = 'senior', bank = fixture(id), storage = new Map(), blocked = false, failedHttp = false, expectFailure = false, seed = 2026, banks, failedFile, wheelView } = {}) {
   const nodes = new Map();
   const listeners = new Map();
   const windowListeners = new Map();
@@ -109,6 +109,7 @@ async function runtime({ id = 'senior', bank = fixture(id), storage = new Map(),
   document.activeElement = document.body;
   const feedback = { open: false, label: '', version: '', questions: [] };
   const window = {
+    ...(wheelView ? { TrainerWheelView: wheelView } : {}),
     TrainerFeedback: {
       setBank(label, version, questions) { Object.assign(feedback, { label, version, questions }); },
       actions(id) { return `<button data-question-feedback="error" data-question-id="${htmlEsc(id)}">Сообщить об ошибке</button><button data-question-feedback="suggestion" data-question-id="${htmlEsc(id)}">Предложить улучшение</button>`; },
@@ -131,8 +132,8 @@ async function runtime({ id = 'senior', bank = fixture(id), storage = new Map(),
   };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(root,'glossary.js'),'utf8'),context);
-  if (id === 'all-questions') vm.runInContext(fs.readFileSync(path.join(root,'all-questions.js'),'utf8'),context);
-  const expose = `  globalThis.qa = { startSession, requestStart, selectAnswer, saveNote, checkAnswer, jump, finishSession, requestFinish, goHome, resume, setMode, resetProgress, mixedIds, keyboard, render, validateBank, get: () => ({ dataset, questions, sources, tracks, signature, progress, storageAvailable, notice, confirmation }) };\n  load();\n})();`;
+  if (id === 'all-questions' || id === 'topic-wheel') vm.runInContext(fs.readFileSync(path.join(root,'all-questions.js'),'utf8'),context);
+  const expose = `  globalThis.qa = { spinWheel, nextWheelQuestion, requestNewWheelRound, eligibleWheelTopics, startSession, requestStart, selectAnswer, saveNote, checkAnswer, jump, finishSession, requestFinish, goHome, resume, setMode, resetProgress, mixedIds, keyboard, render, validateBank, get: () => ({ dataset, questions, sources, tracks, signature, progress, storageAvailable, notice, confirmation }) };\n  load();\n})();`;
   assert(source.includes('  load();\n})();'), 'The harness must expose the actual trainer functions');
   vm.runInContext(source.replace('  load();\n})();', expose), context);
   await tick();
@@ -143,7 +144,7 @@ async function runtime({ id = 'senior', bank = fixture(id), storage = new Map(),
   } else {
     assert(context.qa.get().dataset, `Bank ${id} must load: ${errors.map(error => String(error[1])).join('; ')}`);
     assert.equal(errors.length, 0);
-    assert.deepEqual(fetched, id === 'all-questions' ? ['./questions.json', './ai-security-questions.json', './scenarios-questions.json'] : [`./${bankFiles[id]}`]);
+    assert.deepEqual(fetched, (id === 'all-questions' || id === 'topic-wheel') ? ['./questions.json', './ai-security-questions.json', './scenarios-questions.json'] : [`./${bankFiles[id]}`]);
   }
   return {
     a: context.qa, nodes, document, storage, windowListeners, feedback, fetched,

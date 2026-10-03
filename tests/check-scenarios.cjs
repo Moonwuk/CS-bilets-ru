@@ -63,9 +63,10 @@ assert.deepEqual(correctPositions, [9, 9, 9, 9], 'No fixed answer-position short
 assert(cves.size >= 6, 'CVE cases need a varied set of actual vulnerabilities');
 
 // The new mode must be reachable and shipped by both deployment paths.
-for (const name of ['index.html', 'senior.html', 'ai-security.html', 'scenarios.html', 'all-questions.html']) {
+for (const name of ['index.html', 'senior.html', 'ai-security.html', 'scenarios.html', 'all-questions.html', 'topic-wheel.html']) {
   const html = read(name);
   assert(html.includes('href="./scenarios.html"'), `No scenarios navigation in ${name}`);
+  assert(html.includes('href="./topic-wheel.html"'), `No topic wheel navigation in ${name}`);
 }
 const html = read('scenarios.html');
 assert(html.includes('data-bank="scenarios"') && html.includes('src="./glossary.js" defer') && html.includes('src="./feedback.js" defer'));
@@ -86,4 +87,19 @@ assert(allowlist.includes('"all-questions.html"') && allowlist.includes('"all-qu
 assert(android.includes('"/assets/all-questions.html".equals(uri.getPath())'));
 assert(allowlist.includes('"scenarios.html"') && allowlist.includes('"scenarios-questions.json"'), 'Native asset allowlist must admit the new files');
 assert(android.includes('"/assets/scenarios.html".equals(uri.getPath())'), 'Native navigation must allow the new local page');
+const wheelPage = read('topic-wheel.html');
+assert(wheelPage.includes('data-bank="topic-wheel"'));
+assert(wheelPage.indexOf('src="./all-questions.js"') < wheelPage.indexOf('src="./case-trainer.js"'));
+assert(wheelPage.indexOf('src="./wheel-visual.js"') < wheelPage.indexOf('src="./case-trainer.js"'));
+for (const name of ['topic-wheel.html', 'wheel-visual.js', 'wheel-visual.css']) {
+  assert(copy.includes(name), `Pages must ship ${name}`);
+  assert(assetLists[0].includes(name), `APK must ship ${name}`);
+  assert(allowlist.includes(`"${name}"`), `Native asset allowlist must admit ${name}`);
+}
+assert(assetLists[1].includes('topic-wheel.html'), 'APK must inject its adapter into the wheel page');
+assert(android.includes('"/assets/topic-wheel.html".equals(uri.getPath())'));
+for (const name of ['.github/workflows/deploy-pages.yml', '.github/workflows/android.yml']) {
+  assert(read(name).includes('node tests/check-topic-wheel.cjs'));
+  assert(read(name).includes('node tests/check-wheel-visual.cjs'));
+}
 console.log(`PASS: 36 original scenarios, three tracks, ${cves.size} CVEs with record + advisory references, balanced answers, all concept definitions reachable, Pages and Android packaging/navigation.`);
