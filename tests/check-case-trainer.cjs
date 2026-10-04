@@ -238,9 +238,11 @@ async function main() {
   assert.equal(run.document.activeElement.id, `answer-${wrong.index}`, 'Selecting must keep focus on a real radio');
   assert.equal(run.nodes.get('#main').querySelectorAll('[data-answer]').length, 4);
   const note = '</textarea><img src=x onerror="throw 1">\n1 2 3 4\n<script>alert(1)</script>';
-  const noteElement = run.nodes.get('#main').querySelector('#reasoning-note');
-  noteElement.value = note;
-  noteElement.dispatch('input');
+  assert(!run.html().includes('reasoning-note'), 'The question must not render a notes field');
+  assert(!run.html().includes('case-notes'), 'The notes section must not occupy space');
+  // Preserve compatibility with notes in previously saved attempts.
+  run.a.saveNote(note);
+  const noteElement = new Element(run.document, 'TEXTAREA');
   assert.equal(state().session.notes[wrong.id], note);
   const beforeKeys = plain(state().session);
   for (const key of ['1', '2', '3', '4', 'Enter']) assert(!run.key(key, noteElement).defaultPrevented);
@@ -253,7 +255,7 @@ async function main() {
   assertHidden(run, false);
   assert(!run.html().includes('<img src=x'));
   assert(!run.html().includes('<script>alert(1)</script>'));
-  assert(run.html().includes(htmlEsc(note)));
+  assert(!run.html().includes(htmlEsc(note)), 'Legacy notes are only shown in the result review');
   run.a.checkAnswer(); choose(run, true);
   assert.equal(state().total, 1);
   assert.equal(state().session.answers[wrong.id], wrong.index, 'A checked answer is locked');
