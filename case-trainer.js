@@ -257,8 +257,9 @@
 
   function updateStats() {
     $('#stat-total').textContent = progress.total;
-    $('#stat-correct').textContent = progress.correctTotal;
-    $('#stat-errors').textContent = progress.errors.size;
+    const hideWheelResults = wheel && progress.session && !progress.session.finished;
+    $('#stat-correct').textContent = hideWheelResults ? 'После темы' : progress.correctTotal;
+    $('#stat-errors').textContent = hideWheelResults ? 'После темы' : progress.errors.size;
     $('#storage-status').textContent = storageAvailable
       ? 'Текущая или последняя попытка и заметки сохраняются на этом устройстве.'
       : 'Сохранение недоступно. Новые результаты и заметки могут потеряться при закрытии страницы.';
@@ -501,7 +502,7 @@
     const active = !!session && !session.finished;
     const topicViews = eligible.map(group => ({ id: group.id, title: group.title, count: group.questionIds.length }));
     main.innerHTML = `${noticeMarkup()}<header class="page-heading"><div><span class="eyebrow">Случайная тема · полный набор</span><h1>Барабан тем</h1><p class="case-intro">В этом круге ${dataset.topicGroups.length} темы и ${dataset.questions.length} вопросов. Все оставшиеся темы имеют одинаковый шанс выпадения, независимо от числа вопросов.</p></div></header>
-      <div class="case-notice"><p>Пройдите все вопросы выпавшей темы. Она исчезнет из барабана, только если все ответы верны в одной попытке.</p><p>Ошибка не прерывает тему: можно разобрать ответ и продолжить. После ошибки или остановки тема остаётся в барабане.</p></div>
+      <div class="case-notice"><p>Пройдите все вопросы выпавшей темы. Она исчезнет из барабана, только если все ответы верны в одной попытке.</p><p>Ошибка не прерывает тему. Правильность ответов и разбор открываются только после завершения темы. Если были ошибки или тема остановлена, она остаётся в барабане.</p></div>
       <p class="case-summary">Пройдено без ошибок: <strong>${progress.clearedTopics.size} / ${dataset.topicGroups.length}</strong> · Осталось тем: <strong>${eligible.length}</strong></p>
       ${won ? `<section class="result-card"><div class="result-copy"><h2>Все темы пройдены!</h2><p>В каждой теме все вопросы решены верно за одну попытку.</p><button class="button primary" data-action="new-round">Начать новый круг</button></div></section>` : `
         ${session && !progress.pendingSpin ? `<section class="resume-card"><div><strong>${active ? 'Тема на паузе' : session.outcome === 'passed' ? 'Тема убрана из барабана' : 'Тема остаётся в барабане'}</strong><p>${esc(session.title)} · Подтверждено ответов: ${session.checked.size} из ${session.ids.length}</p></div><button class="button ${active ? 'primary' : 'secondary'}" data-action="resume">${active ? 'Продолжить тему' : 'Открыть разбор'}</button></section>` : ''}
@@ -522,9 +523,9 @@
       <p class="case-progress-label" role="status">Вопрос ${session.index + 1} из ${session.ids.length} · Подтверждено: ${session.checked.size}</p>
       <article class="question-panel" aria-labelledby="case-title"><h1 class="case-title" id="case-title" tabindex="-1">${termsMarkup(question.title)}</h1>${scenarioMarkup(question)}
         <p class="term-help-hint">Нажмите на подчёркнутый термин — объясним простыми словами.</p>
-        <fieldset class="case-options"><legend>Выберите ответ, затем подтвердите его</legend><div class="case-option-list">${session.orders[id].map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; const chosen = selected && session.answers[id] === optionIndex; return `<div class="case-option ${chosen ? 'selected' : ''} ${checked ? `locked ${option.correct ? 'good' : chosen ? 'bad' : ''}` : ''}"><input type="radio" name="case-answer" id="answer-${optionIndex}" data-answer="${optionIndex}" value="${optionIndex}" aria-label="${LETTERS[displayIndex]}. ${esc(option.text)}" ${chosen ? 'checked' : ''} ${checked ? 'disabled' : ''}><label class="case-option-pick" for="answer-${optionIndex}" aria-hidden="true"></label><span class="case-option-copy"><strong>${LETTERS[displayIndex]}.</strong>${termsMarkup(option.text)}${checked && option.correct ? '<span class="case-option-status">Правильный ответ</span>' : ''}</span></div>`; }).join('')}</div></fieldset>
+        <fieldset class="case-options"><legend>Выберите ответ, затем подтвердите его</legend><div class="case-option-list">${session.orders[id].map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; const chosen = selected && session.answers[id] === optionIndex; return `<div class="case-option ${chosen ? 'selected' : ''} ${checked ? 'locked' : ''}"><input type="radio" name="case-answer" id="answer-${optionIndex}" data-answer="${optionIndex}" value="${optionIndex}" aria-label="${LETTERS[displayIndex]}. ${esc(option.text)}" ${chosen ? 'checked' : ''} ${checked ? 'disabled' : ''}><label class="case-option-pick" for="answer-${optionIndex}" aria-hidden="true"></label><span class="case-option-copy"><strong>${LETTERS[displayIndex]}.</strong>${termsMarkup(option.text)}</span></div>`; }).join('')}</div></fieldset>
         <div class="case-actions case-actions-stacked">${checked ? '<button class="button primary" data-action="next">Следующий вопрос</button>' : `<button class="button primary" data-action="check" ${selected ? '' : 'disabled'}>Ответить</button>`}<button class="button secondary" data-action="finish">Остановить тему</button></div>
-        ${checked ? `<section class="case-feedback ${isCorrect(id) ? '' : 'is-error'}" id="case-feedback" tabindex="-1"><h2>${isCorrect(id) ? 'Верно' : 'Есть ошибка — тему можно продолжить'}</h2>${deepReviewMarkup(question, session.orders[id])}</section>` : ''}
+        ${checked ? '<p class="case-score-note">Ответ принят. Результаты и разбор появятся после завершения темы.</p>' : ''}
         ${window.TrainerFeedback?.actions(id) || ''}</article>`;
     bindMain(); updateStats();
   }
@@ -716,8 +717,8 @@
     session.checked.add(id);
     if (wheel) {
       if (session.checked.size === session.ids.length) return finishWheelTopic();
-      saveProgress(); renderWheelQuiz(); focusElement('#case-feedback', false);
-      announce(isCorrect(id) ? 'Верно. Можно перейти к следующему вопросу.' : 'Есть ошибка. Разберите её и продолжите тему.'); return;
+      saveProgress(); renderWheelQuiz(); focusElement('[data-action="next"]');
+      announce('Ответ принят. Можно перейти к следующему вопросу. Результаты — после завершения темы.'); return;
     }
     if (aggregate) {
       if (!isCorrect(id)) return finishChallenge('failed');
