@@ -17,6 +17,15 @@ const immediateView = { markup: topics => `<div data-wheel-count="${topics.lengt
 const boot = options => runtime({ id: 'topic-wheel', banks, wheelView: immediateView, ...options });
 const confirm = (run, correct) => { choose(run, correct); run.click('[data-action="check"]'); };
 const othersIntact = storage => { for (const [key, value] of oldValues) assert.equal(storage.get(key), value); };
+function assertHiddenResults(run) {
+  assert(!run.html().includes('class="case-review"'));
+  assert(!run.html().includes('id="case-feedback"'));
+  assert(!run.html().includes('Правильный ответ'));
+  assert(!/locked (good|bad)/.test(run.html()));
+  assert.equal(run.nodes.get('#stat-correct').textContent, 'После темы');
+  assert.equal(run.nodes.get('#stat-errors').textContent, 'После темы');
+  assert(!/Верно|Есть ошибка|Неверный/.test(run.nodes.get('#announcement').textContent));
+}
 async function finishPerfect(run) {
   while (!state(run).session.finished) {
     confirm(run, true);
@@ -102,8 +111,7 @@ function deferredView() {
   assert.equal(state(run).session.checked.size, 1);
   assert.equal(state(run).errors.has(firstId), true);
   assert.equal(state(run).clearedTopics.size, 0);
-  assert(run.html().includes('Есть ошибка — тему можно продолжить'));
-  assert(run.html().includes('class="case-review"'));
+  assertHiddenResults(run);
   choose(run, true); run.a.checkAnswer();
   assert.equal(state(run).session.answers[firstId], firstWrong);
   assert.equal(state(run).total, 1);
@@ -117,11 +125,13 @@ function deferredView() {
   const pauseSnapshot = plain(state(run).session);
   const selectedTopic = state(run).selectedTopicId;
   run.a.goHome();
+  assertHiddenResults(run);
   assert(run.nodes.get('#main').querySelector('[data-action="spin"]').disabled);
   await run.a.spinWheel(); assert.equal(state(run).selectedTopicId, selectedTopic);
   run = await boot({ storage });
   assert.deepEqual(plain(state(run).session), pauseSnapshot);
   assert.equal(state(run).view, 'home');
+  assertHiddenResults(run);
   run.click('[data-action="resume"]');
   run.click('[data-action="check"]');
   if (!state(run).session.finished) run.click('[data-action="next"]');
@@ -198,7 +208,8 @@ function deferredView() {
         privacySeen.add(id);
       }
       confirm(run, true); confirmedThisRound++;
-      if (privacyIds.has(id)) {
+      if (!state(run).session.finished) assertHiddenResults(run);
+      if (privacyIds.has(id) && state(run).session.finished) {
         const text = textOnly(run.html());
         for (const option of question.options) assert(text.includes(htmlEsc(option.explanation)));
         for (const ref of question.references) assert(run.html().includes(htmlEsc(run.a.get().sources.get(ref.sourceId).url)));
@@ -212,6 +223,8 @@ function deferredView() {
       }
     }
     assert.equal(state(run).session.outcome, 'passed');
+    assert(run.html().includes('class="case-review"'));
+    assert.equal(run.nodes.get('#stat-correct').textContent, state(run).correctTotal);
     assert.equal(state(run).clearedTopics.size, before + 1);
     assert(state(run).clearedTopics.has(topicId));
     clearedOrder.add(topicId);
