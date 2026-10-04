@@ -101,7 +101,7 @@ function choose(a,correct) {
   assert.equal(Number(nodes.get('#ticket-count').textContent),12);
   assert.equal(Number(nodes.get('#topic-count').textContent),36);
   assert(nodes.get('#dataset-info').textContent.includes('600 вопросов · 36 тем'));
-  assert.equal(nodes.get('#main').querySelectorAll('[data-ticket]').length,12);
+  assert.equal(nodes.get('#main').querySelectorAll('[data-ticket]').length,0);
   assert(fs.readFileSync(path.join(root,'index.html'),'utf8').includes('600 вопросов'));
   for(const topic of data.topics){
     const counts=Array.from(state().tickets,ticket=>ticket.filter(id=>state().bank.get(id).topic===topic).length);
@@ -123,6 +123,17 @@ function choose(a,correct) {
   assert.equal(state().session.ids.length,50);assert.equal(new Set(state().session.ids).size,50);
   a.jump(49);assert.equal(state().session.index,49);assert(nodes.get('#main').innerHTML.includes('Вопрос 50 / 50'));
   a.jump(50);assert.equal(state().session.index,49,'Navigation must stop at question 50');
+  // Random size is persisted and a fresh 20-question session has unique IDs.
+  const shortRun=await runtime();
+  shortRun.nodes.get('#main').querySelector('[data-size="20"]').dispatch('click');
+  shortRun.nodes.get('#main').querySelector('[data-action="random"]').dispatch('click');
+  assert.equal(shortRun.a.get().session.ids.length,20);
+  assert.equal(new Set(shortRun.a.get().session.ids).size,20);
+  assert.equal(JSON.parse(shortRun.storage.get(key)).randomSize,20);
+  const resumedShort=await runtime(shortRun.storage);
+  assert.equal(resumedShort.a.get().session.ids.length,20);
+  await resumedShort.a.navigate('tickets');
+  assert(resumedShort.nodes.get('#main').innerHTML.includes('data-size="20" aria-pressed="true"'));
   // The global collection is a separate page; the internal control still starts only the basic bank.
   const allStorage=new Map();
   let randomValue=0;
@@ -285,7 +296,7 @@ function choose(a,correct) {
   }
 
   // New topic buttons and the last numbered ticket use the dynamic bank, with the same existing controls.
-  await a.navigate('tickets');nodes.get('#main').querySelector('[data-ticket="11"]').dispatch('click');
+  await a.navigate('tickets');a.startSession(a.get().tickets[11],'Сохранённый билет',11);
   assert.equal(state().session.ticket,11);assert.equal(state().session.ids.length,50);
   await a.navigate('topics');assert.equal(nodes.get('#main').querySelectorAll('[data-topic]').length,36);
   nodes.get('#main').querySelector('[data-mode="practice"]').dispatch('click');

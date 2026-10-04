@@ -19,14 +19,7 @@
   <div class="app-shell">
     <aside class="sidebar" aria-label="Навигация">
       <a class="brand" href="./index.html"><span class="brand-mark" aria-hidden="true">ИБ</span><span>Тренажёр<span class="brand-sub">Ситуационные задачи</span></span></a>
-      <nav class="navigation" aria-label="Банки вопросов">
-        <a class="nav-item" href="./topic-wheel.html">Барабан тем</a>
-        <a class="nav-item" href="./all-questions.html">Все вопросы</a>
-        <a class="nav-item" href="./index.html">Базовые билеты</a>
-        <a class="nav-item" href="./senior.html">Сеньор</a>
-        <a class="nav-item" href="./ai-security.html">Защита ИИ</a>
-        <a class="nav-item active" href="./scenarios.html" aria-current="page">Ситуационные задачи</a>
-      </nav>
+<details class="mode-menu" open><summary>Режимы <span>Ситуационные задачи</span></summary><div class="mode-menu-content"><nav class="navigation primary-navigation" aria-label="Базовая подготовка"><a class="nav-item" href="./index.html">Случайный билет</a></nav><nav class="navigation" aria-label="Практика"><span class="nav-group-label">Практика</span><a class="nav-item active" href="./scenarios.html" aria-current="page">Ситуационные задачи</a><a class="nav-item" href="./ai-security.html">Защита ИИ</a><a class="nav-item" href="./senior.html">Сеньор</a></nav><nav class="navigation" aria-label="Испытания"><span class="nav-group-label">Испытания</span><a class="nav-item" href="./topic-wheel.html">Барабан тем</a><a class="nav-item" href="./all-questions.html">Все вопросы</a></nav></div></details>
       <div class="session-stats">
         <span class="sidebar-label">Прогресс этого банка</span>
         <div class="stat-row"><span>Проверено решений</span><strong id="stat-total">0</strong></div>
@@ -39,7 +32,7 @@
     <div class="workspace">
       <header class="topbar"><span>Ситуации · MITRE / OWASP / CVE</span><span class="dataset-info" id="dataset-info">Загружаем банк…</span></header>
       <main id="main" tabindex="-1"><div class="loading" role="status">Загружаем сценарии…</div></main>
-      <footer class="footer"><span id="storage-status" role="status">Прогресс сохраняется на этом устройстве.</span><button class="button ghost" id="reset-progress" disabled>Сбросить этот банк</button><button type="button" class="footer-feedback" data-question-feedback="suggestion">Предложения</button><a href="./privacy.html">О приложении и данных</a></footer>
+      <footer class="footer"><span id="storage-status" role="status">Прогресс сохраняется на этом устройстве.</span><details class="progress-settings"><summary>Управление прогрессом</summary><button class="button ghost" id="reset-progress" disabled>Сбросить этот банк</button></details><button type="button" class="footer-feedback" data-question-feedback="suggestion">Предложения</button><a href="./privacy.html">О приложении и данных</a></footer>
     </div>
   </div>
   <dialog id="term-dialog" class="term-dialog" aria-labelledby="term-title" aria-describedby="term-description">
@@ -52,5 +45,17 @@
     <div class="dialog-actions"><button class="button secondary" id="dialog-cancel" autofocus>Отмена</button><button class="button primary" id="dialog-ok">Подтвердить</button></div>
   </dialog>
   <div class="sr-only" id="announcement" aria-live="polite" aria-atomic="true"></div>
+  <script>
+    (() => {
+      const menu = document.querySelector('.mode-menu');
+      const mobile = matchMedia('(max-width: 800px)');
+      const syncMenu = () => { menu.open = !mobile.matches; };
+      syncMenu();
+      mobile.addEventListener('change', syncMenu);
+      menu.addEventListener('click', event => {
+        if (mobile.matches && event.target.closest('[data-page]')) menu.open = false;
+      });
+    })();
+  </script>
 </body>
 </html>
