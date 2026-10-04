@@ -21,7 +21,7 @@
 .case-prompt{white-space:pre-line;overflow-wrap:anywhere;font-size:1.025rem;line-height:1.8}
 .case-context{display:grid;gap:1rem;margin:1.2rem 0}
 .case-context section{padding:.9rem 1rem;background:#f6f8fc;border-left:3px solid #b8cbed;border-radius:0 8px 8px 0;min-width:0}
-.case-context h3,.case-foundations h3,.case-notes label{font-size:.9375rem;font-weight:700}
+.case-context h3,.case-foundations h3{font-size:.9375rem;font-weight:700}
 .case-context ul,.case-review ul,.case-review ol{margin:.5rem 0 0;padding-left:1.3rem}
 .case-context li,.case-review li{margin:.45rem 0;white-space:pre-line;overflow-wrap:anywhere}
 .case-context li{font-size:.9375rem}
@@ -46,11 +46,6 @@
 .case-option-copy strong{display:inline-block;margin-right:.4rem;font-size:.875rem}
 .case-option-status{display:block;font-size:.8125rem;font-weight:650;margin-top:.35rem;color:var(--green)}
 .case-option.bad .case-option-status{color:var(--red)}
-.case-notes{margin:1.3rem 0 0}
-.case-notes label{display:block}
-.case-notes p{font-size:.8125rem;color:var(--muted);margin:.35rem 0 .65rem;line-height:1.65}
-.case-notes textarea{display:block;width:100%;min-height:136px;max-height:65vh;resize:vertical;padding:.85rem;border:1px solid #b8c7db;border-radius:8px;font:inherit;font-size:.9375rem;line-height:1.7;background:#fff;color:var(--ink)}
-.case-notes textarea:focus-visible{outline:3px solid #5685f8;outline-offset:3px}
 .case-feedback{margin-top:1.5rem;padding-top:1.3rem;border-top:2px solid var(--line);outline:none}
 .case-feedback>h2{font-size:1.125rem;margin-bottom:.5rem;color:var(--green)}
 .case-feedback.is-error>h2{color:var(--red)}
@@ -90,6 +85,10 @@
 .case-actions .action-right{margin-left:auto}
 @media(max-width:1150px){.case-layout{grid-template-columns:minmax(0,1fr) 140px;gap:1rem}.case-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.case-choice-grid>.ticket-card:last-child{grid-column:1/-1}.case-map .question-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:800px){.navigation{flex-wrap:wrap}.nav-item{min-height:44px;min-width:110px}.case-layout{display:flex;flex-direction:column}.case-layout>.question-panel{width:100%}.case-layout .quiz-map{position:static;order:0;width:100%;display:block}.case-map .question-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr))}.case-map .question-number{width:100%;height:44px}.case-map .quiz-map-title,.case-map .quiz-progress{display:block}.case-map .button{width:auto;padding:.7rem 1rem}.case-title{font-size:1.35rem}.topbar{height:auto;min-height:51px;gap:.5rem;flex-wrap:wrap;padding-top:.65rem;padding-bottom:.65rem}.case-review-list>details>summary{padding:.9rem 1rem}.case-review-list .review-body{padding:0 1rem 1.1rem}}
-@media(max-width:520px){.case-choice-grid{grid-template-columns:minmax(0,1fr)}.case-choice-grid>.ticket-card:last-child{grid-column:auto}.case-title{font-size:1.25rem}.case-prompt{font-size:.975rem}.case-option{padding:.8rem;gap:.6rem;font-size:.9375rem}.case-context section{padding:.8rem}.case-context li{font-size:.875rem}.case-actions>.button,.case-actions .action-right>.button{flex:1}.case-actions .action-right{width:100%;justify-content:stretch}.case-summary{gap:.5rem 1rem}.case-mode-help{font-size:.8125rem}.case-mode-switch button{white-space:normal}.case-review{font-size:.9rem}.case-notes textarea{min-height:150px}.case-review-state{display:block}.case-source-list{padding-left:1.1rem!important}}
+@media(max-width:520px){.case-choice-grid{grid-template-columns:minmax(0,1fr)}.case-choice-grid>.ticket-card:last-child{grid-column:auto}.case-title{font-size:1.25rem}.case-prompt{font-size:.975rem}.case-option{padding:.8rem;gap:.6rem;font-size:.9375rem}.case-context section{padding:.8rem}.case-context li{font-size:.875rem}.case-actions>.button,.case-actions .action-right>.button{flex:1}.case-actions .action-right{width:100%;justify-content:stretch}.case-summary{gap:.5rem 1rem}.case-mode-help{font-size:.8125rem}.case-mode-switch button{white-space:normal}.case-review{font-size:.9rem}.case-review-state{display:block}.case-source-list{padding-left:1.1rem!important}}
 
 .case-option-pick{position:absolute;inset:0;z-index:0;border-radius:inherit;cursor:inherit}.case-option-copy .term-trigger{pointer-events:auto}.case-term-hint{margin:1rem 0 -.5rem}
+
+/* Keep the primary topic action above the secondary stop action at every width. */
+.case-actions-stacked{flex-direction:column;align-items:stretch;flex-wrap:nowrap}
+.case-actions-stacked>.button{width:100%;flex:none;min-height:44px}
