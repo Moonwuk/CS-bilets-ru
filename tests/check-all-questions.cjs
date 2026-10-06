@@ -36,7 +36,7 @@ function assertTerminalLocked(run) {
 }
 
 (async () => {
-  assert.equal(count, 676);
+  assert.equal(count, 816);
   assert.equal(tinyCount, 24);
   const html = fs.readFileSync(path.join(root, 'all-questions.html'), 'utf8');
   assert(html.includes('data-bank="all-questions"'));
@@ -55,7 +55,7 @@ function assertTerminalLocked(run) {
   assert(run.html().includes('data-start="all"'));
   for (const attribute of ['data-mode=', 'data-track=', 'data-start="mixed"', 'data-start="mistakes"']) assert(!run.html().includes(attribute));
   assert(run.html().includes(`Начать все ${count} вопросов`));
-  for (const [track, expected] of Object.entries({ basic: 600, 'ai-security': 40, scenarios: 36 })) assert.equal(run.a.get().dataset.questions.filter(q => q.track === track).length, expected);
+  for (const [track, expected] of Object.entries({ basic: 740, 'ai-security': 40, scenarios: 36 })) assert.equal(run.a.get().dataset.questions.filter(q => q.track === track).length, expected);
 
   // No duplicated content or invented case material in the aggregate adapter.
   for (const original of originals) {
