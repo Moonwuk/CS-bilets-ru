@@ -549,6 +549,25 @@ async function main() {
   const selectedBank = process.argv.find(argument => argument.startsWith('--bank='))?.slice('--bank='.length);
   if (selectedBank) assert(Object.hasOwn(keys, selectedBank), 'Unknown --bank value');
   if (!process.argv.includes('--fixtures-only')) {
+    // Reproduce the reported OpenSSL question with the real renderer, dictionary and bank.
+    const cveBank = JSON.parse(fs.readFileSync(path.join(root, 'scenarios-questions.json'), 'utf8'));
+    const cveRun = await runtime({ id: 'scenarios', bank: cveBank });
+    cveRun.a.startSession(['sc027'], 'Справка CVE', 'interview');
+    const main = cveRun.nodes.get('#main');
+    const cveLauncher = main.querySelector('[data-term="cve-2022-3602"]');
+    assert(cveLauncher, 'The full CVE in sc027 must be clickable before answering');
+    const before = cveRun.storage.get(keys.scenarios);
+    main.dispatch('click', { target: cveLauncher });
+    assert(cveRun.nodes.get('#term-dialog').open);
+    assert.equal(cveRun.nodes.get('#term-title').textContent, 'CVE-2022-3602 — ошибка проверки сертификатов OpenSSL');
+    assert(cveRun.nodes.get('#term-description').textContent.includes('X.509'));
+    cveRun.key('1'); cveRun.key('Enter');
+    assert.equal(cveRun.storage.get(keys.scenarios), before, 'CVE help must not choose, submit or change progress');
+    assert(!cveRun.html().includes('case-basis'), 'Opening CVE help must not reveal the question review');
+    cveRun.nodes.get('#term-close').dispatch('click');
+    choose(cveRun, true); cveRun.a.finishSession();
+    const basis = cveRun.html().match(/<section class="case-basis">[\s\S]*?<\/section>/)?.[0];
+    assert(basis?.includes('data-term="cve-2022-3602"'), 'CVE help must also be reachable in the review basis');
     for (const [id, expected] of [['senior', 60], ['ai-security', 40], ['scenarios', 36]]) {
       if (selectedBank && selectedBank !== id) continue;
       const filename = path.join(root, bankFiles[id]);
