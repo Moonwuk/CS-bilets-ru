@@ -106,6 +106,31 @@ assert.deepEqual(termIds('OAuth state, code_challenge, code_verifier, DPoP'), ['
 assert.deepEqual(termIds('Software Supply Chain Failures и Software or Data Integrity Failures'), ['supply-chain-failures','software-integrity-failures']);
 assert.deepEqual(termIds('Публичные ключи, цифровую подпись, приватным ключом'), ['public-key','digital-signature','private-key']);
 
+// A full CVE must open its specific advisory summary, including in the original reported question.
+assert.deepEqual(termIds('(CVE-2022-3602), cve-2023-38545; CVE'), ['cve-2022-3602', 'cve-2023-38545', 'cve']);
+assert.deepEqual(termIds('Log4Shell (CVE-2021-44228) и Heartbleed (CVE-2014-0160)'), ['cve-2021-44228', 'cve-2021-44228', 'cve-2014-0160', 'cve-2014-0160']);
+assert.deepEqual(termIds('https://example.org/CVE-2022-3602'), [], 'CVE identifiers inside source URLs remain unchanged');
+assert(!termIds('CVE-2022-36020').includes('cve-2022-3602'), 'Do not explain a different CVE by matching a shorter prefix');
+const collectStrings = value => typeof value === 'string' ? [value] : value && typeof value === 'object' ? Object.values(value).flatMap(collectStrings) : [];
+const explainedCves = new Set();
+for (const file of ['questions.json', 'senior-questions.json', 'ai-security-questions.json', 'scenarios-questions.json']) {
+  const questions = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8')).questions;
+  for (const q of questions) {
+    const visible = collectStrings([q.title, q.question, q.evidence, q.constraints, q.options, q.prerequisites, q.reasoning, q.tradeoffs, q.whatChangesAnswer, q.followUps, q.basis?.identifiers]);
+    for (const text of visible) {
+      const markup = help.markup(text);
+      for (const identifier of text.match(/\bCVE-\d{4}-\d{4,}\b/g) || []) {
+        const id = identifier.toLowerCase();
+        const term = context.entries.get(id);
+        assert(term && term.title.startsWith(identifier), `Specific CVE help missing in ${q.id}: ${identifier}`);
+        assert(markup.includes(`data-term="${id}"`) && markup.includes(`>${identifier}</button>`), `Full identifier must be clickable in ${q.id}: ${identifier}`);
+        explainedCves.add(id);
+      }
+    }
+  }
+}
+assert.equal(explainedCves.size, 11);
+
 const launcher = new Element();
 launcher.dataset = { term: 'csp-nonce' };
 launcher.closest = selector => selector === '[data-term]' ? launcher : null;
@@ -126,6 +151,13 @@ assert(!help.isOpen() && launcher.focused, 'Escape dismissal restores focus');
 main.dispatch('click', { target: launcher });
 nodes.get('#term-close').dispatch('click');
 assert(!help.isOpen(), 'Close control dismisses the dialog');
+launcher.dataset.term = 'cve-2022-3602';
+main.dispatch('click', { target: launcher });
+assert(help.isOpen());
+assert.equal(nodes.get('#term-title').textContent, context.entries.get('cve-2022-3602').title);
+assert.equal(nodes.get('#term-description').textContent, context.entries.get('cve-2022-3602').description, 'CVE click opens the specific vulnerability explanation');
+assert.equal(nodes.get('#term-example').textContent, context.entries.get('cve-2022-3602').example);
+nodes.get('#term-close').dispatch('click');
 nodes.get('#confirm-dialog').open = true;
 main.dispatch('click', { target: launcher });
 assert(!help.isOpen(), 'Do not open help over a confirmation dialog');

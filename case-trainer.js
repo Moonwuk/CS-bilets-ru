@@ -320,7 +320,7 @@
 
   function deepReviewMarkup(question, order) {
     const families = { mitre: 'MITRE ATT&CK', owasp: 'OWASP', cve: 'CVE' };
-    const basis = bankId === 'scenarios' || (combined && question.originalBank === 'scenarios') ? `<section class="case-basis"><h3>Основа задачи</h3><p><strong>${esc(families[question.basis.family])}</strong> · ${question.basis.identifiers.map(esc).join(' · ')}</p></section>` : '';
+    const basis = bankId === 'scenarios' || (combined && question.originalBank === 'scenarios') ? `<section class="case-basis"><h3>Основа задачи</h3><p><strong>${esc(families[question.basis.family])}</strong> · ${question.basis.identifiers.map(termsMarkup).join(' · ')}</p></section>` : '';
     const options = `<section><h3>Почему выбран этот ответ</h3>${order.map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; return `<div class="case-option-reason ${option.correct ? 'best' : ''}"><strong>${LETTERS[displayIndex]}. ${termsMarkup(option.text)}</strong>${option.correct ? '<span class="case-option-status">Лучший ответ при заданных условиях</span>' : ''}<p>${termsMarkup(option.explanation)}</p></div>`; }).join('')}</section>`;
     const details = question.kind === 'basic' ? basicMetadataMarkup(question) : `
       <section><h3>Ход рассуждений</h3>${listMarkup(question.reasoning, true)}</section>
