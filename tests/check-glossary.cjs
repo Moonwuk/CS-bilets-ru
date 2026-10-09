@@ -81,8 +81,8 @@ for (const [index, q] of toolQuestions.entries()) {
 // Imported questions remain in the existing aggregate bank, with reachable vocabulary help.
 const expansion = bank.questions.filter(q => q.importBatch === 'jwt-owasp-2025');
 assert.equal(expansion.length, 140);
-assert.equal(bank.questions.length, 740);
-assert.equal(bank.topics.length, 40);
+assert.equal(bank.questions.length, 840);
+assert.equal(bank.topics.length, 44);
 assert.deepEqual(expansion.map(q => q.sourceQuestionNumber), Array.from({length: 140}, (_, i) => i + 1));
 assert.deepEqual(expansion.map(q => q.id), Array.from({length: 140}, (_, i) => `q${601 + i}`));
 const newTopics = new Map([['JWT и проверка токенов',27],['OAuth и жизненный цикл токенов',19],['PKI и сертификаты',19],['Архитектура безопасности',16]]);
@@ -100,6 +100,32 @@ for (const q of expansion) {
   const visible = new Set([q.question, ...q.options.map(o => o.text)].flatMap(termIds));
   for (const id of q.conceptIds) assert(context.entries.has(id) && visible.has(id), `Unreachable concept ${q.id}: ${id}`);
 }
+// Research expansion: all new questions remain attributable, distinct and explainable before answering.
+const research = bank.questions.filter(q => q.researchBatch === 'interview-expansion-2026-10');
+assert.equal(research.length, 100);
+assert.deepEqual(research.map(q => q.id), Array.from({length: 100}, (_, i) => `q${741+i}`));
+assert.equal(new Set(research.map(q => q.learningObjective)).size, 100);
+assert.deepEqual([0,1,2,3].map(i => research.filter(q => q.options[i].correct).length), [25,25,25,25]);
+for (const q of research) {
+  assert.equal(q.reviewedAt, '2026-10-10');
+  assert.equal(q.origin, 'authored');
+  assert(bank.topics.includes(q.topic));
+  assert(q.sourceIds.length && q.sourceIds.every(id => sourceIds.has(id)), `Missing source ${q.id}`);
+  assert.equal(q.options.length, 4);
+  assert.equal(new Set(q.options.map(o => o.text.toLowerCase())).size, 4);
+  assert.equal(q.options.filter(o => o.correct).length, 1);
+  assert(q.options.every(o => o.text.trim() && o.explanation.trim()), `Missing reasoning ${q.id}`);
+  assert.equal(new Set(q.options.map(o => o.explanation)).size, 4, `Repeated option rationale ${q.id}`);
+  assert(q.conceptIds.length, `Missing vocabulary ${q.id}`);
+  const visible = new Set([q.question, ...q.options.map(o => o.text)].flatMap(termIds));
+  for (const id of q.conceptIds) assert(context.entries.has(id) && visible.has(id), `Unreachable concept ${q.id}: ${id}`);
+}
+assert.deepEqual(termIds('SAML-утверждение, IdP, AudienceRestriction'), ['saml-assertion','idp','audience-restriction']);
+const reportedSaml = bank.questions.find(q => q.id === 'q387');
+for (const id of ['saml-assertion','idp','audience-restriction']) assert(termIds(reportedSaml.question).includes(id));
+assert.deepEqual(termIds('scope проверки, OAuth scope'), ['scope-testing','oauth','oauth-scope']);
+assert(bank.questions.find(q => q.id === 'q671').question.includes('почт'));
+
 // Avoid confusing overlapping protocol names and long OWASP category names.
 assert.deepEqual(termIds('JWT JWS JWE JWKS'), ['jwt','jws','jwe','jwks']);
 assert.deepEqual(termIds('OAuth state, code_challenge, code_verifier, DPoP'), ['oauth-state','code-challenge','code-verifier','dpop']);
@@ -168,4 +194,4 @@ for (const page of ['index.html', 'senior.html', 'ai-security.html', 'scenarios.
   assert(html.includes('id="term-dialog"') && html.includes('aria-describedby="term-description"'));
 }
 assert(fs.readFileSync(path.join(root, '.github/workflows/deploy-pages.yml'), 'utf8').includes('style.css glossary.js app.js'), 'Pages must include the shared dictionary');
-console.log(`PASS: ${context.entries.size} plain-language definitions, all aliases, 100 tools + 140 imported questions with clickable concept coverage and valid sources, phrase priority, word boundaries, safe markup, dialog dismissal/focus and six-page publication.`);
+console.log(`PASS: ${context.entries.size} plain-language definitions, all aliases, 100 tools + 140 imported + 100 research questions with clickable concept coverage and valid sources, phrase priority, word boundaries, safe markup, dialog dismissal/focus and six-page publication.`);

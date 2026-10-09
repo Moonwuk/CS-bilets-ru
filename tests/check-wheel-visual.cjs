@@ -43,7 +43,7 @@ function runtime(topics, reducedMotion = false) {
   await empty.view.animate(empty.container, [], null);
   assert.equal(empty.timers.size, 0);
 
-  for (const count of [1, 2, 47]) {
+  for (const count of [1, 2, 51]) {
     const topics = Array.from({length: count}, (_, index) => ({id: `topic-${index}`, title: `Тема ${index + 1}`, count: index + 1}));
     const r = runtime(topics);
     const markup = r.view.markup(topics);
@@ -115,5 +115,5 @@ function runtime(topics, reducedMotion = false) {
   await assert.rejects(() => escaped.view.animate(escaped.container, [...topics].reverse(), 'last'), /does not match/);
   assert.equal(escaped.timers.size, 0);
 
-  console.log('PASS: wheel geometry for every sector at 1/2/47 topics, zero topics, repeated spins, escaped labels/IDs, uniform-outcome separation, reduced motion, transition completion/cancellation and bounded fallback.');
+  console.log('PASS: wheel geometry for every sector at 1/2/51 topics, zero topics, repeated spins, escaped labels/IDs, uniform-outcome separation, reduced motion, transition completion/cancellation and bounded fallback.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

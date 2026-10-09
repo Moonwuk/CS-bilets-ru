@@ -40,7 +40,11 @@
     "Инструменты: данные и восстановление",
     "Инструменты: облака и контейнеры",
     "Инструменты: проверка защитных мер",
-    "Инструменты: защита ИИ"
+    "Инструменты: защита ИИ",
+    "Почтовая безопасность",
+    "Windows и Active Directory",
+    "Браузерные механизмы и валидация",
+    "Журналы и автоматизация анализа"
   ],
   "questions": [
     {
@@ -853,13 +857,13 @@
           "sourceLetter": "Б",
           "text": "Аутентификация — «кто вы?» (identity); авторизация — «что вам разрешено?» (permissions)",
           "correct": true,
-          "explanation": "Authn: логин/пароль, биометрия, сертификат — подтверждает личность. Authz: RBAC, ABAC, ACL — определяет, что разрешено. Порядок: сначала аутентификация, потом авторизация."
+          "explanation": "Аутентификация проверяет заявленную личность по паролю, ключу или другому доказательству. Авторизация проверяет разрешение на действие. Для личного кабинета обычно сначала выполняют вход; публичные ресурсы могут разрешать доступ анонимному посетителю."
         },
         {
           "sourceLetter": "В",
           "text": "Авторизация всегда происходит до аутентификации",
           "correct": false,
-          "explanation": "Авторизация невозможна без аутентификации: нельзя определить, что разрешено субъекту, не зная, кто он. Порядок всегда: authn → authz."
+          "explanation": "Универсального порядка для всех запросов нет. При входе в личный кабинет обычно сначала подтверждают личность, затем проверяют права. Для публичной страницы правило доступа может разрешать чтение без входа."
         },
         {
           "sourceLetter": "Г",
@@ -868,7 +872,10 @@
           "explanation": "Аутентификацию проходят и люди (логин/пароль), и системы (mTLS, API keys, service accounts). Авторизация аналогично применяется к обеим сторонам."
         }
       ],
-      "origin": "document"
+      "origin": "document",
+      "sourceIds": [
+        "expand-authorization"
+      ]
     },
     {
       "id": "q024",
@@ -28482,45 +28489,44 @@
       "id": "q671",
       "topic": "Аутентификация и доступ",
       "number": 25,
-      "question": "Чем authentication отличается от authorization?",
+      "question": "Пользователь вошёл несколько часов назад и теперь меняет почту для восстановления аккаунта. Какую дополнительную проверку следует выполнить перед сохранением, чтобы одной украденной cookie сессии было недостаточно?",
       "origin": "authored",
-      "difficulty": "basic",
+      "difficulty": "intermediate",
       "certifications": [],
       "sourceIds": [
-        "expand-authorization",
-        "tools-threat-modeling"
+        "auth-sensitive-reauthentication"
       ],
       "importBatch": "jwt-owasp-2025",
       "sourceQuestionNumber": 71,
       "options": [
         {
-          "text": "Ничем",
+          "text": "Проверить только, что cookie сессии ещё действует",
           "correct": false,
-          "explanation": "Неверно. Аутентификация проверяет заявленную идентичность, авторизация — разрешение на действие. Успешный вход сам по себе не даёт права читать любой объект или менять любые настройки.",
+          "explanation": "Срок действия показывает, что сервер пока принимает сессию, но не доказывает присутствие владельца. Украденная действующая cookie пройдёт ту же проверку.",
           "sourceLetter": "А"
         },
         {
-          "text": "Authorization всегда происходит первым",
+          "text": "Отправить код только на новый адрес почты",
           "correct": false,
-          "explanation": "Неверно. Аутентификация проверяет заявленную идентичность, авторизация — разрешение на действие. Успешный вход сам по себе не даёт права читать любой объект или менять любые настройки.",
+          "explanation": "Новый адрес может принадлежать атакующему, который управляет украденной сессией. Код подтверждает доступ к этому адресу, но не личность владельца исходного аккаунта.",
           "sourceLetter": "Б"
         },
         {
-          "text": "Authentication устанавливает, кто субъект; authorization определяет, что ему разрешено",
+          "text": "Потребовать повторную аутентификацию уже привязанным средством входа",
           "correct": true,
-          "explanation": "Верно. Аутентификация проверяет заявленную идентичность, авторизация — разрешение на действие. Успешный вход сам по себе не даёт права читать любой объект или менять любые настройки.",
+          "explanation": "Повторная проверка ранее привязанным средством входа, например текущим паролем или ключом доступа, требует большего, чем владение cookie. Она дополняет проверку прав, подтверждение нового адреса и защиту от CSRF.",
           "sourceLetter": "В"
         },
         {
-          "text": "Authentication относится только к firewall",
+          "text": "Обновить срок действия cookie и записать смену почты в журнал",
           "correct": false,
-          "explanation": "Неверно. Аутентификация проверяет заявленную идентичность, авторизация — разрешение на действие. Успешный вход сам по себе не даёт права читать любой объект или менять любые настройки.",
+          "explanation": "Продление сессии сохраняет доступ тому, кто ею владеет, а журнал помогает расследовать событие уже после него. Эти меры не подтверждают личность перед изменением адреса восстановления.",
           "sourceLetter": "Г"
         }
       ],
       "conceptIds": [
-        "authentication",
-        "authorization"
+        "cookie",
+        "authentication"
       ]
     },
     {
@@ -31696,6 +31702,4413 @@
         "antivirus",
         "malware-signature"
       ]
+    },
+    {
+      "id": "q741",
+      "topic": "Почтовая безопасность",
+      "question": "В письме From: billing@shop.example, а SMTP MAIL FROM: bounce@mailer.example. Получатель выполняет SPF для MAIL FROM. Какой домен определяет проверяемую SPF-политику?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-spf"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "SPF проверяет SMTP-идентичность",
+      "options": [
+        {
+          "text": "mailer.example",
+          "correct": true,
+          "explanation": "В заданном обмене SPF проверяет право IP отправителя использовать домен SMTP MAIL FROM.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "shop.example",
+          "correct": false,
+          "explanation": "Видимый From относится к автору письма. Его связь с проверенным доменом отдельно учитывает DMARC.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Домен из Subject",
+          "correct": false,
+          "explanation": "Тема письма не задаёт SPF-политику и может содержать произвольный текст.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Домен получателя",
+          "correct": false,
+          "explanation": "Получатель выполняет проверку, но SPF-запись принадлежит проверяемому домену отправителя.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 1,
+      "conceptIds": [
+        "smtp-mail-from",
+        "spf"
+      ]
+    },
+    {
+      "id": "q742",
+      "topic": "Почтовая безопасность",
+      "question": "Письмо прошло DKIM для d=notice.example. Какой вывод непосредственно поддерживает эта проверка?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-dkim"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Граница гарантии DKIM",
+      "options": [
+        {
+          "text": "Письмо зашифровано для получателя",
+          "correct": false,
+          "explanation": "DKIM обеспечивает проверку подписи, а не шифрование содержимого.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Подписанные части согласуются с подписью домена notice.example",
+          "correct": true,
+          "explanation": "DKIM связывает подписанные данные с доменом подписанта; оценка содержания письма остаётся отдельной задачей.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Вложение гарантированно безопасно",
+          "correct": false,
+          "explanation": "Вредоносное письмо тоже может быть корректно подписано собственным или скомпрометированным доменом.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Автор — сотрудник с указанным именем",
+          "correct": false,
+          "explanation": "Подпись домена не удостоверяет произвольное отображаемое имя человека.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 2,
+      "conceptIds": [
+        "dkim"
+      ]
+    },
+    {
+      "id": "q743",
+      "topic": "Почтовая безопасность",
+      "question": "У письма From: user@company.example. SPF прошёл для sender.other.example, DKIM прошёл для d=other.example. Эти домены не согласованы с company.example. Каков результат DMARC для этого письма?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-dmarc"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Согласование доменов DMARC",
+      "options": [
+        {
+          "text": "Pass, потому что имя user совпадает",
+          "correct": false,
+          "explanation": "DMARC сопоставляет домены, а не локальную часть почтового адреса.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Результат определяется только темой письма",
+          "correct": false,
+          "explanation": "Текст темы не устанавливает согласование доменов.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Fail: нет успешно проверенного согласованного домена",
+          "correct": true,
+          "explanation": "Для DMARC нужен успешный SPF или DKIM с требуемым согласованием с доменом From.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Pass, потому что есть любые два успешных результата",
+          "correct": false,
+          "explanation": "Два успеха для посторонних доменов не подтверждают использование домена видимого автора.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 3,
+      "conceptIds": [
+        "spf",
+        "dkim",
+        "dmarc"
+      ]
+    },
+    {
+      "id": "q744",
+      "topic": "Почтовая безопасность",
+      "question": "При пересылке SPF перестал проходить. DKIM-подпись сохранилась и прошла проверку; её домен согласован с From по действующей политике. Других ошибок DMARC нет. Какой результат возможен?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-dmarc",
+        "research-dkim"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Пересылка и сохранённая DKIM-подпись",
+      "options": [
+        {
+          "text": "DMARC всегда fail при любом SPF fail",
+          "correct": false,
+          "explanation": "Неудача одного механизма не отменяет успешный второй при нужном согласовании.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "DKIM нужно игнорировать после любой пересылки",
+          "correct": false,
+          "explanation": "Пересылка может повредить подпись, но в условии прямо указано, что проверка прошла.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "SPF автоматически становится pass",
+          "correct": false,
+          "explanation": "DKIM не меняет самостоятельный результат SPF-проверки.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "DMARC pass за счёт согласованного DKIM",
+          "correct": true,
+          "explanation": "Успешного согласованного механизма достаточно; DMARC не требует одновременного успеха SPF и DKIM.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 4,
+      "conceptIds": [
+        "spf",
+        "dkim",
+        "dmarc"
+      ]
+    },
+    {
+      "id": "q745",
+      "topic": "Почтовая безопасность",
+      "question": "Список рассылки добавил рекламный текст внутрь полностью подписанного DKIM тела письма. Изменение не устраняется каноникализацией; новой подписи нет. Почему исходная проверка может завершиться ошибкой?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-dkim"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Изменение подписанного тела",
+      "options": [
+        {
+          "text": "Хеш полученного тела отличается от подписанного",
+          "correct": true,
+          "explanation": "При данных условиях изменились именно проверяемые байты тела, поэтому прежняя подпись им не соответствует.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "DKIM разрешает максимум одного получателя",
+          "correct": false,
+          "explanation": "Количество адресатов само по себе не является причиной такой ошибки.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "DKIM требует неизменного IP на каждом переходе",
+          "correct": false,
+          "explanation": "DKIM проверяет подписанные данные, а не постоянство транспортного IP.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "У получателя отсутствует приватный ключ отправителя",
+          "correct": false,
+          "explanation": "Для проверки используют публичный ключ; приватный ключ получателю не нужен.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 5,
+      "conceptIds": [
+        "dkim",
+        "hash",
+        "ip",
+        "private-key"
+      ]
+    },
+    {
+      "id": "q746",
+      "topic": "Почтовая безопасность",
+      "question": "Во входящем письме есть Authentication-Results: dmarc=pass, добавленный неизвестным внешним сервером. Собственный шлюз ещё не проверил письмо. Что делать с этим заголовком?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-auth-results"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Доверенная граница Authentication-Results",
+      "options": [
+        {
+          "text": "Заменить им все результаты локального шлюза",
+          "correct": false,
+          "explanation": "Непроверенные внешние данные не должны отменять собственную проверку.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Не считать его доверенным результатом без проверки происхождения",
+          "correct": true,
+          "explanation": "Результаты аутентификации имеют смысл внутри определённой границы доверия; внешнюю строку можно подделать.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Сразу пометить письмо проверенным",
+          "correct": false,
+          "explanation": "Само наличие текста dmarc=pass не подтверждает, кто и как провёл проверку.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Разрешить его только при наличии слова internal",
+          "correct": false,
+          "explanation": "Отправитель может вписать это слово; оно не устанавливает доверенное происхождение.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 6,
+      "conceptIds": [
+        "authentication-results",
+        "dmarc"
+      ]
+    },
+    {
+      "id": "q747",
+      "topic": "Почтовая безопасность",
+      "question": "Для домена опубликовано DMARC p=none. Письмо не прошло DMARC. Какую политику обработки запрашивает владелец домена именно этой записью?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-dmarc"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "DMARC p=none не требует отклонения",
+      "options": [
+        {
+          "text": "Обязательно доставить письмо в основной ящик",
+          "correct": false,
+          "explanation": "Локальные правила получателя продолжают действовать и могут заблокировать письмо по другим основаниям.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Признать SPF и DKIM успешными",
+          "correct": false,
+          "explanation": "Политика обработки не переписывает результаты технических проверок.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Не применять специальное отклонение или карантин по DMARC-политике",
+          "correct": true,
+          "explanation": "Режим none подходит для наблюдения; получатель может отдельно применять антиспам и другие локальные правила.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Обязательно удалить письмо без уведомления",
+          "correct": false,
+          "explanation": "none не является запросом обязательного удаления.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 7,
+      "conceptIds": [
+        "dmarc",
+        "spf",
+        "dkim",
+        "file-quarantine"
+      ]
+    },
+    {
+      "id": "q748",
+      "topic": "Почтовая безопасность",
+      "question": "Письмо «Генеральный директор» <ceo@unrelated.example> успешно прошло DMARC своего домена unrelated.example. Оно просит срочный перевод денег. Что следует из DMARC pass?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-dmarc"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Подмена отображаемого имени",
+      "options": [
+        {
+          "text": "Подтверждена должность отправителя в нашей компании",
+          "correct": false,
+          "explanation": "DMARC не проверяет кадровые данные и отображаемое имя.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Согласование платежа можно пропустить",
+          "correct": false,
+          "explanation": "Техническая проверка почты не заменяет установленное подтверждение финансовой операции.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Этот домен обязательно принадлежит нашей компании",
+          "correct": false,
+          "explanation": "Успех проверки собственного домена не устанавливает связь с организацией получателя.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Проверен домен письма, но не должность из отображаемого имени",
+          "correct": true,
+          "explanation": "Отправитель может честно подтвердить свой домен и при этом представляться другим человеком.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 8,
+      "conceptIds": [
+        "dmarc"
+      ]
+    },
+    {
+      "id": "q749",
+      "topic": "Почтовая безопасность",
+      "question": "При вычислении SPF записи с цепочками include достигнут установленный RFC 7208 предел в 10 механизмов и модификаторов, вызывающих DNS-поиски. Следующий такой механизм нужен для результата. Что должен учитывать администратор?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-spf"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Ограничение DNS-запросов SPF",
+      "options": [
+        {
+          "text": "Превышение лимита приводит к permerror, запись нужно упростить",
+          "correct": true,
+          "explanation": "Ограничение относится к учитываемым поискам в ходе проверки, включая вложенные include и redirect.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Вложенные include не входят в лимит",
+          "correct": false,
+          "explanation": "Их выполнение участвует в общем ограничении, иначе предел было бы легко обойти.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Получатель обязан продолжать до любого конечного результата",
+          "correct": false,
+          "explanation": "Неограниченное продолжение противоречит защите ресурсов при SPF-проверке.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нужно добавить ещё один независимый SPF TXT",
+          "correct": false,
+          "explanation": "Несколько SPF-записей для одного имени сами создают ошибку вместо обхода лимита.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 9,
+      "conceptIds": [
+        "spf",
+        "dns"
+      ]
+    },
+    {
+      "id": "q750",
+      "topic": "Почтовая безопасность",
+      "question": "Новую почту подписывают DKIM-селектором s2. Часть ранее отправленных писем с s1 ещё доставляется. Зачем на переходный период сохранять публичную запись s1?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-dkim"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Селектор DKIM и смена ключа",
+      "options": [
+        {
+          "text": "Чтобы старый ключ никогда нельзя было отозвать",
+          "correct": false,
+          "explanation": "Переходное сохранение не отменяет отзыв при компрометации и установленную политику ротации.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Чтобы получатели могли проверить ещё доставляемые подписи s1",
+          "correct": true,
+          "explanation": "Селектор указывает DNS-имя ключа. Удаление старой записи мешает проверке писем со старой подписью.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Чтобы отправлять получателям старый приватный ключ",
+          "correct": false,
+          "explanation": "В DNS публикуется публичный ключ, а не секрет подписи.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Чтобы все старые подписи автоматически сменились на s2",
+          "correct": false,
+          "explanation": "Селектор входит в данные подписи; получатель не переподписывает письмо.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 10,
+      "conceptIds": [
+        "dkim",
+        "private-key"
+      ]
+    },
+    {
+      "id": "q751",
+      "topic": "Windows и Active Directory",
+      "question": "В Kerberos клиент ещё не имеет TGT, но хочет получить билет к файловой службе. Какая нормальная последовательность обменов соответствует этому состоянию?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-kerberos"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Различие AS и TGS обменов",
+      "options": [
+        {
+          "text": "Сначала получить сертификат TLS вместо TGT",
+          "correct": false,
+          "explanation": "TLS-сертификат не является заменой билетов в указанном Kerberos-обмене.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Передать один TGT как билет любой файловой службе",
+          "correct": false,
+          "explanation": "TGT предназначен для службы выдачи билетов, а не для произвольной прикладной службы.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Сначала получить TGT у AS, затем сервисный билет у TGS",
+          "correct": true,
+          "explanation": "Служба аутентификации выдаёт TGT; он используется при запросе билета к конкретной службе.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Сначала отправить файловой службе пароль администратора",
+          "correct": false,
+          "explanation": "Обычный Kerberos не требует передачи административного пароля файловому серверу.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 1,
+      "conceptIds": [
+        "kerberos",
+        "tgt",
+        "tls"
+      ]
+    },
+    {
+      "id": "q752",
+      "topic": "Windows и Active Directory",
+      "question": "В AD Kerberos-клиент обращается к HTTP/app.corp.example. Для диагностики ищут владельца этого SPN. Что устанавливает такая регистрация?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-spn"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "SPN связывает имя службы и учётную запись",
+      "options": [
+        {
+          "text": "Список всех пользователей с правом читать любой документ",
+          "correct": false,
+          "explanation": "SPN не заменяет прикладные правила доступа к объектам.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "IP всех будущих клиентов приложения",
+          "correct": false,
+          "explanation": "SPN обозначает службу, а не реестр клиентских адресов.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Пароль службы в открытом DNS",
+          "correct": false,
+          "explanation": "SPN не публикует пароль службы в DNS.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Учётную запись, под которой представлена указанная служба",
+          "correct": true,
+          "explanation": "SPN связывает экземпляр службы с учётной записью, нужной для обработки Kerberos-билетов.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 2,
+      "conceptIds": [
+        "active-directory",
+        "kerberos",
+        "http",
+        "spn",
+        "ip",
+        "dns"
+      ]
+    },
+    {
+      "id": "q753",
+      "topic": "Windows и Active Directory",
+      "question": "Один и тот же SPN по ошибке зарегистрирован у двух разных служебных учётных записей AD. Kerberos-вход к приложению стал нестабильным. Что следует исправить прежде всего?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-spn"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Повторяющийся SPN",
+      "options": [
+        {
+          "text": "Установить правильного владельца и устранить дублирование SPN",
+          "correct": true,
+          "explanation": "Неоднозначная привязка имени службы мешает корректно определить учётную запись для билета.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Выдать всем пользователям права администратора домена",
+          "correct": false,
+          "explanation": "Расширение прав не устраняет неоднозначность имени службы и увеличивает риск.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Сделать пароли всех пользователей одинаковыми",
+          "correct": false,
+          "explanation": "Пароли пользователей не исправляют регистрацию службы; одинаковые пароли опасны.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Отключить проверку прав на документы",
+          "correct": false,
+          "explanation": "Прикладная авторизация не исправляет структуру SPN в каталоге.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 3,
+      "conceptIds": [
+        "spn",
+        "active-directory",
+        "kerberos"
+      ]
+    },
+    {
+      "id": "q754",
+      "topic": "Windows и Active Directory",
+      "question": "Сервер Kerberos получил точную повторную копию уже принятого AP-REQ с тем же аутентификатором. Часы исправны, кеш повторов работает. Какое поведение ожидается?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-kerberos"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Защита Kerberos от повтора",
+      "options": [
+        {
+          "text": "Опубликовать ключ службы для дополнительной проверки",
+          "correct": false,
+          "explanation": "Ключ службы должен оставаться защищённым; его публикация не является проверкой повтора.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Отклонить повтор по replay cache",
+          "correct": true,
+          "explanation": "Аутентификатор и кеш повторов помогают отличать новое предъявление от воспроизведения захваченного сообщения.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Обязательно принять, пока билет не истёк",
+          "correct": false,
+          "explanation": "Срок билета не разрешает повторно использовать один и тот же аутентификатор.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Удалить учётную запись клиента из AD",
+          "correct": false,
+          "explanation": "Отклонение сообщения само по себе не требует удаления учётной записи.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 4,
+      "conceptIds": [
+        "kerberos",
+        "replay",
+        "active-directory"
+      ]
+    },
+    {
+      "id": "q755",
+      "topic": "Windows и Active Directory",
+      "question": "Kerberos-вход перестал работать после сильного сбоя часов клиента. Пароль и SPN не менялись, отказ указывает на clock skew. Какое действие адресует причину?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-kerberos"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Рассинхронизация времени Kerberos",
+      "options": [
+        {
+          "text": "Открыть все сетевые порты для интернета",
+          "correct": false,
+          "explanation": "Указанная причина относится к времени, а не к необходимости публичного доступа.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Выдать пользователю больше файловых разрешений",
+          "correct": false,
+          "explanation": "Дополнительные права не исправляют временную проверку аутентификации.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Восстановить доверенную синхронизацию времени и повторить вход",
+          "correct": true,
+          "explanation": "Временные проверки участвуют в защите Kerberos; неверные часы могут нарушить допустимое окно.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Неограниченно увеличить допустимое временное окно",
+          "correct": false,
+          "explanation": "Это маскирует сбой и ослабляет ограничения повторного использования сообщений.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 5,
+      "conceptIds": [
+        "kerberos",
+        "spn",
+        "clock-skew",
+        "time-window"
+      ]
+    },
+    {
+      "id": "q756",
+      "topic": "Windows и Active Directory",
+      "question": "В журнале контроллера домена успешное событие 4769 для файловой службы. Можно ли только по нему утверждать, что пользователь прочитал секретный файл?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-event4769"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Выдача билета не доказывает чтение файла",
+      "options": [
+        {
+          "text": "Да, успешная выдача билета означает чтение всех файлов",
+          "correct": false,
+          "explanation": "Билет позволяет участвовать в аутентификации, но не доказывает последующие операции.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да, если билет выдан ночью",
+          "correct": false,
+          "explanation": "Время повышает интерес к проверке, но не создаёт отсутствующее доказательство чтения.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет, потому что 4769 относится только к DNS",
+          "correct": false,
+          "explanation": "Это событие Kerberos, а не журнал DNS-запросов.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет, требуется свидетельство обращения и доступа на самой службе",
+          "correct": true,
+          "explanation": "4769 сообщает о запросе сервисного билета. Выдача билета и чтение конкретного объекта — разные события.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 6,
+      "conceptIds": [
+        "dns"
+      ]
+    },
+    {
+      "id": "q757",
+      "topic": "Windows и Active Directory",
+      "question": "Для SASL-сеанса LDAP включена подпись сообщений, но не шифрование. Какое свойство добавляет подпись сама по себе?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-ldap-sign"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "LDAP signing и конфиденциальность",
+      "options": [
+        {
+          "text": "Проверку целостности и подлинности сообщений",
+          "correct": true,
+          "explanation": "Подпись помогает обнаружить изменение и проверить происхождение в сеансе; скрытие содержимого требует шифрования.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Скрытие всех атрибутов от наблюдателя",
+          "correct": false,
+          "explanation": "Целостность и конфиденциальность различаются; подпись не обязана скрывать данные.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Разрешение читать все объекты каталога",
+          "correct": false,
+          "explanation": "Проверка сообщения не меняет назначенные права доступа.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Автоматическую ротацию паролей служб",
+          "correct": false,
+          "explanation": "Управление паролями не является функцией подписи LDAP-сообщений.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 7,
+      "conceptIds": [
+        "ldap",
+        "integrity"
+      ]
+    },
+    {
+      "id": "q758",
+      "topic": "Windows и Active Directory",
+      "question": "LDAP использует TLS и поддерживаемую аутентификацию с channel binding. Какую дополнительную связь проверяет этот механизм?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-ldap-binding"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "LDAP channel binding",
+      "options": [
+        {
+          "text": "Неизменность IP клиента на протяжении всей жизни аккаунта",
+          "correct": false,
+          "explanation": "Channel binding не превращает IP в постоянную идентичность пользователя.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Связь аутентификации с конкретным защищённым каналом",
+          "correct": true,
+          "explanation": "Привязка помогает противодействовать переносу аутентификации на другой TLS-канал при ретрансляции.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Равенство паролей клиента и сервера",
+          "correct": false,
+          "explanation": "Механизм не требует одинаковых паролей у участников.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Принадлежность всех объектов каталога одной группе",
+          "correct": false,
+          "explanation": "Структура объектов и групп не определяет привязку канала.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 8,
+      "conceptIds": [
+        "ldap",
+        "tls",
+        "authentication",
+        "channel-binding",
+        "ip"
+      ]
+    },
+    {
+      "id": "q759",
+      "topic": "Windows и Active Directory",
+      "question": "Служба работает под gMSA. Автоматическая смена пароля настроена, но читать управляемый пароль разрешено слишком многим компьютерам. Что нужно сузить?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-gmsa"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Граница доступа к секрету gMSA",
+      "options": [
+        {
+          "text": "Число пользователей, видящих иконку приложения",
+          "correct": false,
+          "explanation": "Видимость интерфейса не определяет права узлов на секрет gMSA.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Период хранения журналов до нуля",
+          "correct": false,
+          "explanation": "Удаление журналов ухудшает расследование и не исправляет доступ к паролю.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Набор узлов, которым разрешено получать управляемый пароль",
+          "correct": true,
+          "explanation": "Автоматическая ротация не компенсирует лишний доступ к актуальному секрету служебной учётной записи.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Только длину названия службы",
+          "correct": false,
+          "explanation": "Имя службы не ограничивает получение её учётных данных.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 9,
+      "conceptIds": [
+        "gmsa"
+      ]
+    },
+    {
+      "id": "q760",
+      "topic": "Windows и Active Directory",
+      "question": "Приложение поддерживает gMSA и должно читать одну папку на файловом сервере. Как назначить права этой учётной записи?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-gmsa"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Принцип минимальных прав для службы",
+      "options": [
+        {
+          "text": "Обязательно включить в Domain Admins",
+          "correct": false,
+          "explanation": "gMSA не требует административных прав домена для любой работы.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Разрешить запись во все общие папки на случай обновлений",
+          "correct": false,
+          "explanation": "Потенциальная будущая потребность не обосновывает постоянные избыточные права.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Считать, что gMSA автоматически ограничивает доступ одной папкой",
+          "correct": false,
+          "explanation": "Тип учётной записи не знает прикладные требования к доступу без настройки.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Дать необходимое чтение папки без общих административных ролей",
+          "correct": true,
+          "explanation": "Управляемый секрет решает жизненный цикл пароля; минимальные полномочия службы всё равно настраиваются отдельно.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 10,
+      "conceptIds": [
+        "gmsa"
+      ]
+    },
+    {
+      "id": "q761",
+      "topic": "Браузерные механизмы и валидация",
+      "question": "Скрипт берёт настройки из window.config. Пользовательский HTML очищают от script, но разрешают элементы с произвольными id и name. Почему этого может быть недостаточно?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-dom-clobbering"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Именованные элементы DOM и неявные глобальные переменные",
+      "options": [
+        {
+          "text": "Именованный элемент может повлиять на поиск свойства config",
+          "correct": true,
+          "explanation": "DOM clobbering использует доступ к элементам по имени и может подменить ожидаемый объект без собственного script.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Любой id автоматически даёт серверные права",
+          "correct": false,
+          "explanation": "Имена элементов влияют на браузерный контекст, а не назначают серверные роли.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Удаление script всегда запрещает любые изменения DOM",
+          "correct": false,
+          "explanation": "Остальные разрешённые элементы продолжают формировать DOM.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "window.config защищён подписью браузера",
+          "correct": false,
+          "explanation": "Обычное свойство window не получает криптографическую защиту.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 1,
+      "conceptIds": [
+        "html",
+        "dom"
+      ]
+    },
+    {
+      "id": "q762",
+      "topic": "Браузерные механизмы и валидация",
+      "question": "При разборе DOM clobbering нашли, что конфигурация должна приходить только из собственного кода, но читается через неявную глобальную переменную. Как исправить эту зависимость?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-dom-clobbering"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Устранение неявной зависимости от DOM-имён",
+      "options": [
+        {
+          "text": "Считать любой найденный DOM-элемент доверенной конфигурацией",
+          "correct": false,
+          "explanation": "Это сохраняет исходное смешение недоверенных данных и настроек.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Хранить конфигурацию в явной локальной переменной модуля и проверять ожидаемый тип",
+          "correct": true,
+          "explanation": "Код перестаёт брать конфигурацию из именованных DOM-элементов; очистку пользовательского HTML также сохраняют.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Переименовать config в другое короткое имя и оставить прежний поиск",
+          "correct": false,
+          "explanation": "Редкое имя лишь меняет условие коллизии, не устраняя механизм.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Добавить ещё один элемент с тем же id",
+          "correct": false,
+          "explanation": "Дублирование имён делает поведение менее надёжным.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 2,
+      "conceptIds": [
+        "dom-clobbering",
+        "dependency",
+        "dom"
+      ]
+    },
+    {
+      "id": "q763",
+      "topic": "Браузерные механизмы и валидация",
+      "question": "В CSV-отчёт попадает пользовательская ячейка, начинающаяся с =. Экспортёр окружил поле двойными кавычками по правилам CSV. Безопасно ли считать, что таблица покажет только текст?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-csv"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "CSV-кавычки не отключают формулы",
+      "options": [
+        {
+          "text": "Да, если файл передан по HTTPS",
+          "correct": false,
+          "explanation": "Защита передачи не меняет интерпретацию ячейки.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Нет, потому что CSV всегда содержит исполняемый JavaScript",
+          "correct": false,
+          "explanation": "Риск здесь связан с формулами, а не обязательным JavaScript.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет, CSV-кавычки задают границы поля, а обработчик таблиц всё ещё может распознать формулу",
+          "correct": true,
+          "explanation": "Нужно отдельно обеспечить текстовую интерпретацию опасных значений в поддерживаемых программах.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Да, CSV-кавычки эквивалентны запрету вычислений",
+          "correct": false,
+          "explanation": "Синтаксис обменного формата и правила формул табличного редактора различаются.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 3,
+      "conceptIds": [
+        "csv",
+        "https",
+        "javascript"
+      ]
+    },
+    {
+      "id": "q764",
+      "topic": "Браузерные механизмы и валидация",
+      "question": "Один экспорт используют и программы для точного обмена данными, и люди в таблицах. Простое добавление символа к каждой ячейке меняет исходные значения. Как спроектировать защиту от CSV injection?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-csv"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Разделение точных данных и безопасного табличного представления",
+      "options": [
+        {
+          "text": "Всегда удалять первый символ любого поля",
+          "correct": false,
+          "explanation": "Так теряются данные, включая безопасные значения.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Полагаться только на расширение файла",
+          "correct": false,
+          "explanation": "Расширение не обеспечивает текстовый тип всех ячеек.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Считать любой CSV безопасным, если числа корректны",
+          "correct": false,
+          "explanation": "Пользовательские текстовые поля тоже могут интерпретироваться как формулы.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Разделить машинный экспорт и табличный отчёт с явно текстовыми ячейками; проверить целевые редакторы",
+          "correct": true,
+          "explanation": "Разные потребители требуют разных гарантий. Для отчёта проверяют, что опасные строки не вычисляются, а машинный контракт сохраняют.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 4,
+      "conceptIds": [
+        "csv-injection",
+        "csv"
+      ]
+    },
+    {
+      "id": "q765",
+      "topic": "Браузерные механизмы и валидация",
+      "question": "JavaScript проверяет код доступа условием input == 0. По контракту input должен быть целым числом из JSON. Как избежать принятия строки \"0\" из-за приведения типов?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-js-equality"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Типизированная проверка значения вместо приведения типов",
+      "options": [
+        {
+          "text": "Проверить тип и целочисленность, затем сравнить input === 0",
+          "correct": true,
+          "explanation": "Строгое сравнение не приводит строку к числу, а проверка схемы закрепляет ожидаемый тип.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Заменить условие на input == \"0\"",
+          "correct": false,
+          "explanation": "Нестрогое сравнение продолжает выполнять приведение типов.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Проверять только наличие поля",
+          "correct": false,
+          "explanation": "Наличие не задаёт тип и допустимое значение.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Преобразовать любое значение в строку без проверки схемы",
+          "correct": false,
+          "explanation": "Так разные исходные типы становятся неразличимыми.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 5,
+      "conceptIds": [
+        "javascript",
+        "json",
+        "type-coercion"
+      ]
+    },
+    {
+      "id": "q766",
+      "topic": "Браузерные механизмы и валидация",
+      "question": "API ожидает булево поле approved. Приходит JSON со значением \"false\" в кавычках, а код использует Boolean(value). Как обработать такой ввод?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-js-boolean"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Строка false и булево false",
+      "options": [
+        {
+          "text": "Удалить кавычки из сырого JSON текстовой заменой",
+          "correct": false,
+          "explanation": "Нужно разбирать и валидировать структуру, а не менять произвольные фрагменты входного текста.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Отклонить неверный тип по схеме",
+          "correct": true,
+          "explanation": "Непустая строка в JavaScript истинна; приведение не является разбором булева значения по контракту.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Принять, потому что Boolean(\"false\") возвращает false",
+          "correct": false,
+          "explanation": "Непустая строка преобразуется в true.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Считать любое присутствующее поле согласием",
+          "correct": false,
+          "explanation": "Это позволяет ошибочному типу изменить смысл операции.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 6,
+      "conceptIds": [
+        "api",
+        "json"
+      ]
+    },
+    {
+      "id": "q767",
+      "topic": "Браузерные механизмы и валидация",
+      "question": "Страница открыла новую вкладку того же origin с сохранённым opener. Браузер создал начальную копию sessionStorage. Что будет с последующими изменениями хранилища в этих вкладках?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-sessionstorage"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Начальная копия sessionStorage при наличии opener",
+      "options": [
+        {
+          "text": "Изменения автоматически отправятся всем пользователям сервиса",
+          "correct": false,
+          "explanation": "Хранилище браузера не является серверной общей базой.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Обе вкладки навсегда потеряют возможность писать данные",
+          "correct": false,
+          "explanation": "Наличие opener не переводит хранилище в режим только чтения.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Они будут независимыми для каждой вкладки",
+          "correct": true,
+          "explanation": "Начальная копия не превращает sessionStorage двух верхнеуровневых контекстов в общее синхронное хранилище.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Каждое изменение немедленно копируется в другую вкладку",
+          "correct": false,
+          "explanation": "Это не модель sessionStorage разных вкладок.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 7,
+      "conceptIds": [
+        "session-storage"
+      ]
+    },
+    {
+      "id": "q768",
+      "topic": "Браузерные механизмы и валидация",
+      "question": "Токен положили в sessionStorage и заявили: «Теперь скрипт, выполняющийся в этой вкладке с правами нашего origin, не сможет его прочитать». Верно ли это?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-sessionstorage"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Доступность sessionStorage для скриптов того же origin",
+      "options": [
+        {
+          "text": "Да, sessionStorage автоматически имеет флаг HttpOnly",
+          "correct": false,
+          "explanation": "HttpOnly относится к cookie, а не к Web Storage.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да, все значения там зашифрованы отдельным пользовательским паролем",
+          "correct": false,
+          "explanation": "Web Storage не предоставляет такую гарантию.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет, потому что sessionStorage доступен любому сайту без ограничений",
+          "correct": false,
+          "explanation": "Ограничения origin действуют; проблема в выполнении кода внутри доверенного origin.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет, sessionStorage доступен JavaScript этого контекста",
+          "correct": true,
+          "explanation": "Ограничение по вкладке и origin не изолирует данные от скрипта, уже работающего с теми же правами.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 8,
+      "conceptIds": [
+        "token",
+        "session-storage",
+        "httponly",
+        "javascript"
+      ]
+    },
+    {
+      "id": "q769",
+      "topic": "Браузерные механизмы и валидация",
+      "question": "Сервер проверил корректность WebSocket handshake и Sec-WebSocket-Key. Можно ли на этом основании считать клиента вошедшим пользователем?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-websocket"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Sec-WebSocket-Key не является учётными данными",
+      "options": [
+        {
+          "text": "Нет, протокольное рукопожатие не заменяет прикладную аутентификацию",
+          "correct": true,
+          "explanation": "Key и ответ на него участвуют в согласовании WebSocket, но не доказывают личность пользователя.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да, Key является паролем пользователя",
+          "correct": false,
+          "explanation": "Это не пользовательский секрет для входа.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Да, любой успешный HTTP Upgrade подтверждает роль администратора",
+          "correct": false,
+          "explanation": "Смена протокола не назначает прикладные полномочия.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Только если соединение открыто дольше минуты",
+          "correct": false,
+          "explanation": "Продолжительность соединения не устанавливает личность.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 9,
+      "conceptIds": [
+        "websocket",
+        "handshake",
+        "websocket-key",
+        "authentication",
+        "http"
+      ]
+    },
+    {
+      "id": "q770",
+      "topic": "Браузерные механизмы и валидация",
+      "question": "Форма показывает успешную CAPTCHA в браузере. Сервер принимает операцию по полю captchaPassed=true без проверки токена у сервиса. Что необходимо изменить?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-captcha"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Серверная проверка CAPTCHA",
+      "options": [
+        {
+          "text": "Проверять только наличие картинки CAPTCHA",
+          "correct": false,
+          "explanation": "Изображение не подтверждает успешную серверную проверку.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Проверять токен на сервере и принимать операцию только при подходящем результате проверки",
+          "correct": true,
+          "explanation": "Клиентский флаг можно подделать; сервер должен проверить действительность токена и ожидаемый контекст.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Скрыть поле captchaPassed стилем display:none",
+          "correct": false,
+          "explanation": "Скрытое поле остаётся управляемым клиентом.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Переименовать поле в случайную строку",
+          "correct": false,
+          "explanation": "Необычное имя не делает значение доверенным.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 10,
+      "conceptIds": [
+        "captcha",
+        "token"
+      ]
+    },
+    {
+      "id": "q771",
+      "topic": "Журналы и автоматизация анализа",
+      "question": "Событие A произошло в 10:00 и дошло в 10:05. Событие B произошло в 10:02 и дошло в 10:03. Часы источников синхронизированы. В каком порядке строить временную линию действий?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-logging"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Время события и время поступления",
+      "options": [
+        {
+          "text": "Считать события одновременными",
+          "correct": false,
+          "explanation": "Условие задаёт разные времена с доверенной синхронизацией.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Удалить A как невозможное событие",
+          "correct": false,
+          "explanation": "Задержка доставки сама по себе не делает запись ложной.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "A, затем B, сохранив также время поступления",
+          "correct": true,
+          "explanation": "Для порядка действий используют время события; задержку доставки учитывают отдельно.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "B, затем A, потому что B раньше попало в SIEM",
+          "correct": false,
+          "explanation": "Порядок поступления может отличаться от порядка действий.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 1,
+      "conceptIds": [
+        "siem"
+      ]
+    },
+    {
+      "id": "q772",
+      "topic": "Журналы и автоматизация анализа",
+      "question": "Sysmon записал Event ID 22 для DNS-запроса процесса. Ответ был в локальном кеше. Обязательно ли для этого события должен существовать соответствующий DNS-пакет в сетевом захвате?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-sysmon"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "DNS-запрос процесса и ответ из локального кеша",
+      "options": [
+        {
+          "text": "Да, каждое событие Sysmon всегда соответствует одному сетевому пакету",
+          "explanation": "У журнала процесса и захвата пакетов разные точки наблюдения.",
+          "correct": false,
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да, локальный кеш используется только после отправки каждого запроса в сеть",
+          "explanation": "Кеш позволяет обслуживать подходящие запросы без нового обращения к серверу.",
+          "correct": false,
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет, потому что Event ID 22 описывает только создание файла",
+          "explanation": "Это тип события DNS query, а не создания файла.",
+          "correct": false,
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет, Sysmon может регистрировать запросы, обслуженные из кеша",
+          "explanation": "Событие обращения процесса к разрешению имени не обязательно сопровождается внешним DNS-обменом.",
+          "correct": true,
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 2,
+      "conceptIds": [
+        "sysmon",
+        "dns"
+      ]
+    },
+    {
+      "id": "q773",
+      "topic": "Журналы и автоматизация анализа",
+      "question": "Имя пользователя пишут в текстовый журнал конкатенацией. Ввод может содержать перевод строки и выглядеть как отдельное событие. Как исправить запись?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-logging"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Инъекция переводов строки в журнал",
+      "options": [
+        {
+          "text": "Использовать структурированное логирование с корректным кодированием управляющих символов",
+          "correct": true,
+          "explanation": "Недоверенные данные должны оставаться значением поля, а не создавать поддельную запись.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Добавить дату только к началу всей строки",
+          "correct": false,
+          "explanation": "Внедрённая новая строка по-прежнему может выглядеть отдельным событием.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Запретить все неудачные входы в журнале",
+          "correct": false,
+          "explanation": "Это уничтожает полезные свидетельства вместо безопасного кодирования.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Доверять строке, если запрос пришёл по TLS",
+          "correct": false,
+          "explanation": "TLS не делает пользовательский ввод безопасным для формата журнала.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 3,
+      "conceptIds": [
+        "tls"
+      ]
+    },
+    {
+      "id": "q774",
+      "topic": "Журналы и автоматизация анализа",
+      "question": "Приложение доступно напрямую из интернета и слепо берёт первый X-Forwarded-For как IP клиента. Что требуется для надёжной атрибуции источника?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-proxy"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Доверенный участок цепочки прокси",
+      "options": [
+        {
+          "text": "Удалить реальный адрес соединения из журналов",
+          "correct": false,
+          "explanation": "Так теряется дополнительный контекст проверки.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Определить доверенные прокси, ограничить путь к приложению и разбирать заголовок согласно этой цепочке",
+          "correct": true,
+          "explanation": "Произвольный клиент может задать заголовок; доверие должно опираться на проверенный путь запроса.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Считать любой X-Forwarded-For достоверным",
+          "correct": false,
+          "explanation": "Наличие заголовка не доказывает, кто его записал.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Выбирать самый короткий адрес из списка",
+          "correct": false,
+          "explanation": "Длина адреса не определяет доверие.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 4,
+      "conceptIds": [
+        "x-forwarded-for",
+        "ip"
+      ]
+    },
+    {
+      "id": "q775",
+      "topic": "Журналы и автоматизация анализа",
+      "question": "За окно из 10 минут после удаления повторов доставки осталось 12 неудачных входов: 7 для alice и 5 для bob. Что вернёт COUNT(DISTINCT user_id)?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-sql-count"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Число событий и число уникальных пользователей",
+      "options": [
+        {
+          "text": "7",
+          "correct": false,
+          "explanation": "Это количество неудач только alice.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "5",
+          "correct": false,
+          "explanation": "Это количество неудач только bob.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "2",
+          "correct": true,
+          "explanation": "Агрегат считает разные значения пользователя, а не все записи.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "12",
+          "correct": false,
+          "explanation": "Это число событий, соответствующее COUNT(*) в заданной выборке.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 5,
+      "conceptIds": [
+        "count-distinct"
+      ]
+    },
+    {
+      "id": "q776",
+      "topic": "Журналы и автоматизация анализа",
+      "question": "В двух журналах указаны 12:00:00+03:00 и 09:00:00Z одного дня. Как сравнивать их в Python при построении временной линии?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-python-datetime"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Сопоставление времён с разными смещениями",
+      "options": [
+        {
+          "text": "Сравнить только часы: первое событие позже на три часа",
+          "correct": false,
+          "explanation": "Отбрасывание смещения искажает момент события.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Заменить +03:00 на Z без изменения часов",
+          "correct": false,
+          "explanation": "Это меняет смысл метки времени.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Считать Z частью имени узла",
+          "correct": false,
+          "explanation": "Z обозначает нулевое смещение UTC.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Разобрать как даты с часовым поясом и привести к UTC: это один момент",
+          "correct": true,
+          "explanation": "Смещение +03:00 означает, что местное время на три часа впереди UTC.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 6,
+      "conceptIds": [
+        "utc"
+      ]
+    },
+    {
+      "id": "q777",
+      "topic": "Журналы и автоматизация анализа",
+      "question": "После обновления источника поле JSON malware_found перестало поступать. Скрипт подставляет false для отсутствующего ключа и показывает «угроз нет». Как исправить отчёт?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-logging"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Отсутствующее поле не означает отрицательный результат",
+      "options": [
+        {
+          "text": "Отделить неизвестный результат от явного false и показать проблему качества данных",
+          "correct": true,
+          "explanation": "Отсутствие наблюдения не подтверждает отсутствие находки.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Оставить false, чтобы график оставался ровным",
+          "correct": false,
+          "explanation": "Удобный график скрывает потерю измерения.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Всегда подставлять true",
+          "correct": false,
+          "explanation": "Это создаёт неподтверждённые находки вместо честного состояния неизвестности.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Удалить все старые события с этим полем",
+          "correct": false,
+          "explanation": "Исторические корректные данные не исправят новый формат источника.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 7,
+      "conceptIds": [
+        "json"
+      ]
+    },
+    {
+      "id": "q778",
+      "topic": "Журналы и автоматизация анализа",
+      "question": "Python-скрипт последовательно запускает проверку каждого файла через subprocess.run. Одна утилита может зависнуть. Как не заблокировать весь пакет навсегда?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-python-subprocess"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Тайм-аут дочернего процесса в автоматизации",
+      "options": [
+        {
+          "text": "При тайм-ауте автоматически помечать файл безопасным",
+          "correct": false,
+          "explanation": "Прерванная проверка не дала результата безопасности.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Задать timeout, обработать TimeoutExpired и отдельно учесть непроверенный файл",
+          "correct": true,
+          "explanation": "Ограничение ожидания и явный статус ошибки позволяют продолжить управляемую обработку.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Использовать check=True как единственное ограничение времени",
+          "correct": false,
+          "explanation": "check проверяет ненулевой код завершения, но не задаёт тайм-аут.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Считать отсутствие вывода доказательством успешной проверки",
+          "correct": false,
+          "explanation": "Молчание может означать зависание или долгую работу.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 8,
+      "conceptIds": [
+        "subprocess",
+        "timeout-expired"
+      ]
+    },
+    {
+      "id": "q779",
+      "topic": "Журналы и автоматизация анализа",
+      "question": "Автоматизация отправила запрос изоляции узла и получила тайм-аут. Сервер мог выполнить действие. Как организовать повтор?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-idempotency"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Неопределённый результат команды и безопасный повтор",
+      "options": [
+        {
+          "text": "Повторять бесконечно без журналирования",
+          "correct": false,
+          "explanation": "Это теряет контроль над результатом и нагрузкой.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Пометить узел изолированным без проверки",
+          "correct": false,
+          "explanation": "Так отчёт будет выдавать предположение за подтверждённое состояние.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Проверить состояние операции и использовать идентификатор идемпотентности, если API его поддерживает",
+          "correct": true,
+          "explanation": "Тайм-аут не равен отказу; повтор должен учитывать возможное выполнение первого запроса.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Считать действие гарантированно невыполненным",
+          "correct": false,
+          "explanation": "Ответ мог потеряться после успешного изменения состояния.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 9,
+      "conceptIds": [
+        "idempotency",
+        "api"
+      ]
+    },
+    {
+      "id": "q780",
+      "topic": "Журналы и автоматизация анализа",
+      "question": "Минутные окна анализа идут подряд. Как задавать границы, чтобы событие ровно в 10:01:00 не попало одновременно в окна 10:00–10:01 и 10:01–10:02?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-logging"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Полуоткрытое окно агрегации",
+      "options": [
+        {
+          "text": "Включать обе границы каждого окна",
+          "correct": false,
+          "explanation": "Общая граница будет посчитана дважды.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Исключать обе границы каждого окна",
+          "correct": false,
+          "explanation": "Событие на границе не попадёт ни в одно окно.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Удалять события с нулевыми секундами",
+          "correct": false,
+          "explanation": "Это потеря реальных событий вместо корректной агрегации.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Начало включать, конец исключать: start <= time < end",
+          "correct": true,
+          "explanation": "Тогда граничное событие относится только к следующему окну.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 10,
+      "conceptIds": [
+        "time-window"
+      ]
+    },
+    {
+      "id": "q781",
+      "topic": "Инструменты: обнаружение и реагирование",
+      "question": "В Sysmon видны события создания процессов, но сбор NetworkConnect отключён конфигурацией. Аналитик не нашёл Event ID 3. Как трактовать результат?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-sysmon"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Sysmon Event 3 требует настройки сбора",
+      "options": [
+        {
+          "text": "По этим данным нельзя установить отсутствие сетевых соединений",
+          "correct": true,
+          "explanation": "Нужный тип событий не собирался; проверяют конфигурацию и независимую сетевую телеметрию.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Все процессы на узле гарантированно работали офлайн",
+          "correct": false,
+          "explanation": "Отсутствие отключённых событий не доказывает отсутствия действий.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Sysmon автоматически заменяет Event 3 событиями DNS",
+          "correct": false,
+          "explanation": "DNS-запрос и сетевое соединение — разные наблюдения.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нужно считать каждое создание процесса сетевым соединением",
+          "correct": false,
+          "explanation": "Это необоснованная подмена типа события.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 18,
+      "conceptIds": [
+        "sysmon",
+        "dns"
+      ]
+    },
+    {
+      "id": "q782",
+      "topic": "Инструменты: обнаружение и реагирование",
+      "question": "Правило обнаружения много раз меняли на одной размеченной выборке, пока оно не стало идеальным на ней. Как проверить способность работать на новых данных?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-classification-metrics"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Независимая выборка для проверки правила",
+      "options": [
+        {
+          "text": "Оценить правило по длине его текста",
+          "correct": false,
+          "explanation": "Длина не измеряет обнаружение или ложные срабатывания.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Оценить правило на отдельной размеченной выборке, не использованной при настройке",
+          "correct": true,
+          "explanation": "Иначе результат может отражать подгонку под известные примеры.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Ещё раз запустить тот же набор и объявить результат независимым",
+          "correct": false,
+          "explanation": "Повтор не создаёт новых данных для оценки.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Удалить все примеры, на которых правило ошибается",
+          "correct": false,
+          "explanation": "Так качество отчёта растёт только за счёт скрытия ошибок.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 19,
+      "conceptIds": [
+        "labeled-dataset"
+      ]
+    },
+    {
+      "id": "q783",
+      "topic": "Инструменты: обнаружение и реагирование",
+      "question": "В размеченной выборке 990 обычных событий и 10 опасных. Детектор всегда отвечает «обычное» и сообщает accuracy 99%. Как оценить его обнаружение опасных событий?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-classification-metrics"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Ложное впечатление от accuracy при редком событии",
+      "options": [
+        {
+          "text": "Детектор нашёл девять опасных событий",
+          "explanation": "По условию он ни разу не предсказал опасное событие.",
+          "correct": false,
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Для этой задачи accuracy всегда равна precision",
+          "explanation": "Это разные метрики с разными знаменателями.",
+          "correct": false,
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Recall опасного класса равна нулю: не обнаружено ни одного из 10 событий",
+          "explanation": "Высокая общая доля правильных ответов здесь объясняется преобладанием обычных примеров.",
+          "correct": true,
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Детектор обнаружил 99% опасных событий",
+          "explanation": "Accuracy по всей выборке не равна recall отдельного класса.",
+          "correct": false,
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 20,
+      "conceptIds": [
+        "labeled-dataset",
+        "precision",
+        "recall"
+      ]
+    },
+    {
+      "id": "q784",
+      "topic": "Инструменты: обнаружение и реагирование",
+      "question": "В тесте есть 25 опасных событий. Порог A: 20 истинных и 80 ложных тревог. Порог B: 18 истинных и 12 ложных. Требование — recall не ниже 75%. Какой из этих порогов удовлетворяет требованию?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-classification-metrics"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Выбор порога при ограничении на recall",
+      "options": [
+        {
+          "text": "Только B, потому что у него меньше ложных тревог",
+          "explanation": "Меньшее число ложных тревог не компенсирует нарушение заданного минимума recall.",
+          "correct": false,
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Оба, потому что оба обнаружили больше половины событий",
+          "explanation": "Половина меньше требуемых 75%.",
+          "correct": false,
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Ни один, потому что разрешена только precision 100%",
+          "explanation": "Условие не задаёт такого требования к precision.",
+          "correct": false,
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Только A: 20/25 = 80%; у B 18/25 = 72%",
+          "explanation": "У B выше precision, но задано обязательное ограничение на полноту обнаружения.",
+          "correct": true,
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 21,
+      "conceptIds": [
+        "recall",
+        "precision"
+      ]
+    },
+    {
+      "id": "q785",
+      "topic": "Инструменты: обнаружение и реагирование",
+      "question": "Правило SIEM подавляет все повторные тревоги на час только по имени детекта. После сигнала на узле A такое же поведение на узле B не создаёт тревогу. Что пересмотреть?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-logging",
+        "tools-soc"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Область ключа подавления повторных тревог",
+      "options": [
+        {
+          "text": "Ключ группировки и подавления, включив нужную сущность и контекст",
+          "correct": true,
+          "explanation": "Подавление не должно случайно объединять независимые узлы в одно событие.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Только текст названия детекта",
+          "correct": false,
+          "explanation": "Переименование не меняет ошибочную область группировки.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Считать A и B одной машиной для удобства",
+          "correct": false,
+          "explanation": "Так теряется реальный масштаб события.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Отключить сбор событий на B",
+          "correct": false,
+          "explanation": "Это скрывает проблему вместо исправления обработки.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 22,
+      "conceptIds": [
+        "siem"
+      ]
+    },
+    {
+      "id": "q786",
+      "topic": "Инструменты: обнаружение и реагирование",
+      "question": "Playbook запросил изоляцию трёх узлов. Два агента подтвердили действие, третий вернул отказ в доступе. Как записать результат?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-soc"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Частичный результат массового реагирования",
+      "options": [
+        {
+          "text": "Удалить отказ из отчёта, чтобы не создавать второй инцидент",
+          "correct": false,
+          "explanation": "Сбой реагирования требует видимости и решения.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Два успешных действия и один отдельный сбой с дальнейшей обработкой",
+          "correct": true,
+          "explanation": "Статус нужно хранить по каждому объекту; массовый запуск не означает общий успех.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Все три изолированы, поскольку сценарий завершился",
+          "correct": false,
+          "explanation": "Завершение сценария не отменяет отказ конкретного API.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Все три не изолированы, поскольку один отказал",
+          "correct": false,
+          "explanation": "Это также искажает подтверждённые результаты.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 23,
+      "conceptIds": [
+        "playbook"
+      ]
+    },
+    {
+      "id": "q787",
+      "topic": "Инструменты: обнаружение и реагирование",
+      "question": "EDR Microsoft Defender for Endpoint подтвердил изоляцию устройства. При этом оно продолжает связываться с облачной службой Defender для управления. Доказывает ли это отказ изоляции?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-mde-isolation"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Канал управления после изоляции устройства",
+      "options": [
+        {
+          "text": "Да, нужно немедленно удалить агент, чтобы доказать отключение",
+          "explanation": "Удаление лишает управления и не является проверкой политики сетевого ограничения.",
+          "correct": false,
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Нет, поэтому можно считать разрешёнными любые новые соединения",
+          "explanation": "Сохранение специального канала не означает общего разрешения трафика.",
+          "correct": false,
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет, предусмотренное соединение со службой управления может сохраняться; проверяют блокировку остального трафика",
+          "explanation": "Механизм изоляции предусматривает сохранение канала связи с Defender для наблюдения и управления.",
+          "correct": true,
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Да, изоляция в этом продукте обязана отключить даже свой канал управления",
+          "explanation": "Это не соответствует предусмотренному поведению средства.",
+          "correct": false,
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 24,
+      "conceptIds": [
+        "edr",
+        "endpoint"
+      ]
+    },
+    {
+      "id": "q788",
+      "topic": "Инструменты: обнаружение и реагирование",
+      "question": "После обновления правила SIEM историческое событие больше не вызывает тревогу. Что сохранять вместе с первоначальным вердиктом, чтобы объяснить расхождение?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-logging"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Воспроизводимость вердикта правила",
+      "options": [
+        {
+          "text": "Только текущее название правила",
+          "correct": false,
+          "explanation": "Под тем же названием могут существовать разные версии логики.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Только количество тревог за месяц",
+          "correct": false,
+          "explanation": "Агрегат не восстанавливает условия конкретного решения.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Только имя аналитика без технических данных",
+          "correct": false,
+          "explanation": "Автор решения не заменяет доказательства и версию детекта.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Версию правила, применённую конфигурацию и ссылки на исходные события",
+          "correct": true,
+          "explanation": "Результат зависит от данных и логики, действовавшей в момент анализа.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 25,
+      "conceptIds": [
+        "siem"
+      ]
+    },
+    {
+      "id": "q789",
+      "topic": "Инструменты: обнаружение и реагирование",
+      "question": "SIEM каждые 5 минут ищет события с временем возникновения за последние 5 минут. Доставка иногда задерживается на 8 минут. Как не терять такие события?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-logging"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Запаздывание событий за пределы окна правила",
+      "options": [
+        {
+          "text": "Учесть задержку доставки в окне обработки и устранять повторы при перекрытии окон",
+          "correct": true,
+          "explanation": "Слишком узкое окно по времени события пропустит запись, поступившую после его закрытия.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Запускать то же окно чаще, не меняя границы допустимого возраста",
+          "correct": false,
+          "explanation": "Восьмиминутное событие всё равно не удовлетворяет условию последних пяти минут.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "При поступлении заменить исходное время на текущее без сохранения оригинала",
+          "correct": false,
+          "explanation": "Так теряется реальная временная линия действий.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Считать все поздние события ложными",
+          "correct": false,
+          "explanation": "Задержка доставки не делает событие недостоверным.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 26,
+      "conceptIds": [
+        "siem"
+      ]
+    },
+    {
+      "id": "q790",
+      "topic": "Инструменты: обнаружение и реагирование",
+      "question": "В сервисе нескольких клиентов одинаковые локальные host_id. Playbook получил только host_id и собирается заблокировать узел. Какой контекст обязателен перед действием?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-authz-testing",
+        "tools-soc"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Проверка области действия автоматизации",
+      "options": [
+        {
+          "text": "Только отображаемое имя клиента из произвольного комментария",
+          "correct": false,
+          "explanation": "Нужна проверенная связь, а не недоверенная подпись.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Проверенная принадлежность узла нужному tenant и полномочия на него",
+          "correct": true,
+          "explanation": "Локальный идентификатор без области может выбрать объект другого клиента.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Первый найденный узел с таким host_id",
+          "correct": false,
+          "explanation": "Порядок результатов не подтверждает принадлежность.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Самый недавно подключившийся узел",
+          "correct": false,
+          "explanation": "Время подключения не определяет клиента инцидента.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 27,
+      "conceptIds": [
+        "playbook",
+        "tenant-isolation"
+      ]
+    },
+    {
+      "id": "q791",
+      "topic": "Инструменты: анализ сети",
+      "question": "В Suricata HOME_NET — вся внутренняя сеть, EXTERNAL_NET задан как !$HOME_NET. Правило имеет направление $EXTERNAL_NET -> $HOME_NET. Должно ли оно совпадать с обменом двух узлов внутри HOME_NET?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-suricata-rules"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Направление правила и внутренний трафик",
+      "options": [
+        {
+          "text": "Да, стрелка автоматически проверяет любые две стороны",
+          "explanation": "Направление и адресные множества не исчезают при сопоставлении.",
+          "correct": false,
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Нет, потому что Suricata вообще не умеет анализировать внутреннюю сеть",
+          "explanation": "Ограничение создаёт конкретное правило и его переменные, а не невозможность анализа.",
+          "correct": false,
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет, источник внутри HOME_NET не входит в заданный EXTERNAL_NET",
+          "explanation": "Переменные сети и направление ограничивают область правила; для внутреннего обмена нужна подходящая область.",
+          "correct": true,
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Да, EXTERNAL_NET означает любой источник, включая HOME_NET",
+          "explanation": "По условию переменная задана как исключение внутренней сети.",
+          "correct": false,
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 11,
+      "conceptIds": [
+        "suricata"
+      ]
+    },
+    {
+      "id": "q792",
+      "topic": "Инструменты: анализ сети",
+      "question": "Политика stateful firewall разрешает новые исходящие TCP-соединения клиента и ответы в установленном состоянии, но запрещает новые входящие. Как обработать корректный ответ сервера на разрешённое соединение?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-firewall"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Ответный трафик в stateful firewall",
+      "options": [
+        {
+          "text": "Запретить как любое входящее направление",
+          "correct": false,
+          "explanation": "Это игнорирует явно разрешённое состояние ответного трафика.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Разрешить после этого все входящие соединения к клиенту",
+          "correct": false,
+          "explanation": "Состояние одного соединения не открывает все новые сессии.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Разрешить только после отключения таблицы состояний",
+          "correct": false,
+          "explanation": "Таблица состояний как раз связывает ответ с исходным соединением.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Разрешить по состоянию существующего соединения",
+          "correct": true,
+          "explanation": "Ответ относится к уже разрешённому обмену, а не к новой произвольной входящей сессии.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 12,
+      "conceptIds": [
+        "stateful-firewall",
+        "tcp"
+      ]
+    },
+    {
+      "id": "q793",
+      "topic": "Инструменты: анализ сети",
+      "question": "На IPv4-пути пакет с DF слишком велик для следующего канала. Маршрутизатор отправляет ICMP «fragmentation needed», но фильтр его отбрасывает. Какой сбой возможен?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-pmtud"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "ICMP и определение MTU пути",
+      "options": [
+        {
+          "text": "Отправитель не узнает меньший MTU, и передача крупных пакетов может зависать",
+          "correct": true,
+          "explanation": "Классический Path MTU Discovery использует эти сообщения для уменьшения размера пакетов.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Любой ICMP гарантированно увеличивает доступную полосу",
+          "correct": false,
+          "explanation": "Сообщение сообщает ограничение размера, а не добавляет пропускную способность.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "DNS автоматически уменьшит размер каждого TCP-пакета",
+          "correct": false,
+          "explanation": "DNS не управляет размером пакетов соединения.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "DF разрешает маршрутизатору свободно фрагментировать пакет",
+          "correct": false,
+          "explanation": "DF означает запрет такой фрагментации.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 13,
+      "conceptIds": [
+        "ip",
+        "icmp",
+        "mtu",
+        "dns",
+        "tcp"
+      ]
+    },
+    {
+      "id": "q794",
+      "topic": "Инструменты: анализ сети",
+      "question": "Во внутреннем журнале соединение имеет адрес 10.0.0.8:51000, во внешнем — публичный адрес шлюза с другим портом. Как связать записи при NAT?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-firewall",
+        "tools-packets"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Связь событий до и после NAT",
+      "options": [
+        {
+          "text": "Предполагать, что публичный адрес всегда соответствует одному компьютеру",
+          "correct": false,
+          "explanation": "За одним адресом могут находиться многие узлы.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Использовать таблицу трансляции или её журнал вместе со временем и параметрами соединения",
+          "correct": true,
+          "explanation": "NAT меняет адреса и порты; простое равенство IP между точками наблюдения не работает.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Считать их разными пользователями только из-за разных адресов",
+          "correct": false,
+          "explanation": "Различие может быть результатом трансляции одного потока.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Сопоставлять только по размеру первого пакета",
+          "correct": false,
+          "explanation": "Размер не является надёжным уникальным идентификатором.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 14,
+      "conceptIds": [
+        "nat"
+      ]
+    },
+    {
+      "id": "q795",
+      "topic": "Инструменты: анализ сети",
+      "question": "Есть разрешённая запись TLS 1.3 и приватный ключ сертификата сервера. Достаточно ли одного этого ключа, чтобы расшифровать записанный обмен в Wireshark?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-tls-decryption"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Секреты сеанса для расшифровки TLS 1.3",
+      "options": [
+        {
+          "text": "Да, если переименовать файл в pcapng",
+          "correct": false,
+          "explanation": "Формат контейнера не создаёт отсутствующие секреты.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Нет, потому что Wireshark принципиально не поддерживает TLS",
+          "correct": false,
+          "explanation": "Поддержка анализа и расшифровки есть при наличии нужных данных.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет, нужны подходящие секреты самого сеанса, например из разрешённого key log",
+          "correct": true,
+          "explanation": "Ключ сертификата не является универсальным ключом расшифровки TLS 1.3; материалы сеанса защищают отдельно.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Да, приватный ключ сертификата расшифровывает любой TLS 1.3",
+          "correct": false,
+          "explanation": "Это не соответствует механизму выработки ключей TLS 1.3.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 15,
+      "conceptIds": [
+        "tls",
+        "private-key",
+        "pcap"
+      ]
+    },
+    {
+      "id": "q796",
+      "topic": "Инструменты: анализ сети",
+      "question": "Для захвата задан snaplen 64 байта. В файле у большого пакета исходная длина больше сохранённой. Можно ли позднее восстановить отсутствующую полезную нагрузку из этого файла?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-snaplen"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Обрезка пакетов при захвате",
+      "options": [
+        {
+          "text": "Да, достаточно изменить display filter",
+          "correct": false,
+          "explanation": "Фильтр отображения не добавляет данные в файл.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да, исходная длина содержит все отсутствующие байты",
+          "correct": false,
+          "explanation": "Поле длины указывает размер, но не кодирует содержимое.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Да, экспорт в другой формат восстановит пакет",
+          "correct": false,
+          "explanation": "Преобразование контейнера не возвращает незаписанные данные.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет, она не была сохранена при захвате",
+          "correct": true,
+          "explanation": "Увеличение snaplen поможет будущим захватам, но не восстановит отброшенные байты.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 16,
+      "conceptIds": [
+        "snaplen"
+      ]
+    },
+    {
+      "id": "q797",
+      "topic": "Инструменты: анализ сети",
+      "question": "Сетевой сенсор видит клиентские пакеты, а ответы идут по другому маршруту мимо него. Чем это ограничивает анализ TCP?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-idps",
+        "tools-packets"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Асимметричный маршрут и сборка потока",
+      "options": [
+        {
+          "text": "Сенсор может не восстановить двусторонний контекст и состояние обмена",
+          "correct": true,
+          "explanation": "Для полноценной сборки и ряда правил нужны наблюдения обоих направлений.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Сенсор гарантированно видит весь ответ в исходящих ACK",
+          "correct": false,
+          "explanation": "Подтверждения не содержат копии всей полезной нагрузки ответа.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Односторонняя видимость доказывает, что сервер не отвечал",
+          "correct": false,
+          "explanation": "Ответ мог пройти через другую точку сети.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Достаточно переименовать интерфейс захвата",
+          "correct": false,
+          "explanation": "Название интерфейса не меняет маршрут трафика.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 17,
+      "conceptIds": [
+        "tcp"
+      ]
+    },
+    {
+      "id": "q798",
+      "topic": "Инструменты: анализ сети",
+      "question": "Захват TCP начался в середине работающего соединения. В нём есть данные и ACK, но нет SYN. Можно ли заключить, что рукопожатия не было?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-tcp"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Захват начался после рукопожатия",
+      "options": [
+        {
+          "text": "Нет, потому что SYN всегда зашифрован внутри TLS",
+          "correct": false,
+          "explanation": "Флаги TCP находятся вне шифруемого TLS-содержимого.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Нет, оно могло пройти до начала захвата",
+          "correct": true,
+          "explanation": "Вывод ограничен интервалом наблюдения; отсутствие ранних пакетов не доказывает нарушение протокола.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Да, любой файл захвата обязан содержать начало всех соединений",
+          "correct": false,
+          "explanation": "Захват ограничен временем и точкой наблюдения.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Да, ACK сам создаёт доказательство отсутствия SYN",
+          "correct": false,
+          "explanation": "Подтверждение не описывает всю предыдущую историю.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 18,
+      "conceptIds": [
+        "tcp",
+        "tls"
+      ]
+    },
+    {
+      "id": "q799",
+      "topic": "Инструменты: анализ сети",
+      "question": "В Suricata IPS правило с действием drop использует threshold для ограничения числа тревог. Можно ли считать, что совпавшие пакеты без новой тревоги обязательно пропускаются?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-suricata-threshold"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Порог тревог и действие drop",
+      "options": [
+        {
+          "text": "Да, threshold автоматически меняет drop на log",
+          "correct": false,
+          "explanation": "Такая замена действия из условия не следует.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Нет, потому что threshold полностью отключает правило",
+          "correct": false,
+          "explanation": "Ограничение тревог не означает отключение сопоставления.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет, ограничение тревог само по себе не отменяет действие drop",
+          "correct": true,
+          "explanation": "Нужно различать выдачу alert и обработку совпавшего трафика; проверять фактические действия движка.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Да, отсутствие alert всегда означает pass",
+          "correct": false,
+          "explanation": "Подавление уведомления не равно разрешению пакета.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 19,
+      "conceptIds": [
+        "suricata",
+        "ips",
+        "threshold",
+        "alert"
+      ]
+    },
+    {
+      "id": "q800",
+      "topic": "Инструменты: анализ сети",
+      "question": "В TCP-захвате дважды виден один диапазон sequence numbers с одинаковыми 1000 байтами данных из-за ретрансляции. Сколько новых байтов потока представляет этот диапазон?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-tcp"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Повторная передача и объём уникальных данных",
+      "options": [
+        {
+          "text": "2000",
+          "correct": false,
+          "explanation": "Это сумма переданных полезных нагрузок, но не объём уникальных байтов потока.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "0",
+          "correct": false,
+          "explanation": "Диапазон содержит реальные данные, хотя они переданы повторно.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Число определяется только портом назначения",
+          "correct": false,
+          "explanation": "Номер порта не задаёт объём данных.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "1000",
+          "correct": true,
+          "explanation": "Ретрансляция повторяет байты того же диапазона; её учитывают отдельно от уникальных данных потока.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 20,
+      "conceptIds": [
+        "tcp",
+        "sequence-number"
+      ]
+    },
+    {
+      "id": "q801",
+      "topic": "Безопасная разработка",
+      "question": "Поиск должен искать символы % и _ буквально. SQL-запрос параметризован, но пользовательское значение передают прямо в LIKE. Что ещё требуется?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-sql-like"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Параметризация и специальные символы LIKE",
+      "options": [
+        {
+          "text": "Экранировать шаблонные символы по правилам LIKE с согласованным ESCAPE",
+          "correct": true,
+          "explanation": "Параметризация разделяет SQL и значение, но значение всё ещё интерпретируется как шаблон LIKE.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Отказаться от параметров и склеить SQL вручную",
+          "correct": false,
+          "explanation": "Это создаёт риск инъекции и не решает семантику шаблона.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Считать параметризацию автоматическим запретом wildcard",
+          "correct": false,
+          "explanation": "Параметр сохраняет специальный смысл символов внутри шаблона.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Удалять из базы все строки с такими символами",
+          "correct": false,
+          "explanation": "Нужно корректно реализовать поиск, а не разрушать данные.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 27,
+      "conceptIds": [
+        "sql",
+        "like-pattern"
+      ]
+    },
+    {
+      "id": "q802",
+      "topic": "Безопасная разработка",
+      "question": "Проверка строки уязвимым регулярным выражением резко замедляется на длинных почти совпадающих данных. Как адресовать ReDoS?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-redos"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Ограничение сложности регулярного выражения",
+      "options": [
+        {
+          "text": "Проверять только удобные короткие примеры",
+          "correct": false,
+          "explanation": "Такие тесты пропускают причину деградации.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Переписать неоднозначное выражение, ограничить ввод и проверить худшие случаи",
+          "correct": true,
+          "explanation": "Нужен контроль стоимости вычислений; где возможно, используют движок с предсказуемой сложностью.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Запускать то же выражение дважды для надёжности",
+          "correct": false,
+          "explanation": "Это увеличит затраты, не устраняя сложность.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Использовать HTTPS перед той же проверкой",
+          "correct": false,
+          "explanation": "Шифрование транспорта не ограничивает время сопоставления.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 28,
+      "conceptIds": [
+        "redos",
+        "https"
+      ]
+    },
+    {
+      "id": "q803",
+      "topic": "Безопасная разработка",
+      "question": "Привилегированная программа проверяет путь, а позже отдельно открывает его. Между операциями другой процесс может заменить запись каталога. Как устранить TOCTOU?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-toctou"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Гонка проверки пути и открытия файла",
+      "options": [
+        {
+          "text": "Проверить строку пути дважды, затем снова открыть по имени",
+          "correct": false,
+          "explanation": "Между последней проверкой и открытием всё ещё возможна подмена.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Записать имя пути в журнал и считать его зафиксированным",
+          "correct": false,
+          "explanation": "Журнал не блокирует изменения файловой системы.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Использовать подходящее атомарное открытие и проверять уже открытый объект, не повторяя небезопасный поиск пути",
+          "correct": true,
+          "explanation": "Защитный API и параметры зависят от ОС; проверка и использование должны относиться к одному объекту.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Сократить паузу между проверкой и открытием до миллисекунды",
+          "correct": false,
+          "explanation": "Маленькое окно остаётся окном гонки.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 29,
+      "conceptIds": [
+        "toctou"
+      ]
+    },
+    {
+      "id": "q804",
+      "topic": "Безопасная разработка",
+      "question": "Одна функция освобождает объект, но callback сохраняет указатель и позже обращается к нему. Как исправить причину use-after-free?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-asan"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Use-after-free и владение объектом",
+      "options": [
+        {
+          "text": "Занулить только локальную копию указателя в первой функции",
+          "correct": false,
+          "explanation": "Другие сохранённые указатели от этого не изменяются.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Добавить небольшую задержку перед callback",
+          "correct": false,
+          "explanation": "Задержка не продлевает корректное время жизни объекта.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Отключить диагностику памяти, чтобы не было аварий",
+          "correct": false,
+          "explanation": "Это скрывает симптом, оставляя ошибку.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Согласовать время жизни и владение объектом так, чтобы обращений после освобождения не было",
+          "correct": true,
+          "explanation": "Нужно учитывать все ссылки и асинхронные обращения; задержка освобождения наугад не гарантирует безопасность.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 30,
+      "conceptIds": [
+        "callback",
+        "use-after-free"
+      ]
+    },
+    {
+      "id": "q805",
+      "topic": "Безопасная разработка",
+      "question": "Одну SAST-находку проверили и признали ложной. Предлагают отключить весь класс проверок во всём репозитории. Как точнее оформить исключение?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-appsec"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Область подавления SAST-находки",
+      "options": [
+        {
+          "text": "Ограничить его конкретной находкой или контекстом, записать обоснование и условие пересмотра",
+          "correct": true,
+          "explanation": "Широкое отключение скроет будущие реальные ошибки этого класса.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Отключить класс навсегда, раз один сигнал ложный",
+          "correct": false,
+          "explanation": "Один ложный результат не доказывает бесполезность всех проверок.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Удалить отчёт, сохранив прежний статус успешного сканирования",
+          "correct": false,
+          "explanation": "Так исключение станет непрозрачным.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Исключить все новые файлы, чтобы не появлялся шум",
+          "correct": false,
+          "explanation": "Это убирает проверку наиболее изменяющегося кода.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 31,
+      "conceptIds": [
+        "sast"
+      ]
+    },
+    {
+      "id": "q806",
+      "topic": "Безопасная разработка",
+      "question": "DAST должен исследовать API возврата средств. Даже тестовые запросы в production способны отправить реальный возврат. Как организовать проверку?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-assessment"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Побочные эффекты активного DAST",
+      "options": [
+        {
+          "text": "Просто скрыть кнопку возврата в интерфейсе",
+          "correct": false,
+          "explanation": "Сканер вызывает API напрямую.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Использовать согласованный стенд и платёжную песочницу с тестовыми данными и ограниченными полномочиями",
+          "correct": true,
+          "explanation": "Активный обход может изменять состояние; внешние побочные эффекты должны быть изолированы и контролируемы.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Запустить в production, потому что сканер называется инструментом проверки",
+          "correct": false,
+          "explanation": "Назначение инструмента не отменяет действий API.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Передать сканеру ключ без лимитов для лучшего покрытия",
+          "correct": false,
+          "explanation": "Лишние полномочия увеличат последствия ошибки.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 32,
+      "conceptIds": [
+        "dast",
+        "api",
+        "production",
+        "sandbox"
+      ]
+    },
+    {
+      "id": "q807",
+      "topic": "Безопасная разработка",
+      "question": "Сервер сам вычислил ожидаемый HMAC и сравнивает его с полученными байтами. Какой Python API предназначен для сравнения без обычного раннего выхода по первому несовпадению?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-python-hmac"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Сравнение проверочной MAC без раннего выхода",
+      "options": [
+        {
+          "text": "Сравнение только первых двух байтов",
+          "correct": false,
+          "explanation": "Это резко ослабляет проверку целостности.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Сортировка байтов перед сравнением",
+          "correct": false,
+          "explanation": "Порядок байтов является частью MAC и не должен теряться.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "hmac.compare_digest для значений подходящего одинакового типа",
+          "correct": true,
+          "explanation": "Функция предназначена для уменьшения утечки через время сравнения; проверку формата и длины также проектируют явно.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Побайтовый цикл с немедленным return при несовпадении",
+          "correct": false,
+          "explanation": "Время такого цикла зависит от позиции первого различия.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 33,
+      "conceptIds": [
+        "hmac",
+        "api",
+        "python-hmac-compare"
+      ]
+    },
+    {
+      "id": "q808",
+      "topic": "Безопасная разработка",
+      "question": "Тесты программы под AddressSanitizer прошли без находок. Доказывает ли это отсутствие всех ошибок памяти?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-asan"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Граница доказательств динамического анализатора памяти",
+      "options": [
+        {
+          "text": "Да, AddressSanitizer математически доказывает корректность программы",
+          "correct": false,
+          "explanation": "Это инструмент динамического обнаружения, а не полное формальное доказательство.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да, даже если опасная функция ни разу не вызывалась",
+          "correct": false,
+          "explanation": "Невыполненный путь не проверяется таким запуском.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет, потому что AddressSanitizer анализирует только сетевые пакеты",
+          "correct": false,
+          "explanation": "Он предназначен для ошибок памяти программы.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет, проверены выполненные пути и поддерживаемые виды ошибок в этой сборке",
+          "correct": true,
+          "explanation": "Динамическая диагностика не исследует автоматически все входы, пути и возможные дефекты.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 34,
+      "conceptIds": [
+        "address-sanitizer"
+      ]
+    },
+    {
+      "id": "q809",
+      "topic": "Безопасная разработка",
+      "question": "Код выделяет count * item_size байт, затем записывает count элементов. Умножение в беззнаковом типе может переполниться и дать маленький размер. Где нужна проверка?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-integer-overflow"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Переполнение при вычислении размера буфера",
+      "options": [
+        {
+          "text": "До выделения: проверить диапазон count и отсутствие переполнения произведения",
+          "correct": true,
+          "explanation": "Размер буфера должен соответствовать реальному числу байтов; проверка после переполнения может уже потерять информацию.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Только после записи всех элементов",
+          "correct": false,
+          "explanation": "К этому моменту выход за границы уже мог произойти.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Достаточно проверить, что count положителен",
+          "correct": false,
+          "explanation": "Положительное значение тоже может дать переполнение при умножении.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Достаточно сделать переменную беззнаковой",
+          "correct": false,
+          "explanation": "Беззнаковая арифметика может циклически оборачиваться.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 35,
+      "conceptIds": [
+        "integer-overflow"
+      ]
+    },
+    {
+      "id": "q810",
+      "topic": "Безопасная разработка",
+      "question": "Исправили переполнение count * item_size. Какая группа регрессионных тестов проверяет именно границу исправления?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-integer-overflow",
+        "tools-fuzz"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Граничные проверки исправления расчёта размера",
+      "options": [
+        {
+          "text": "Только скорость загрузки главной страницы",
+          "correct": false,
+          "explanation": "Этот показатель не проверяет расчёт размера буфера.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Допустимый максимум, первое недопустимое значение, ноль и обычный корректный размер",
+          "correct": true,
+          "explanation": "Тесты проверяют границу арифметики и сохранение нормального поведения.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Только прежний аварийный файл с одним фиксированным count",
+          "correct": false,
+          "explanation": "Он подтверждает один случай, но не соседние граничные значения.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Только огромные значения без допустимых примеров",
+          "correct": false,
+          "explanation": "Так можно не заметить исправление, которое запрещает любую полезную операцию.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 36,
+      "conceptIds": [
+        "integer-overflow",
+        "regression-test"
+      ]
+    },
+    {
+      "id": "q811",
+      "topic": "Инструменты: данные и восстановление",
+      "question": "DLP успешно распознаёт текстовые документы, но чувствительный текст отправляют как изображение. OCR для этого канала не включён. Как проверить покрытие?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-dlp-ocr"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Изображения и текстовая классификация DLP",
+      "options": [
+        {
+          "text": "Увеличить длину имени изображения",
+          "correct": false,
+          "explanation": "Имя не включает распознавание содержимого.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Признать изображение безопасным, потому что текстовый тест прошёл",
+          "correct": false,
+          "explanation": "Проверка одного формата не подтверждает другой.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Проверить поддержку и настройку OCR на этом канале и выполнить тест с синтетическим изображением",
+          "correct": true,
+          "explanation": "Правила для извлекаемого текста не гарантируют распознавания текста на картинке.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Считать текст и изображение одинаковыми байтами для классификатора",
+          "correct": false,
+          "explanation": "Они имеют разное представление и требуют разных механизмов извлечения.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 11,
+      "conceptIds": [
+        "dlp",
+        "ocr"
+      ]
+    },
+    {
+      "id": "q812",
+      "topic": "Инструменты: данные и восстановление",
+      "question": "DLP не может открыть защищённый паролем архив и возвращает «невозможно исследовать». Как должна трактовать это политика передачи?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-dlp"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Непроверяемый архив и неизвестный результат",
+      "options": [
+        {
+          "text": "Как доказанное отсутствие чувствительных данных",
+          "correct": false,
+          "explanation": "Отсутствие результата анализа не равно чистому содержимому.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Как доказанный инцидент утечки в любом случае",
+          "correct": false,
+          "explanation": "Непроверяемость сама по себе не доказывает состав архива или факт утечки.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Как повод автоматически переслать архив внешнему получателю для проверки",
+          "correct": false,
+          "explanation": "Это само может раскрыть данные и не является корректной проверкой.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Как отдельное состояние непроверенного содержимого с заранее заданным действием",
+          "correct": true,
+          "explanation": "Организация должна явно решить, блокировать, отправлять на разбор или применять другой согласованный путь.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 12,
+      "conceptIds": [
+        "dlp"
+      ]
+    },
+    {
+      "id": "q813",
+      "topic": "Инструменты: данные и восстановление",
+      "question": "EDM-правило должно находить сочетание номера клиента и его счёта из одной эталонной записи. В документе есть номер клиента A и счёт клиента B. Достаточно ли отдельных совпадений для такого условия?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-dlp-edm"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Сопоставление полей одной записи при EDM",
+      "options": [
+        {
+          "text": "Нет, нужно подтвердить заданную связь полей одной записи",
+          "correct": true,
+          "explanation": "Совпадения отдельных значений не доказывают требуемое сочетание.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да, любые два совпавших поля всегда принадлежат одному человеку",
+          "correct": false,
+          "explanation": "Связь задаётся эталонными записями, а не количеством совпадений.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Да, если документ большой",
+          "correct": false,
+          "explanation": "Размер файла не устанавливает связь значений.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет, потому что EDM вообще не использует эталонные данные",
+          "correct": false,
+          "explanation": "Именно сопоставление с эталонными данными составляет основу этого подхода.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 13,
+      "conceptIds": [
+        "edm"
+      ]
+    },
+    {
+      "id": "q814",
+      "topic": "Инструменты: данные и восстановление",
+      "question": "Политика DLP запрещает более 100 записей в одном сообщении. Пять сообщений по 30 записей проходят. Требование бизнеса — не более 100 записей одному внешнему адресату за сутки. Чего не хватает?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-dlp"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Лимит на сообщение и совокупный объём передачи",
+      "options": [
+        {
+          "text": "Игнорировать все сообщения меньше 100 записей в отчёте",
+          "correct": false,
+          "explanation": "Тогда совокупный объём останется невидимым.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Агрегации по адресату и временному окну с учётом доступной телеметрии",
+          "correct": true,
+          "explanation": "Ограничение отдельного сообщения не реализует суточный лимит совокупной передачи.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Только уменьшения шрифта предупреждения",
+          "correct": false,
+          "explanation": "Это не меняет условие контроля.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Считать, что 30 автоматически умножается на число будущих сообщений",
+          "correct": false,
+          "explanation": "Такой истории у правила на одно сообщение нет без отдельной агрегации.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 14,
+      "conceptIds": [
+        "dlp",
+        "telemetry"
+      ]
+    },
+    {
+      "id": "q815",
+      "topic": "Инструменты: данные и восстановление",
+      "question": "DLP позволяет пользователю обойти блокировку с пояснением. В журнале появилась причина «срочно». Доказывает ли эта запись согласованность передачи по правилам организации?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-dlp",
+        "tools-logging"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Причина обхода DLP и подтверждение допустимости",
+      "options": [
+        {
+          "text": "Да, если слово написано без ошибок",
+          "correct": false,
+          "explanation": "Грамматика не определяет полномочия.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Нет, поэтому журнал обходов нужно удалить",
+          "correct": false,
+          "explanation": "Журнал нужен для проверки и расследования.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет, это объяснение пользователя; разрешённость проверяют по политике и необходимым согласованиям",
+          "correct": true,
+          "explanation": "Журналирование обхода даёт след действия, но не превращает произвольную причину в одобрение.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Да, любое заполненное поле является согласием владельца данных",
+          "correct": false,
+          "explanation": "Автор пояснения может не иметь полномочий согласовать передачу.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 15,
+      "conceptIds": [
+        "dlp"
+      ]
+    },
+    {
+      "id": "q816",
+      "topic": "Безопасность API",
+      "question": "Редактор может читать черновик и менять его до публикации, а опубликованный документ менять запрещено. Какие оси нужны в тестовой матрице доступа кроме роли?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-authz-testing"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Матрица прав по действию и состоянию объекта",
+      "options": [
+        {
+          "text": "Только название браузера",
+          "correct": false,
+          "explanation": "Браузер не выражает заданные правила доступа.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Только успешность входа",
+          "correct": false,
+          "explanation": "Вход не проверяет права на конкретные действия.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Только размер документа",
+          "correct": false,
+          "explanation": "Размер не является указанным условием авторизации.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Действие и состояние объекта, а также принадлежность, если она влияет на политику",
+          "correct": true,
+          "explanation": "Одна роль может иметь разные права для чтения, изменения и разных состояний документа.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 29,
+      "conceptIds": [
+        "access-matrix"
+      ]
+    },
+    {
+      "id": "q817",
+      "topic": "Безопасность API",
+      "question": "WebSocket открыли при действующих правах на комнату. Затем пользователя исключили, но соединение осталось открытым. Как прекратить дальнейший доступ?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-websocket-security"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Отзыв прав в долгоживущем WebSocket",
+      "options": [
+        {
+          "text": "Применить отзыв к активной подписке и проверять полномочия при дальнейших действиях",
+          "correct": true,
+          "explanation": "Успешный handshake не закрепляет права навсегда; жизненный цикл соединения должен учитывать изменения доступа.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Ждать только добровольного закрытия вкладки",
+          "correct": false,
+          "explanation": "Так пользователь может сохранять доступ после отзыва.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Считать права неизменяемыми до перезагрузки сервера",
+          "correct": false,
+          "explanation": "Это не следует из политики доступа.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Скрыть название комнаты, продолжив отправлять сообщения",
+          "correct": false,
+          "explanation": "Данные по-прежнему будут доступны клиенту.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 30,
+      "conceptIds": [
+        "websocket"
+      ]
+    },
+    {
+      "id": "q818",
+      "topic": "Безопасность API",
+      "question": "WebSocket использует cookie-сессию браузера. Сервер не проверяет Origin. Какая дополнительная проверка нужна против подключения со страницы чужого сайта?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-websocket-security"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Origin в браузерном WebSocket с cookie",
+      "options": [
+        {
+          "text": "Признать Origin полноценным паролем для любых клиентов",
+          "correct": false,
+          "explanation": "Небраузерный клиент может задавать этот заголовок; он не заменяет личность.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Проверять Origin по явному списку разрешённых источников, сохраняя аутентификацию и авторизацию",
+          "correct": true,
+          "explanation": "Браузер может отправить cookie при таком подключении; Origin помогает проверить контекст сайта-инициатора.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Считать Sec-WebSocket-Key доказательством доверенного сайта",
+          "correct": false,
+          "explanation": "Этот ключ относится к протоколу и не заменяет проверку происхождения.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Полагаться только на скрытую кнопку подключения",
+          "correct": false,
+          "explanation": "Другой сайт может создать свой клиентский код.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 31,
+      "conceptIds": [
+        "websocket",
+        "cookie",
+        "authentication",
+        "authorization",
+        "websocket-key"
+      ]
+    },
+    {
+      "id": "q819",
+      "topic": "Безопасность API",
+      "question": "Решение «доступ разрешён» кешируется только по user_id. Проверка для документа A затем повторно используется для документа B с другим владельцем. Что исправить?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "expand-authorization"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Ключ кеша решения об авторизации",
+      "options": [
+        {
+          "text": "Кешировать только успешные решения и оставить прежний ключ",
+          "correct": false,
+          "explanation": "Проблема как раз в повторном использовании успешного решения вне его области.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Спрятать идентификатор документа в интерфейсе",
+          "correct": false,
+          "explanation": "Ключ и серверная политика останутся неверными.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Включить все значимые условия решения: объект, действие и контекст политики; предусмотреть отзыв",
+          "correct": true,
+          "explanation": "Разрешение относится к конкретному запросу доступа, а не ко всем действиям пользователя.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Увеличить TTL записи",
+          "correct": false,
+          "explanation": "Это продлит ошибочное применение разрешения.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 32,
+      "conceptIds": [
+        "ttl"
+      ]
+    },
+    {
+      "id": "q820",
+      "topic": "Безопасность API",
+      "question": "Негативный тест удаления чужого документа получил HTTP 403. Почему дополнительно проверяют состояние документа?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-authz-testing"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Отказ в ответе и отсутствие побочного действия",
+      "options": [
+        {
+          "text": "Любой 403 гарантирует откат всех операций базы",
+          "correct": false,
+          "explanation": "HTTP-код сам не управляет транзакцией.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Чтобы заменить проверку прав проверкой наличия файла",
+          "correct": false,
+          "explanation": "Обе проверки важны; одна не заменяет другую.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Чтобы разрешить удаление, если ответ выглядит корректно",
+          "correct": false,
+          "explanation": "Цель теста — подтвердить запрет, включая состояние данных.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Обработчик мог выполнить удаление до проверки прав, а потом вернуть отказ",
+          "correct": true,
+          "explanation": "Нужны и правильный ответ, и отсутствие запрещённого побочного эффекта.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 33,
+      "conceptIds": [
+        "http"
+      ]
+    },
+    {
+      "id": "q821",
+      "topic": "Архитектура безопасности",
+      "question": "Сервис выдал действующую presigned URL для скачивания закрытого объекта. Пользователь переслал её другому человеку. Дополнительной привязки к личности нет. Что важно учесть?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-presigned"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Подписанная ссылка как предъявляемое полномочие",
+      "options": [
+        {
+          "text": "Обладатель ссылки может использовать её в пределах срока и условий",
+          "correct": true,
+          "explanation": "Такая ссылка представляет предъявляемое полномочие; её защищают от утечки и ограничивают область применения.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Подпись гарантирует, что ссылкой воспользуется только исходный пользователь",
+          "correct": false,
+          "explanation": "Подпись подтверждает параметры полномочия, а не личность каждого предъявителя.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Ссылка автоматически становится одноразовой после копирования",
+          "correct": false,
+          "explanation": "Обычная presigned URL не имеет такого свойства.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "HTTPS запрещает пересылать URL",
+          "correct": false,
+          "explanation": "Шифрование передачи не запрещает владельцу скопировать ссылку.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 17,
+      "conceptIds": [
+        "presigned-url",
+        "https",
+        "url"
+      ]
+    },
+    {
+      "id": "q822",
+      "topic": "Архитектура безопасности",
+      "question": "Пользователь заказал экспорт закрытых данных, затем потерял доступ до запуска очереди. Политика требует действующих прав в момент выполнения. Как должен поступить worker?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "expand-authorization",
+        "tools-threat-modeling"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Права в отложенном задании",
+      "options": [
+        {
+          "text": "Заменить пользователя общей административной ролью",
+          "correct": false,
+          "explanation": "Это обходит заданную политику доступа.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Проверить актуальные полномочия на нужные данные перед выполнением",
+          "correct": true,
+          "explanation": "Разрешение при постановке в очередь не удовлетворяет заданной политике на момент обработки.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Исполнить задачу безусловно, раз она попала в очередь",
+          "correct": false,
+          "explanation": "Очередь не отменяет требования к актуальности прав.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Проверить только подпись сообщения и не проверять пользователя",
+          "correct": false,
+          "explanation": "Подлинность задания не доказывает сохранение полномочий.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 18,
+      "conceptIds": [
+        "worker"
+      ]
+    },
+    {
+      "id": "q823",
+      "topic": "Архитектура безопасности",
+      "question": "Правило разделения обязанностей требует, чтобы выгрузку утверждал другой человек. У одного пользователя есть роли инициатора и согласующего. Достаточно ли проверить роль согласующего?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "expand-authorization"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Разделение инициатора и согласующего",
+      "options": [
+        {
+          "text": "Да, если пользователь вышел и вошёл снова",
+          "correct": false,
+          "explanation": "Новый сеанс не меняет личность согласующего.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Достаточно изменить отображаемое имя перед согласованием",
+          "correct": false,
+          "explanation": "Отображаемое имя не является надёжной проверкой личности.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет, нужно также сравнить личности и запретить согласование собственной заявки",
+          "correct": true,
+          "explanation": "Разделение обязанностей в условии относится к людям, а не только к названиям ролей.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Да, две роли всегда означают двух людей",
+          "correct": false,
+          "explanation": "Роли могут принадлежать одной учётной записи или одному человеку.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 19,
+      "conceptIds": [
+        "separation-duties"
+      ]
+    },
+    {
+      "id": "q824",
+      "topic": "Архитектура безопасности",
+      "question": "Сервис постоянно принимает задания быстрее, чем обрабатывает. Очередь в памяти не ограничена. Что нужно заложить в архитектуру для управляемой перегрузки?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-dos"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Ограниченная очередь и обратное давление",
+      "options": [
+        {
+          "text": "Только увеличить длину очереди без верхнего предела",
+          "correct": false,
+          "explanation": "Это откладывает исчерпание ресурсов, но не решает устойчивый дисбаланс.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Считать HTTP 200 доказательством своевременного выполнения",
+          "correct": false,
+          "explanation": "Принятие задания не означает завершения.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Отключить метрики задержки, чтобы снизить число тревог",
+          "correct": false,
+          "explanation": "Так перегрузка станет менее заметной.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Ограничение очереди, обратное давление или отказ по понятной политике и наблюдение за задержкой",
+          "correct": true,
+          "explanation": "При устойчивом превышении поступления над обработкой бесконечный буфер исчерпает ресурсы.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 20,
+      "conceptIds": [
+        "http",
+        "backpressure"
+      ]
+    },
+    {
+      "id": "q825",
+      "topic": "Архитектура безопасности",
+      "question": "Разработчик хочет передавать полный токен пользователя в атрибуте распределённой трассировки, который копируется между сервисами и экспортируется в систему наблюдения. Как поступить?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-logging",
+        "tools-threat-modeling"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Чувствительные данные в распределённой трассировке",
+      "options": [
+        {
+          "text": "Использовать безопасный идентификатор корреляции без секрета и минимальный нужный контекст",
+          "correct": true,
+          "explanation": "Трассировка создаёт дополнительные копии и получателей; токен расширяет последствия утечки.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Считать трассировку частью RAM, которая никогда не сохраняется",
+          "correct": false,
+          "explanation": "Атрибуты могут экспортироваться и храниться.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Передавать токен в base64 вместо исходного вида",
+          "correct": false,
+          "explanation": "Кодирование обратимо и не делает секрет безопасным.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Скрыть атрибут только в пользовательском интерфейсе наблюдения",
+          "correct": false,
+          "explanation": "Копии и доступ через другие каналы сохранятся.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 21,
+      "conceptIds": [
+        "token",
+        "distributed-tracing",
+        "base64url"
+      ]
+    },
+    {
+      "id": "q826",
+      "topic": "Архитектура безопасности",
+      "question": "Ответ /report зависит от tenant_id, но общий кеш использует только URL. Клиенты A и B запрашивают одинаковый путь. Как устранить риск смешения данных?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-web-cache"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Общий кеш персонализированного ответа",
+      "options": [
+        {
+          "text": "Считать HTTPS достаточным разделением кеша клиентов",
+          "correct": false,
+          "explanation": "TLS не задаёт ключ прикладного кеширования.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Запретить общее кеширование такого ответа либо корректно разделить кеш по проверенному контексту доступа",
+          "correct": true,
+          "explanation": "Ключ и политика кеша должны учитывать все условия, влияющие на закрытое содержимое.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Только уменьшить TTL с часа до минуты",
+          "correct": false,
+          "explanation": "Короткое время всё равно оставляет возможность чужого ответа.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Добавить tenant_id только в заголовок страницы после получения кеша",
+          "correct": false,
+          "explanation": "Ошибка выбора содержимого уже произошла.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 22,
+      "conceptIds": [
+        "url",
+        "https",
+        "ttl"
+      ]
+    },
+    {
+      "id": "q827",
+      "topic": "Архитектура безопасности",
+      "question": "На архитектурном разборе предложено требование «сделать безопасно». Как превратить его в проверяемый критерий для сервиса документов?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-threat-modeling"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Проверяемое требование к архитектуре",
+      "options": [
+        {
+          "text": "Перечислить названия трёх защитных продуктов",
+          "correct": false,
+          "explanation": "Наличие продуктов не определяет требуемое поведение сервиса.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Оценивать только число строк кода",
+          "correct": false,
+          "explanation": "Этот показатель не измеряет выполнение требования доступа.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Указать актив, действие, субъект и ожидаемый запрет, например отсутствие чтения документов другого tenant",
+          "correct": true,
+          "explanation": "Так появляется конкретная граница и сценарий проверки с наблюдаемым результатом.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Заменить фразу на «сделать очень безопасно»",
+          "correct": false,
+          "explanation": "Усиление прилагательного не создаёт критерия.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 23,
+      "conceptIds": [
+        "tenant-isolation"
+      ]
+    },
+    {
+      "id": "q828",
+      "topic": "Пентест и практика",
+      "question": "В отчёте событию сопоставили тактику ATT&CK. Можно ли считать положение столбца в матрице доказательством точного времени этого действия относительно других?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-attack-tactics"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Тактика ATT&CK и хронология атаки",
+      "options": [
+        {
+          "text": "Да, все атаки обязаны проходить столбцы строго слева направо",
+          "correct": false,
+          "explanation": "Реальные последовательности могут повторять и пропускать цели.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да, название тактики содержит точную временную метку",
+          "correct": false,
+          "explanation": "Тактика не кодирует время события.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет, потому что ATT&CK описывает только модели сетевых устройств",
+          "correct": false,
+          "explanation": "ATT&CK описывает наблюдаемое поведение противников.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет, тактика описывает цель поведения; временной порядок устанавливают по свидетельствам",
+          "correct": true,
+          "explanation": "Матрица не является обязательным расписанием каждой атаки.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 20,
+      "conceptIds": [
+        "mitre-attack"
+      ]
+    },
+    {
+      "id": "q829",
+      "topic": "Пентест и практика",
+      "question": "В согласованной проверке разрешён только стенд A. С него обнаружен сетевой путь к системе B, отсутствующей в scope проверки. Что делать перед проверкой B?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-assessment"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Область разрешённой проверки при переходе между узлами",
+      "options": [
+        {
+          "text": "Зафиксировать наблюдение и согласовать расширение scope проверки, не приступая к проверке B",
+          "correct": true,
+          "explanation": "Техническая достижимость не расширяет границы разрешённой работы.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Считать все достижимые системы автоматически разрешёнными",
+          "correct": false,
+          "explanation": "Сеть может связывать стенд с объектами вне согласованной области.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Проверить B сначала, согласовать после",
+          "correct": false,
+          "explanation": "Это меняет порядок получения разрешения на действие.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Скрыть путь из отчёта",
+          "correct": false,
+          "explanation": "Наблюдение полезно как основание для уточнения границ и архитектуры.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 21,
+      "conceptIds": [
+        "scope-testing"
+      ]
+    },
+    {
+      "id": "q830",
+      "topic": "Пентест и практика",
+      "question": "На разборе проекта инженер выполнил анализ журналов, а исправление внедряла другая команда. Как точнее представить результат и свой вклад?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "tools-assessment"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Отделение личного вклада и результата команды",
+      "options": [
+        {
+          "text": "Утверждать отсутствие всех будущих инцидентов",
+          "correct": false,
+          "explanation": "Одна выполненная задача не даёт такой гарантии.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Описать собственный анализ, переданные доказательства, работу команды и способ проверки результата",
+          "correct": true,
+          "explanation": "Так утверждения можно сопоставить с реальными действиями и свидетельствами.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Приписать себе внедрение, потому что оно последовало за анализом",
+          "correct": false,
+          "explanation": "Последовательность работ не меняет авторство действий.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Назвать продукт без описания задач и проверки",
+          "correct": false,
+          "explanation": "Название инструмента не показывает выполненную работу.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 22,
+      "conceptIds": [
+        "security-evidence"
+      ]
+    },
+    {
+      "id": "q831",
+      "topic": "Управление уязвимостями",
+      "question": "Уязвимость подтверждена, но уполномоченный владелец временно принял риск при заданных ограничениях. Какой статус соответствует фактам?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-patch-management"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Принятый риск и ложная находка",
+      "options": [
+        {
+          "text": "Исправлено, потому что владелец подписал документ",
+          "correct": false,
+          "explanation": "Согласование не изменяет уязвимый код или конфигурацию.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Удалено из истории без возможности пересмотра",
+          "correct": false,
+          "explanation": "Это теряет обоснование и контроль условий принятия риска.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Принятый риск с условиями и сроком пересмотра, а не false positive",
+          "correct": true,
+          "explanation": "Техническая проблема существует; управленческое решение меняет обработку, но не факт наличия.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "False positive, потому что исправление отложено",
+          "correct": false,
+          "explanation": "Ложная находка означает отсутствие подтверждённой проблемы, а не решение подождать.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 16,
+      "conceptIds": [
+        "vulnerability",
+        "risk-acceptance",
+        "false-positive"
+      ]
+    },
+    {
+      "id": "q832",
+      "topic": "Управление уязвимостями",
+      "question": "Каждое сканирование создаёт новую карточку одной и той же неустранённой уязвимости актива. Возраст карточки всегда один день. Что исправить в учёте?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-patch-management"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Повторное обнаружение и возраст открытой проблемы",
+      "options": [
+        {
+          "text": "Считать каждое наблюдение независимым исправлением",
+          "correct": false,
+          "explanation": "Сканирование не является устранением.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Хранить только последнее наблюдение без истории",
+          "correct": false,
+          "explanation": "Так теряется возраст и динамика проблемы.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Уменьшить частоту сканирования, чтобы карточек было меньше",
+          "correct": false,
+          "explanation": "Это не исправляет модель учёта повторов.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Связывать повторные наблюдения с существующей проблемой и сохранять дату первого подтверждения",
+          "correct": true,
+          "explanation": "Новая проверка не обнуляет длительность существования неустранённого риска.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 17,
+      "conceptIds": [
+        "vulnerability"
+      ]
+    },
+    {
+      "id": "q833",
+      "topic": "Управление уязвимостями",
+      "question": "Владелец просит закрыть уязвимости сервера: «Мы его больше не используем». Проверка всё ещё видит работающий сервис по прежнему адресу. Как поступить?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-patch-management"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Вывод актива из эксплуатации и доказательства закрытия",
+      "options": [
+        {
+          "text": "Проверить фактическое отключение или замену актива и идентичность наблюдаемого сервиса",
+          "correct": true,
+          "explanation": "Бизнес-статус без подтверждения не доказывает исчезновение уязвимой поверхности.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Закрыть все находки только по устному названию статуса",
+          "correct": false,
+          "explanation": "Техническое свидетельство противоречит такому закрытию.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Удалить адрес из сканирования и считать риск устранённым",
+          "correct": false,
+          "explanation": "Исключение из наблюдения не выключает сервис.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Переименовать сервер, сохранив доступность и старую версию",
+          "correct": false,
+          "explanation": "Новое имя не исправляет проблему.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 18,
+      "conceptIds": [
+        "vulnerability"
+      ]
+    },
+    {
+      "id": "q834",
+      "topic": "Управление уязвимостями",
+      "question": "Одна CVE присутствует в трёх независимых развёртываниях. Исправили только production, тест и резервный контур остались прежними. Как закрывать записи?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-patch-management"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Одна CVE в нескольких развёртываниях",
+      "options": [
+        {
+          "text": "Не фиксировать успешное исправление production до конца всех работ",
+          "correct": false,
+          "explanation": "Подтверждённые изменения стоит отражать, сохраняя общую незавершённость.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "По подтверждённому состоянию каждого развёртывания, сохранив незакрытые экземпляры",
+          "correct": true,
+          "explanation": "Общий номер CVE не означает общую установку исправления.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Закрыть CVE сразу для всей компании",
+          "correct": false,
+          "explanation": "Два известных экземпляра остаются неустранёнными.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Открыть новые CVE для теста и резерва",
+          "correct": false,
+          "explanation": "CVE идентифицирует уязвимость, а не отдельный сервер организации.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 19,
+      "conceptIds": [
+        "cve",
+        "production"
+      ]
+    },
+    {
+      "id": "q835",
+      "topic": "Управление уязвимостями",
+      "question": "После подтверждённого исправления релиз откатили на прежнюю уязвимую сборку из-за функционального сбоя. Как обновить учёт?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-patch-management"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Откат релиза возвращает уязвимость",
+      "options": [
+        {
+          "text": "Считать откат новым подтверждением исправления",
+          "correct": false,
+          "explanation": "Он вернул прежнюю версию, а не сохранил защиту.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Удалить сведения об откате из журнала изменений",
+          "correct": false,
+          "explanation": "Это нарушает связь состояния и доказательств.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Вернуть проблему в актуальное состояние для затронутых экземпляров и пересмотреть меры",
+          "correct": true,
+          "explanation": "История исправления остаётся, но текущая сборка снова содержит проблему.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Оставить навсегда закрытой, поскольку исправление когда-то было",
+          "correct": false,
+          "explanation": "Статус должен отражать текущее состояние, а не только прошлый успех.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 20,
+      "conceptIds": [
+        "vulnerability"
+      ]
+    },
+    {
+      "id": "q836",
+      "topic": "Управление уязвимостями",
+      "question": "Среднее время исправления закрытых задач уменьшилось, но самые старые критичные задачи всё ещё открыты и не входят в расчёт. Что добавить к оценке программы?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-ssdf"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Смещение метрики по закрытым задачам",
+      "options": [
+        {
+          "text": "Считать снижение среднего полным доказательством снижения риска",
+          "correct": false,
+          "explanation": "Выборка исключает текущий незакрытый риск.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Автоматически закрыть старые задачи ради метрики",
+          "correct": false,
+          "explanation": "Это улучшает число без исправления.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Перестать хранить даты открытия",
+          "correct": false,
+          "explanation": "Без них невозможно оценить возраст проблем.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Возраст и распределение открытых задач, включая просроченные и значимые риски",
+          "correct": true,
+          "explanation": "Метрика только закрытых задач может улучшаться при накоплении сложных нерешённых проблем.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 21,
+      "conceptIds": [
+        "mttr"
+      ]
+    },
+    {
+      "id": "q837",
+      "topic": "Безопасная разработка",
+      "question": "AppSec-команда выпустила безопасный шаблон сервиса. Как оценить его внедрение в новые проекты?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-ssdf"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Проверяемое внедрение безопасного шаблона",
+      "options": [
+        {
+          "text": "Проверять долю реально использующих его сервисов, версии и сохранение защитных настроек",
+          "correct": true,
+          "explanation": "Публикация шаблона не доказывает применение и отсутствие последующих небезопасных изменений.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Считать число просмотров презентации единственной метрикой",
+          "correct": false,
+          "explanation": "Просмотр не равен использованию в работающем сервисе.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Считать все будущие сервисы защищёнными автоматически",
+          "correct": false,
+          "explanation": "Команды могут не использовать шаблон или изменить его.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Измерять только количество страниц документации",
+          "correct": false,
+          "explanation": "Объём текста не подтверждает поведение приложения.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 37,
+      "conceptIds": [
+        "appsec"
+      ]
+    },
+    {
+      "id": "q838",
+      "topic": "Безопасная разработка",
+      "question": "Несколько команд независимо допускают одну ошибку обработки секретов. Все отдельные находки исправляют, но новые повторяются. Как усилить программу AppSec?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-ssdf"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Системное исправление повторяющегося класса ошибок",
+      "options": [
+        {
+          "text": "Считать каждую новую ошибку доказательством бесполезности всех исправлений",
+          "correct": false,
+          "explanation": "Локальные исправления полезны, но не заменяют работу с общей причиной.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Разобрать общую причину, улучшить стандартный компонент и добавить проверяемое правило разработки",
+          "correct": true,
+          "explanation": "Общий безопасный путь и проверка уменьшают повторение, дополняя исправление отдельных случаев.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Только переименовывать находки, чтобы отчёты выглядели разными",
+          "correct": false,
+          "explanation": "Так причина не меняется.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Запретить сообщать о повторяющемся классе ошибок",
+          "correct": false,
+          "explanation": "Это скрывает сигнал о системной проблеме.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 38,
+      "conceptIds": [
+        "appsec"
+      ]
+    },
+    {
+      "id": "q839",
+      "topic": "Пентест и практика",
+      "question": "В разрешённой проверке найдена уязвимость: ошибка доступа к документу на тестовых аккаунтах. Что включить в сообщение команде исправления?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-disclosure"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Минимальные доказательства для сообщения об уязвимости",
+      "options": [
+        {
+          "text": "Только слово «критично» без условий",
+          "correct": false,
+          "explanation": "Без условий и результата проблему трудно воспроизвести и оценить.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Вставить действующие пароли всех участников в обычный комментарий",
+          "correct": false,
+          "explanation": "Секреты не должны распространяться как часть стандартного отчёта.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Условия, минимальное воспроизведение на тестовых данных, ожидаемый и фактический результат, влияние",
+          "correct": true,
+          "explanation": "Отчёт должен позволять проверить проблему, не копируя лишние реальные данные или секреты.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Выгрузить всю базу, чтобы доказательство было убедительнее",
+          "correct": false,
+          "explanation": "Для подтверждённого случая это избыточное раскрытие данных.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 23,
+      "conceptIds": [
+        "vulnerability"
+      ]
+    },
+    {
+      "id": "q840",
+      "topic": "Управление уязвимостями",
+      "question": "По правилам организации риск принимает владелец сервиса с нужными полномочиями. Сканер пометил находку как «низкая». Считается ли это принятием риска?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-ssdf",
+        "research-patch-management"
+      ],
+      "researchBatch": "interview-expansion-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Ответственность при принятии риска",
+      "options": [
+        {
+          "text": "Да, любая метка low заменяет решение владельца",
+          "correct": false,
+          "explanation": "Техническая метка не является управленческим согласованием.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да, если отчёт подписан названием поставщика сканера",
+          "correct": false,
+          "explanation": "Поставщик не становится владельцем риска организации.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Решение должен принимать любой пользователь, первым увидевший отчёт",
+          "correct": false,
+          "explanation": "Доступ к отчёту не означает полномочий на принятие риска.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет, оценка инструмента — входные данные, а решение принимает назначенный владелец по процессу",
+          "correct": true,
+          "explanation": "Нужны контекст, ответственность и зафиксированное решение в рамках заданных правил.",
+          "sourceLetter": "Г"
+        }
+      ],
+      "number": 22,
+      "conceptIds": [
+        "risk-acceptance"
+      ]
     }
   ],
   "sources": [
@@ -34106,9 +38519,254 @@
       "id": "expand-owasp-a10",
       "title": "OWASP Top 10:2025 — A10 Mishandling of Exceptional Conditions",
       "url": "https://top10.owasp.org/2025/A10_2025-Mishandling_of_Exceptional_Conditions/"
+    },
+    {
+      "id": "auth-sensitive-reauthentication",
+      "title": "OWASP Authentication Cheat Sheet — повторная аутентификация перед чувствительными действиями",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#require-re-authentication-for-sensitive-features"
+    },
+    {
+      "id": "research-spf",
+      "title": "RFC 7208 — SPF",
+      "url": "https://www.rfc-editor.org/rfc/rfc7208.html"
+    },
+    {
+      "id": "research-dkim",
+      "title": "RFC 6376 — DKIM Signatures",
+      "url": "https://www.rfc-editor.org/rfc/rfc6376.html"
+    },
+    {
+      "id": "research-dmarc",
+      "title": "RFC 9989 — DMARC (май 2026; заменяет RFC 7489 и 9091)",
+      "url": "https://www.rfc-editor.org/rfc/rfc9989.html"
+    },
+    {
+      "id": "research-auth-results",
+      "title": "RFC 8601 — Authentication-Results и границы доверия",
+      "url": "https://www.rfc-editor.org/rfc/rfc8601.html"
+    },
+    {
+      "id": "research-kerberos",
+      "title": "RFC 4120 — Kerberos V5",
+      "url": "https://www.rfc-editor.org/rfc/rfc4120.html"
+    },
+    {
+      "id": "research-spn",
+      "title": "Microsoft Learn — Service principal names",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/ad/service-principal-names"
+    },
+    {
+      "id": "research-event4769",
+      "title": "Microsoft Learn — Event 4769: Kerberos service ticket requested",
+      "url": "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769"
+    },
+    {
+      "id": "research-ldap-sign",
+      "title": "Microsoft Learn — LDAP signing",
+      "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/ldap-signing"
+    },
+    {
+      "id": "research-ldap-binding",
+      "title": "Microsoft Learn — LDAP channel binding",
+      "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/ldap-channel-binding"
+    },
+    {
+      "id": "research-gmsa",
+      "title": "Microsoft Learn — Group managed service accounts",
+      "url": "https://learn.microsoft.com/en-us/entra/architecture/service-accounts-group-managed"
+    },
+    {
+      "id": "research-dom-clobbering",
+      "title": "OWASP — DOM Clobbering Prevention",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/DOM_Clobbering_Prevention_Cheat_Sheet.html"
+    },
+    {
+      "id": "research-csv",
+      "title": "OWASP — CSV Injection",
+      "url": "https://community.owasp.org/attacks/CSV_Injection"
+    },
+    {
+      "id": "research-js-equality",
+      "title": "MDN — Strict equality",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Strict_equality"
+    },
+    {
+      "id": "research-js-boolean",
+      "title": "MDN — Boolean",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean"
+    },
+    {
+      "id": "research-sessionstorage",
+      "title": "MDN — Window.sessionStorage",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage"
+    },
+    {
+      "id": "research-websocket",
+      "title": "RFC 6455 — WebSocket",
+      "url": "https://www.rfc-editor.org/rfc/rfc6455.html"
+    },
+    {
+      "id": "research-captcha",
+      "title": "Cloudflare — Server-side Turnstile validation",
+      "url": "https://developers.cloudflare.com/turnstile/get-started/server-side-validation/"
+    },
+    {
+      "id": "research-sysmon",
+      "title": "Microsoft Sysinternals — Sysmon",
+      "url": "https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon"
+    },
+    {
+      "id": "research-proxy",
+      "title": "MDN — X-Forwarded-For and trusted proxies",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-For"
+    },
+    {
+      "id": "research-sql-count",
+      "title": "PostgreSQL — Aggregate expressions and DISTINCT",
+      "url": "https://www.postgresql.org/docs/current/sql-expressions.html#SYNTAX-AGGREGATES"
+    },
+    {
+      "id": "research-python-datetime",
+      "title": "Python — datetime: aware and naive objects",
+      "url": "https://docs.python.org/3/library/datetime.html"
+    },
+    {
+      "id": "research-python-subprocess",
+      "title": "Python — subprocess.run and timeout",
+      "url": "https://docs.python.org/3/library/subprocess.html"
+    },
+    {
+      "id": "research-idempotency",
+      "title": "RFC 9110 — HTTP semantics, idempotent methods and retries",
+      "url": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.2.2"
+    },
+    {
+      "id": "research-classification-metrics",
+      "title": "scikit-learn — Model evaluation, precision and recall",
+      "url": "https://scikit-learn.org/stable/modules/model_evaluation.html"
+    },
+    {
+      "id": "research-firewall",
+      "title": "NIST SP 800-41 Rev. 1 — Firewalls and Firewall Policy",
+      "url": "https://csrc.nist.gov/pubs/sp/800/41/r1/final"
+    },
+    {
+      "id": "research-pmtud",
+      "title": "RFC 1191 — Path MTU Discovery",
+      "url": "https://www.rfc-editor.org/rfc/rfc1191"
+    },
+    {
+      "id": "research-tls-decryption",
+      "title": "Wireshark — TLS decryption",
+      "url": "https://wiki.wireshark.org/TLS"
+    },
+    {
+      "id": "research-snaplen",
+      "title": "Wireshark — SnapLen",
+      "url": "https://wiki.wireshark.org/SnapLen"
+    },
+    {
+      "id": "research-tcp",
+      "title": "RFC 9293 — TCP",
+      "url": "https://www.rfc-editor.org/rfc/rfc9293.html"
+    },
+    {
+      "id": "research-suricata-threshold",
+      "title": "Suricata 8.0.3 — Thresholding keywords and rule actions",
+      "url": "https://docs.suricata.io/en/suricata-8.0.3/rules/thresholding.html"
+    },
+    {
+      "id": "research-sql-like",
+      "title": "PostgreSQL — LIKE pattern matching",
+      "url": "https://www.postgresql.org/docs/current/functions-matching.html"
+    },
+    {
+      "id": "research-redos",
+      "title": "OWASP — Regular expression Denial of Service",
+      "url": "https://community.owasp.org/attacks/Regular_expression_Denial_of_Service_-_ReDoS"
+    },
+    {
+      "id": "research-toctou",
+      "title": "MITRE CWE-367 — Time-of-check Time-of-use",
+      "url": "https://cwe.mitre.org/data/definitions/367.html"
+    },
+    {
+      "id": "research-asan",
+      "title": "Clang — AddressSanitizer",
+      "url": "https://clang.llvm.org/docs/AddressSanitizer.html"
+    },
+    {
+      "id": "research-python-hmac",
+      "title": "Python — hmac.compare_digest",
+      "url": "https://docs.python.org/3/library/hmac.html"
+    },
+    {
+      "id": "research-integer-overflow",
+      "title": "MITRE CWE-190 — Integer Overflow or Wraparound",
+      "url": "https://cwe.mitre.org/data/definitions/190.html"
+    },
+    {
+      "id": "research-dlp-ocr",
+      "title": "Microsoft Purview — Optical character recognition",
+      "url": "https://learn.microsoft.com/en-us/purview/ocr-learn-about"
+    },
+    {
+      "id": "research-dlp-edm",
+      "title": "Microsoft Purview — Exact data match",
+      "url": "https://learn.microsoft.com/en-us/purview/sit-learn-about-exact-data-match-based-sits"
+    },
+    {
+      "id": "research-websocket-security",
+      "title": "OWASP — WebSocket Security",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/WebSocket_Security_Cheat_Sheet.html"
+    },
+    {
+      "id": "research-presigned",
+      "title": "AWS S3 — Presigned URLs",
+      "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html"
+    },
+    {
+      "id": "research-dos",
+      "title": "OWASP — Denial of Service",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Denial_of_Service_Cheat_Sheet.html"
+    },
+    {
+      "id": "research-web-cache",
+      "title": "OWASP — Web Cache Security",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Web_Cache_Security_Cheat_Sheet.html"
+    },
+    {
+      "id": "research-attack-tactics",
+      "title": "MITRE ATT&CK — Enterprise tactics",
+      "url": "https://attack.mitre.org/tactics/enterprise/"
+    },
+    {
+      "id": "research-patch-management",
+      "title": "NIST SP 800-40 Rev. 4 — Enterprise Patch Management Planning",
+      "url": "https://csrc.nist.gov/pubs/sp/800/40/r4/final"
+    },
+    {
+      "id": "research-ssdf",
+      "title": "NIST SP 800-218 — Secure Software Development Framework",
+      "url": "https://csrc.nist.gov/pubs/sp/800/218/final"
+    },
+    {
+      "id": "research-disclosure",
+      "title": "OWASP — Vulnerability Disclosure",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Vulnerability_Disclosure_Cheat_Sheet.html"
+    },
+    {
+      "id": "research-mde-isolation",
+      "title": "Microsoft Defender for Endpoint — Isolate devices from the network",
+      "url": "https://learn.microsoft.com/en-us/defender-endpoint/respond-machine-alerts"
+    },
+    {
+      "id": "research-suricata-rules",
+      "title": "Suricata 8.0.3 — Rule source, destination and direction",
+      "url": "https://docs.suricata.io/en/suricata-8.0.3/rules/intro.html"
     }
   ],
-  "updatedAt": "2026-10-06",
+  "updatedAt": "2026-10-10",
   "additionalSource": "Авторские учебные вопросы по открытым программам сертификаций, подборкам собеседований и технической документации; расширенный раздел модели OSI. Правовые вопросы по официальным актам и разъяснениям РФ и ЕС с указанием юрисдикции, нормы и даты сверки. Авторские концептуальные вопросы о классах инструментов ИБ, их назначении, видимости, ограничениях и проверке результата. Учебный пакет JWT, OAuth, PKI, архитектуры, OWASP Top 10:2025 и антивирусной защиты: 140 вопросов, распределённых по профильным темам.",
   "certificationGuides": [
     {

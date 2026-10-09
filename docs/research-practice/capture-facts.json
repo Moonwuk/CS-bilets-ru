@@ -1,0 +1,9 @@
+{
+  "packets": 9,
+  "tcp_connections": 1,
+  "client_unique_request_bytes": 48,
+  "client_payload_bytes_including_retransmission": 72,
+  "server_response_bytes": 40,
+  "retransmissions": 1,
+  "synthetic": true
+}
