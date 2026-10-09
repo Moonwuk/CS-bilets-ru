@@ -38,14 +38,14 @@ def main():
     for directory in [work, output, work / "assets/site", work / "classes", work / "dex", work / "gen"]:
         directory.mkdir(parents=True, exist_ok=True)
     assets = work / "assets/site"
-    for name in ["index.html", "senior.html", "ai-security.html", "scenarios.html", "all-questions.html", "topic-wheel.html", "privacy.html", "style.css", "case-trainer.css", "feedback.css", "app.js", "case-trainer.js", "all-questions.js", "wheel-visual.js", "wheel-visual.css", "feedback.js", "glossary.js", "questions.json", "senior-questions.json", "ai-security-questions.json", "scenarios-questions.json"]:
+    for name in ["index.html", "senior.html", "ai-security.html", "scenarios.html", "all-questions.html", "topic-wheel.html", "privacy.html", "support.html", "support.js", "style.css", "case-trainer.css", "feedback.css", "app.js", "case-trainer.js", "all-questions.js", "wheel-visual.js", "wheel-visual.css", "feedback.js", "glossary.js", "questions.json", "senior-questions.json", "ai-security-questions.json", "scenarios-questions.json"]:
         source = ROOT / name
         if source.is_dir():
             shutil.copytree(source, assets / name)
         else:
             shutil.copy2(source, assets / name)
     shutil.copy2(ANDROID / "android-adapter.js", assets / "android-adapter.js")
-    for name in ["index.html", "senior.html", "ai-security.html", "scenarios.html", "all-questions.html", "topic-wheel.html", "privacy.html"]:
+    for name in ["index.html", "senior.html", "ai-security.html", "scenarios.html", "all-questions.html", "topic-wheel.html", "privacy.html", "support.html"]:
         page = (assets / name).read_text()
         page = page.replace("</head>", '<script src="./android-adapter.js" defer></script>\n</head>', 1)
         (assets / name).write_text(page)

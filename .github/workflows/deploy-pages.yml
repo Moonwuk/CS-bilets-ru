@@ -48,7 +48,7 @@ jobs:
           cp index.html style.css glossary.js app.js questions.json .nojekyll \
             senior.html ai-security.html scenarios.html all-questions.html all-questions.js case-trainer.js case-trainer.css \
             topic-wheel.html wheel-visual.js wheel-visual.css \
-            senior-questions.json ai-security-questions.json scenarios-questions.json feedback.js feedback.css privacy.html _site/
+            senior-questions.json ai-security-questions.json scenarios-questions.json feedback.js feedback.css privacy.html support.html support.js _site/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6.0.0
