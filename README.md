@@ -196,7 +196,7 @@ node tests/check-wheel-visual.cjs
 Android 8.0+ и WebView 100+, без разрешений, рекламы и аналитики.
 Прогресс веб-версии и APK хранится отдельно.
 
-[Сборка и подпись APK](android/README.md) · [Карточка RuStore](store/rustore-listing.txt) · [Политика данных](privacy.html).
+[Сборка и подпись APK/AAB](android/README.md) · [Карточка RuStore](store/rustore-listing.txt) · [Google Play: гайд](docs/google-play-release.md) · [Карточка Google Play](store/googleplay-listing.txt) · [Политика данных](privacy.html).
 
 ### Обратная связь
 

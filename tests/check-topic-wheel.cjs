@@ -8,6 +8,9 @@ const root = path.resolve(__dirname, '..');
 const copy = value => JSON.parse(JSON.stringify(value));
 const files = ['questions.json', 'ai-security-questions.json', 'scenarios-questions.json'];
 const banks = Object.fromEntries(files.map(file => [`./${file}`, JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'))]));
+banks['./questions.json'] = require('./compliance-fixtures.cjs').composed();
+const totalQuestions = Object.values(banks).reduce((sum, bank) => sum + bank.questions.length, 0);
+const totalTopics = banks['./questions.json'].topics.length + 7;
 const wheelKey = 'cs-bilets-ru.topic-wheel.v1';
 const oldValues = [['cs-bilets-ru.progress.v1', 'keep basic'], ['cs-bilets-ru.all-questions.v1', 'keep first-error'], ...Object.values(keys).map(key => [key, `keep ${key}`])];
 const state = run => run.a.get().progress;
@@ -46,6 +49,7 @@ function deferredView() {
   assert(html.includes('data-bank="topic-wheel"'));
   for (const name of ['all-questions.js', 'wheel-visual.js', 'case-trainer.js']) assert(html.includes(`src="./${name}" defer`));
   const loaderContext = { window: {}, fetch: async url => ({ ok: true, json: async () => copy(banks[url]) }) };
+  loaderContext.window.TrainerBasicBank = { load: async () => copy(banks['./questions.json']) };
   vm.createContext(loaderContext); vm.runInContext(fs.readFileSync(path.join(root, 'all-questions.js'), 'utf8'), loaderContext);
   const defaultBefore = await loaderContext.window.TrainerAllQuestions.load();
   const enriched = await loaderContext.window.TrainerAllQuestions.load({ includeTopics: true });
@@ -58,10 +62,10 @@ function deferredView() {
   const storage = new Map(oldValues);
   let run = await boot({ storage });
   const groups = run.a.get().dataset.topicGroups;
-  assert.equal(groups.length, 51);
-  assert.deepEqual(['basic', 'ai-security', 'scenarios'].map(id => groups.filter(group => group.bankId === id).length), [44, 4, 3]);
+  assert.equal(groups.length, totalTopics);
+  assert.deepEqual(['basic', 'ai-security', 'scenarios'].map(id => groups.filter(group => group.bankId === id).length), [banks['./questions.json'].topics.length, 4, 3]);
   const assigned = groups.flatMap(group => group.questionIds);
-  assert.equal(assigned.length, 916); assert.equal(new Set(assigned).size, 916);
+  assert.equal(assigned.length, totalQuestions); assert.equal(new Set(assigned).size, totalQuestions);
   assert.deepEqual([...assigned].sort(), Object.values(banks).flatMap(bank => bank.questions.map(q => q.id)).sort());
   assert(!run.fetched.some(url => url.includes('senior')));
   for (const group of groups) {
@@ -163,7 +167,7 @@ function deferredView() {
   run = await boot({ storage });
   assert.equal(state(run).session.outcome, 'stopped');
 
-  // Finishing every real topic perfectly covers all 916 questions and clears exactly 51 topics.
+  // Finishing every real topic perfectly covers the whole bank and clears every topic.
   let confirmedThisRound = 0;
   const clearedOrder = new Set();
   const legalId = banks['./questions.json'].questions.find(question => question.legal).id;
@@ -235,9 +239,9 @@ function deferredView() {
     assert.equal(state(run).session.outcome, 'passed');
     assert.equal(state(run).clearedTopics.size, before + 1);
   }
-  assert.equal(confirmedThisRound, 916);
+  assert.equal(confirmedThisRound, totalQuestions);
   assert.equal(privacySeen.size, privacyIds.size);
-  assert.equal(clearedOrder.size, 51);
+  assert.equal(clearedOrder.size, totalTopics);
   assert.equal(run.a.eligibleWheelTopics().length, 0);
   assert(run.html().includes('Все темы пройдены!'));
   const wonSaved = storage.get(wheelKey);
@@ -248,7 +252,7 @@ function deferredView() {
   const newRound = run.a.requestNewWheelRound(); run.nodes.get('#dialog-ok').dispatch('click'); await newRound;
   assert.equal(state(run).clearedTopics.size, 0); assert.equal(state(run).session, null);
   assert.equal(state(run).total, totalAtWin);
-  assert.equal(run.a.eligibleWheelTopics().length, 51);
+  assert.equal(run.a.eligibleWheelTopics().length, totalTopics);
   othersIntact(storage);
 
   // Reset during animation cannot be undone by a late animation completion.
@@ -288,5 +292,5 @@ function deferredView() {
   assert.equal(state(changedRun).session, null); assert.equal(state(changedRun).clearedTopics.size, 0);
   assert.equal(state(changedRun).total, good.total);
   assert(changedRun.a.get().notice.includes('обновились'));
-  console.log('Topic wheel checks passed:51 original topics/916 questions, opt-in metadata, persisted uniform draw, double/reload spin, immutable confirmed answers, failed and stopped topics retained, perfect-only clearing, all51 win, pause/notes, late-animation reset safety, strict save validation, signature migration and independent storage.');
+  console.log(`Topic wheel checks passed:${totalTopics} original topics/${totalQuestions} questions, opt-in metadata, persisted uniform draw, double/reload spin, immutable confirmed answers, failed and stopped topics retained, perfect-only clearing, all-topics win, pause/notes, late-animation reset safety, strict save validation, signature migration and independent storage.`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -25,7 +25,9 @@
 
 ## Сборка и публикация
 
-[Android: сборка и подпись APK](../android/README.md) · [Карточка RuStore](../store/rustore-listing.txt) · [Политика данных](../privacy.html)
+[Android: сборка и подпись APK/AAB](../android/README.md) · [Карточка RuStore](../store/rustore-listing.txt) · [Политика данных](../privacy.html)
+
+[Google Play: простой гайд](google-play-release.md) · [Карточка Google Play](../store/googleplay-listing.txt) · [Ответы для Play Console](../store/googleplay-console-answers.txt)
 
 ## Поддержка документации
 

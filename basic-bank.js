@@ -53,6 +53,7 @@
       requireValue(new Set(question.options.map(option => option.text.trim().toLocaleLowerCase('ru-RU'))).size === 4, 'повтор вариантов.');
       requireValue(Array.isArray(question.references) && question.references.length > 0 && question.references.every(ref => object(ref) && addedSources.has(ref.sourceId) && text(ref.locator)), 'неверная ссылка на норму.');
       requireValue(Array.isArray(question.relatedQuestionIds) && question.relatedQuestionIds.every(id => baseIds.has(id)), 'неизвестный соседний вопрос.');
+      requireValue(['application', 'practice'].includes(question.basisType), 'неверный тип основания.');
       requireValue(text(question.learningObjective) && text(question.recommendedEvidence), 'не заполнен разбор компетенции.');
     }
     for (const moduleId of modules.keys()) requireValue(raw.filter(question => question.module === moduleId).length === 8, 'в направлении должно быть восемь вопросов.');

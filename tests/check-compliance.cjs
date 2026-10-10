@@ -79,6 +79,7 @@ const files = { './questions.json': base, './data/compliance-ru/manifest.json': 
     [() => {}, p => { p[0].questions[0].options.forEach(option => { option.correct = false; }); }, /четыре/],
     [() => {}, p => { p[0].questions.pop(); }, /часть/],
     [() => {}, p => { p[0].questions[0].id = 'rfc999'; }, /ID/],
+    [() => {}, p => { p[0].questions[0].basisType = 'anything'; }, /основания/],
     [() => {}, p => { p[0].questions[0].relatedQuestionIds = ['q999']; }, /соседний/]
   ];
   for (const [changeManifest, changeParts, expected] of badCases) {

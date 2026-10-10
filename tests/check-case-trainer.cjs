@@ -130,6 +130,12 @@ async function runtime({ id = 'senior', bank = fixture(id), storage = new Map(),
     document, window, console: { error(...args) { errors.push(args); } }, Math: math, URL, Map, Set, Promise,
     fetch: async url => { fetched.push(url); const fail = failedHttp || url === failedFile; return { ok: !fail, status: fail ? 404 : 200, json: async () => banks ? banks[url] : bank }; }
   };
+  // Composed mode fixtures isolate trainer behavior; check-compliance executes the real multipart loader.
+  window.TrainerBasicBank = { load: async () => {
+    const response = await context.fetch('./questions.json');
+    if (!response.ok) throw new Error('Question bank unavailable');
+    return response.json();
+  } };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(root,'glossary.js'),'utf8'),context);
   if (id === 'all-questions' || id === 'topic-wheel') vm.runInContext(fs.readFileSync(path.join(root,'all-questions.js'),'utf8'),context);
