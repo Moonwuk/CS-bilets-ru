@@ -11,6 +11,9 @@ android/build/
 *.keystore
 *.apk
 *.apk.sha256
+*.aab
+*.aab.sha256
+*.apks
 *password*
 *signing-key*
 

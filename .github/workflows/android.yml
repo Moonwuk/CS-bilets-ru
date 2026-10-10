@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK and Google Play AAB
 
 on:
   pull_request:
@@ -25,6 +25,7 @@ jobs:
       - name: Check trainer
         run: |
           node --check app.js
+          node --check android/googleplay-feedback.js
           node --check android/android-adapter.js
           node --check feedback.js
           node tests/check-glossary.cjs
@@ -37,9 +38,13 @@ jobs:
           node tests/check-wheel-visual.cjs
       - name: Install Android build tools
         run: python3 android/install-sdk.py --sdk-dir "$RUNNER_TEMP/infosec-sdk"
+      - name: Install official bundletool
+        run: python3 android/install-bundletool.py --tools-dir "$RUNNER_TEMP/infosec-tools"
       - name: Build unsigned APK for review
         if: env.HAS_SIGNING_KEY != 'true'
-        run: bash android/build.sh --unsigned
+        run: |
+          bash android/build.sh --unsigned
+          bash android/build.sh --unsigned --store googleplay --format both
       - name: Prepare private signing files
         if: env.HAS_SIGNING_KEY == 'true'
         env:
@@ -62,7 +67,41 @@ jobs:
           PY
       - name: Build signed release
         if: env.HAS_SIGNING_KEY == 'true'
-        run: bash android/build.sh
+        run: |
+          bash android/build.sh
+          bash android/build.sh --store googleplay --format both
+      - name: Install pinned browser test client
+        run: npm install --prefix "$RUNNER_TEMP/play-review" --no-save --ignore-scripts playwright@1.51.1
+      - name: Review packaged Google Play screens
+        env:
+          NODE_PATH: ${{ runner.temp }}/play-review/node_modules
+        run: |
+          export GOOGLE_CHROME_BIN="$(command -v google-chrome)"
+          node tests/check-googleplay-browser.cjs
+      - name: Upload Google Play screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: infosec-googleplay-screenshots
+          path: android/build/googleplay-screenshots/
+          if-no-files-found: error
+      - name: Upload Google Play review artifacts
+        if: env.HAS_SIGNING_KEY != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: infosec-googleplay-unsigned
+          path: android/build/outputs/googleplay/*-unsigned.*
+          if-no-files-found: error
+      - name: Upload Google Play release artifacts
+        if: env.HAS_SIGNING_KEY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: infosec-googleplay-release
+          path: |
+            android/build/outputs/googleplay/*.aab
+            android/build/outputs/googleplay/*.apk
+            android/build/outputs/googleplay/*.sha256
+            !android/build/outputs/googleplay/*-unsigned.*
+          if-no-files-found: error
       - name: Upload unsigned review artifact
         if: env.HAS_SIGNING_KEY != 'true'
         uses: actions/upload-artifact@v4
