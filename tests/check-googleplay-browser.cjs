@@ -38,7 +38,8 @@ const {chromium} = require('playwright');
     await page.locator('[data-action="random"]').click();
     await page.locator('[data-option]').first().waitFor();
     await page.screenshot({path:path.join(out,'02-question.png')});
-    await page.locator('[data-option]').first().click();
+    // The middle of an option can be a glossary button; tap its plain edge.
+    await page.locator('[data-option]').first().click({position:{x:16,y:16}});
     await page.locator('[data-action="check"]').click();
     await page.locator('[aria-label="Разбор ответа"]').waitFor();
     const saved=await page.evaluate(()=>JSON.stringify(Object.entries(localStorage)));
