@@ -501,7 +501,8 @@
     const session = progress.session;
     const active = !!session && !session.finished;
     const topicViews = eligible.map(group => ({ id: group.id, title: group.title, count: group.questionIds.length }));
-    main.innerHTML = `${noticeMarkup()}<header class="page-heading"><div><span class="eyebrow">Случайная тема · полный набор</span><h1>Барабан тем</h1><p class="case-intro">В этом круге ${dataset.topicGroups.length} темы и ${dataset.questions.length} вопросов. Все оставшиеся темы имеют одинаковый шанс выпадения, независимо от числа вопросов.</p></div></header>
+    const composition = dataset.tracks.map(track => `${track.id === 'basic' ? 'Базовый банк' : esc(track.title)} — ${dataset.topicGroups.filter(group => group.bankId === track.id).length}`).join(' · ');
+    main.innerHTML = `${noticeMarkup()}<header class="page-heading"><div><span class="eyebrow">Случайная тема · полный набор</span><h1>Барабан тем</h1><p class="case-intro">Тем в круге: ${dataset.topicGroups.length} · Вопросов: ${dataset.questions.length}. Все оставшиеся темы имеют одинаковый шанс выпадения, независимо от числа вопросов.</p><p class="case-intro">Темы по разделам: ${composition}. Сеньор проходится отдельно.</p></div></header>
       <div class="case-notice"><p>Пройдите все вопросы выпавшей темы. Она исчезнет из барабана, только если все ответы верны в одной попытке.</p><p>Ошибка не прерывает тему. Правильность ответов и разбор открываются только после завершения темы. Если были ошибки или тема остановлена, она остаётся в барабане.</p></div>
       <p class="case-summary">Пройдено без ошибок: <strong>${progress.clearedTopics.size} / ${dataset.topicGroups.length}</strong> · Осталось тем: <strong>${eligible.length}</strong></p>
       ${won ? `<section class="result-card"><div class="result-copy"><h2>Все темы пройдены!</h2><p>В каждой теме все вопросы решены верно за одну попытку.</p><button class="button primary" data-action="new-round">Начать новый круг</button></div></section>` : `
@@ -899,7 +900,7 @@
       signature = bankSignature(data);
       restoreProgress();
       if (wheel && progress.pendingSpin) { progress.pendingSpin = false; progress.view = 'session'; }
-      $('#dataset-info').textContent = wheel ? `${data.questions.length} вопросов · ${data.topicGroups.length} темы` : `${data.questions.length} ${itemsLabel} · ${data.tracks.length} направления`;
+      $('#dataset-info').textContent = wheel ? `Всего тем: ${data.topicGroups.length} · Вопросов: ${data.questions.length}` : `${data.questions.length} ${itemsLabel} · ${data.tracks.length} направления`;
       $('#reset-progress').disabled = false;
       saveProgress();
       render();
