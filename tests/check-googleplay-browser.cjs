@@ -81,6 +81,9 @@ const {chromium} = require('playwright');
     await page.keyboard.press('1');
     await page.keyboard.press('Enter');
     assert.deepEqual(await progress(), beforeHelp, 'Glossary must not answer or score');
+    // Enter activates the focused Close button; it must not confirm an answer.
+    await page.locator('#term-dialog').waitFor({state:'hidden'});
+    await page.locator('.question-title [data-compliance-term]').first().click();
     await page.locator('#term-close').click();
     await page.locator('[data-option]').first().click({position:{x:16,y:16}});
     await page.locator('[data-action="check"]').click();
