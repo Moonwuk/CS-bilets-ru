@@ -25780,7 +25780,7 @@
         "token",
         "api",
         "hs256",
-        "http",
+        "http2",
         "jwt-aud"
       ]
     },
@@ -36109,6 +36109,3002 @@
       "conceptIds": [
         "risk-acceptance"
       ]
+    },
+    {
+      "id": "q841",
+      "topic": "Модель OSI",
+      "number": 42,
+      "question": "Специалист называет Ethernet целиком протоколом только L2. Что точнее сказать о стандарте IEEE 802.3 в сопоставлении с OSI?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-proto-ethernet",
+        "osi-proto-cisco-questions"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Ethernet охватывает физический и канальный уровни",
+      "osiFocus": "L1–L2",
+      "protocols": [
+        "IEEE 802.3"
+      ],
+      "conceptIds": [
+        "ethernet",
+        "osi"
+      ],
+      "exerciseSourceIds": [
+        "osi-proto-cisco-questions"
+      ],
+      "options": [
+        {
+          "text": "Он описывает и физическую передачу, и функции MAC канального уровня",
+          "correct": true,
+          "explanation": "Одно семейство стандартов охватывает несколько функций. Сигнализация относится к L1, а работа MAC — к L2.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Он целиком относится к L4, потому что переносит TCP",
+          "correct": false,
+          "explanation": "Перенос TCP внутри кадра не меняет уровень внешнего механизма Ethernet.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Он описывает только маршрутизацию между IP-подсетями",
+          "correct": false,
+          "explanation": "IP-маршрутизация не является назначением Ethernet MAC.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Он ограничивается форматом HTTP-заголовков",
+          "correct": false,
+          "explanation": "HTTP использует нижележащий стек и не определяет физическую среду Ethernet.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q842",
+      "topic": "Модель OSI",
+      "number": 43,
+      "question": "Линию Ethernet переводят с 1000BASE-T на 1000BASE-SX при совместимом оборудовании. Какое изменение относится прежде всего к L1?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-proto-media"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Физические варианты Ethernet и среда передачи",
+      "osiFocus": "L1",
+      "protocols": [
+        "1000BASE-T",
+        "1000BASE-SX"
+      ],
+      "conceptIds": [
+        "ethernet"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Замена IPv4 на IPv6 обязательна из-за оптоволокна",
+          "correct": false,
+          "explanation": "Версия IP не определяется медной или оптической средой Ethernet.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Переход с медной витой пары на многомодовое оптоволокно и соответствующие оптические интерфейсы",
+          "correct": true,
+          "explanation": "Оба варианта относятся к гигабитному Ethernet, но используют разные физические среды и сигналы.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Все TCP-порты нужно увеличить в десять раз",
+          "correct": false,
+          "explanation": "Физическая среда не меняет нумерацию транспортных портов.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "DNS-запросы обязательно становятся зашифрованными",
+          "correct": false,
+          "explanation": "Оптическая линия сама по себе не вводит защиту DNS.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q843",
+      "topic": "Модель OSI",
+      "number": 44,
+      "question": "Два совместимых Ethernet-интерфейса выполняют автосогласование скорости и дуплекса. Инженер предлагает сначала выдать им IP-адреса через DHCP. Что верно?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-autoneg"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Автосогласование Ethernet не требует IP-настроек",
+      "osiFocus": "L1",
+      "protocols": [
+        "Ethernet autonegotiation"
+      ],
+      "conceptIds": [
+        "ethernet",
+        "dhcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "DHCP назначает не только IP, но и электрические параметры линка",
+          "correct": false,
+          "explanation": "DHCP передаёт сетевые настройки клиента, а не выполняет сигнализацию Ethernet.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Без DNS два порта не могут согласовать дуплекс",
+          "correct": false,
+          "explanation": "DNS не участвует в физическом автосогласовании.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Автосогласование физической линии не требует предварительного IP-обмена",
+          "correct": true,
+          "explanation": "Согласование возможностей линка выполняется механизмами Ethernet. DHCP уже использует работающую нижележащую связь.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Автосогласование проходит внутри TCP-рукопожатия",
+          "correct": false,
+          "explanation": "TCP работает над IP и не поднимает физическую линию.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q844",
+      "topic": "Модель OSI",
+      "number": 45,
+      "question": "Оба конца прямого Ethernet-соединения корректно работают в full duplex. Как относится к этому соединению механизм CSMA/CD?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-autoneg"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "CSMA/CD и полнодуплексный Ethernet",
+      "osiFocus": "L1–L2",
+      "protocols": [
+        "Ethernet full duplex"
+      ],
+      "conceptIds": [
+        "ethernet",
+        "csma-cd"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "CSMA/CD выбирает TCP-порт для каждой передачи",
+          "correct": false,
+          "explanation": "Механизм доступа к среде не распределяет транспортные порты.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Каждая одновременная передача обязательно считается коллизией",
+          "correct": false,
+          "explanation": "Одновременная передача в двух направлениях является нормой full duplex.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "CSMA/CD заменяется DNS-проверкой перед каждым кадром",
+          "correct": false,
+          "explanation": "DNS не управляет доступом к физической среде.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Обнаружение коллизий CSMA/CD для обычной передачи на таком соединении не используется",
+          "correct": true,
+          "explanation": "В full duplex стороны могут передавать одновременно по независимым направлениям; конкуренции за общую полудуплексную среду здесь нет.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q845",
+      "topic": "Модель OSI",
+      "number": 46,
+      "question": "В теге IEEE 802.1Q кадра указаны VID=120 и PCP=5. Что обозначает VID в этом случае?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-proto-vlan"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Различение идентификатора VLAN и приоритета кадра",
+      "osiFocus": "L2",
+      "protocols": [
+        "IEEE 802.1Q"
+      ],
+      "conceptIds": [
+        "vlan",
+        "dot1q"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Идентификатор VLAN, с которой связан кадр",
+          "correct": true,
+          "explanation": "VID и PCP — разные поля тега: первое указывает VLAN, второе кодирует приоритет обработки.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Номер TCP-порта приложения 120",
+          "correct": false,
+          "explanation": "Тег Ethernet не является транспортным заголовком.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Время жизни IP-пакета, равное 120 переходам",
+          "correct": false,
+          "explanation": "TTL находится в заголовке IPv4, а не в поле VID.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Приоритет кадра; PCP хранит номер VLAN",
+          "correct": false,
+          "explanation": "Вариант меняет назначения VID и PCP местами.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q846",
+      "topic": "Модель OSI",
+      "number": 47,
+      "question": "На IEEE 802.1Q trunk задана native VLAN 30, приём нетегированных кадров разрешён и привязан к ней. К какой VLAN отнесут пришедший обычный кадр без тега?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-vlan"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Нетегированный кадр на порту с заданной native VLAN",
+      "osiFocus": "L2",
+      "protocols": [
+        "IEEE 802.1Q"
+      ],
+      "conceptIds": [
+        "vlan",
+        "dot1q"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Одновременно ко всем VLAN этого trunk",
+          "correct": false,
+          "explanation": "Принадлежность к VLAN не превращается в широковещательную доставку по всем VLAN.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "К VLAN 30 по настройке принимающего порта",
+          "correct": true,
+          "explanation": "Отсутствие тега не означает отсутствие VLAN: классификацию задают правила порта. Здесь условие явно определяет native VLAN.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Всегда к VLAN 1 независимо от настройки",
+          "correct": false,
+          "explanation": "VLAN 1 не обязана оставаться native VLAN после изменения настройки.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "К VLAN с номером, равным TCP-порту назначения",
+          "correct": false,
+          "explanation": "Классификация по native VLAN не определяется транспортным портом.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q847",
+      "topic": "Модель OSI",
+      "number": 48,
+      "question": "В Ethernet-сети три L2-коммутатора образуют физическое кольцо. STP обменивается BPDU и переводит один из путей в состояние, не пересылающее обычные кадры. Какова цель?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-stp"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "STP устраняет петли коммутации",
+      "osiFocus": "L2",
+      "protocols": [
+        "STP",
+        "BPDU"
+      ],
+      "conceptIds": [
+        "stp",
+        "ethernet"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Выбрать наиболее быстрый DNS-резолвер",
+          "correct": false,
+          "explanation": "BPDU не являются DNS-сообщениями.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Зашифровать полезную нагрузку всех кадров",
+          "correct": false,
+          "explanation": "STP регулирует пересылку, но не предоставляет шифрование данных.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Получить топологию пересылки без L2-петли, сохранив возможность резервного пути",
+          "correct": true,
+          "explanation": "Ethernet-кадры не имеют механизма IP TTL, который сам ограничил бы циркуляцию по такой петле. STP управляет топологией пересылки.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Остановить пересылку всех кадров во всех VLAN навсегда",
+          "correct": false,
+          "explanation": "Один избыточный путь блокируется в рамках топологии; назначение STP — сохранить рабочую связность без петель.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q848",
+      "topic": "Модель OSI",
+      "number": 49,
+      "question": "Два линка по 1 Гбит/с объединены с LACP. Реализация распределяет потоки хешированием, сохраняя один TCP-поток на одном линке. Почему один такой поток не обязан получить 2 Гбит/с?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-lacp"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Пропускная способность одного потока в агрегированном канале",
+      "osiFocus": "L2",
+      "protocols": [
+        "LACP"
+      ],
+      "conceptIds": [
+        "lacp",
+        "tcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "LACP всегда отключает второй линк даже при разных потоках",
+          "correct": false,
+          "explanation": "В рабочем агрегате несколько участников могут одновременно переносить разные потоки.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "TCP допускает только 100 Мбит/с на любое соединение",
+          "correct": false,
+          "explanation": "У TCP нет такого фиксированного предела скорости.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Каждый линк обязательно делится пополам между IPv4 и IPv6",
+          "correct": false,
+          "explanation": "Такое деление не следует из LACP или условия задачи.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Агрегат распределяет разные потоки, но данный поток использует пропускную способность выбранного участника",
+          "correct": true,
+          "explanation": "Суммарная ёмкость агрегата и скорость одного потока различаются. Условие исключает распределение каждого пакета по разным линкам.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q849",
+      "topic": "Модель OSI",
+      "number": 50,
+      "question": "Коммутатор получает LLDP-объявление с идентификаторами соседнего устройства и порта. Какое описание механизма корректно?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-proto-lldp"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "LLDP обнаруживает соседей на канальном уровне",
+      "osiFocus": "L2",
+      "protocols": [
+        "LLDP"
+      ],
+      "conceptIds": [
+        "lldp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Это обмен информацией о соседях на канальном уровне; TCP-сеанс для него не нужен",
+          "correct": true,
+          "explanation": "IEEE 802.1AB определяет discovery между соседними станциями. LLDP не является сканированием удалённых TCP-портов.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Это DNS-ответ о владельце домена",
+          "correct": false,
+          "explanation": "LLDP описывает соседство оборудования, а не записи доменных имён.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Это подтверждение доставки HTTP-ответа приложению",
+          "correct": false,
+          "explanation": "Объявление соседа ничего не доказывает об обработке HTTP.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Это обязательный TCP-обмен на порту 161",
+          "correct": false,
+          "explanation": "Порт 161 связан с SNMP; LLDP передаётся иначе.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q850",
+      "topic": "Модель OSI",
+      "number": 51,
+      "question": "В проводной сети клиент проходит IEEE 802.1X через коммутатор с внешним RADIUS-сервером. Что обычно передаётся между клиентом и коммутатором, а что — между коммутатором и сервером?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "net-dot1x"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Разные участки обмена 802.1X",
+      "osiFocus": "L2 и прикладной обмен",
+      "protocols": [
+        "IEEE 802.1X",
+        "EAPOL",
+        "RADIUS"
+      ],
+      "conceptIds": [
+        "dot1x",
+        "eapol",
+        "radius"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "RADIUS обязательно идёт прямо в Ethernet без IP, а EAPOL — по TCP к серверу",
+          "correct": false,
+          "explanation": "Вариант переставляет роли протоколов и их размещение.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "EAPOL на клиентском канале; RADIUS на отдельном участке к серверу",
+          "correct": true,
+          "explanation": "Коммутатор выступает аутентификатором. Канальный обмен с клиентом и обмен с сервером аутентификации — разные части схемы.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "На обоих участках обязательно один непрерывный TCP-сеанс клиента",
+          "correct": false,
+          "explanation": "EAPOL не требует такого TCP-сеанса.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "На клиентском канале используется только DHCP, который сам проверяет пароль",
+          "correct": false,
+          "explanation": "DHCP выдаёт настройки и не заменяет аутентификацию 802.1X.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q851",
+      "topic": "Модель OSI",
+      "number": 52,
+      "question": "PPP-соединение согласовало параметры канала через LCP. Затем стороны настраивают передачу IPv4 через IPCP. Почему нужны разные протоколы?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc1661",
+        "osi-proto-rfc1332"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "PPP: управление каналом и настройка IPv4 различаются",
+      "osiFocus": "L2",
+      "protocols": [
+        "PPP",
+        "LCP",
+        "IPCP"
+      ],
+      "conceptIds": [
+        "ppp",
+        "lcp",
+        "ipcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "LCP — это DNS для имён, а IPCP — HTTP для страниц",
+          "correct": false,
+          "explanation": "Эти функции не относятся к назначению LCP и IPCP.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "IPCP заменяет PPP кадрами Ethernet на том же канале",
+          "correct": false,
+          "explanation": "IPCP работает в рамках PPP, а не переключает канал на Ethernet.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "LCP управляет PPP-каналом, а IPCP согласует использование IPv4 на этом канале",
+          "correct": true,
+          "explanation": "PPP разделяет управление каналом и протоколы настройки конкретного сетевого протокола. Успех LCP ещё не означает завершения IPCP.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "LCP и IPCP — два названия одного сообщения с одинаковыми полями",
+          "correct": false,
+          "explanation": "Они имеют разные назначения и идентификаторы внутри PPP.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q852",
+      "topic": "Модель OSI",
+      "number": 53,
+      "question": "MACsec с шифрованием включён между компьютером и первым коммутатором. Дальше трафик идёт через несколько устройств без MACsec и без TLS/VPN. Что защищено этой настройкой?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-macsec"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Граница защиты MACsec",
+      "osiFocus": "L2",
+      "protocols": [
+        "MACsec"
+      ],
+      "conceptIds": [
+        "macsec",
+        "tls"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Автоматически весь путь до любого интернет-сервера",
+          "correct": false,
+          "explanation": "Одна канальная ассоциация не распространяется на произвольные последующие сети.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Только имена DNS, а остальные Ethernet-данные всегда открыты",
+          "correct": false,
+          "explanation": "MACsec не является протоколом защиты только DNS.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Пароли уже сохранённых файлов на обоих компьютерах",
+          "correct": false,
+          "explanation": "Защита канального обмена не шифрует автоматически данные на дисках.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Участок между заданными MACsec-узлами; сквозное шифрование до приложения из этого не следует",
+          "correct": true,
+          "explanation": "MACsec обеспечивает канальную защиту в пределах настроенной связи. Для других участков и конечного приложения гарантии проверяют отдельно.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q853",
+      "topic": "Модель OSI",
+      "number": 54,
+      "question": "В обычном Ethernet II кадре EtherType равен 0x86DD. Какой следующий заголовок ожидает корректный анализатор?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-proto-ethertype"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "EtherType выбирает протокол полезной нагрузки Ethernet",
+      "osiFocus": "L2 → L3",
+      "protocols": [
+        "EtherType",
+        "IPv6"
+      ],
+      "conceptIds": [
+        "ethertype",
+        "ip"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Заголовок IPv6",
+          "correct": true,
+          "explanation": "0x86DD выделен для IPv6. EtherType не является TCP/UDP-портом или длиной заголовка.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "UDP с портом 0x86DD",
+          "correct": false,
+          "explanation": "EtherType выбирает протокол внутри Ethernet; порт нужно искать позже в транспортном заголовке.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "ARP только потому, что кадр содержит MAC-адреса",
+          "correct": false,
+          "explanation": "MAC-адреса есть и у кадров с IP; тип полезной нагрузки задаёт EtherType.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "HTTP без сетевого и транспортного обрамления",
+          "correct": false,
+          "explanation": "В указанном формате после Ethernet ожидается IPv6, а не текст HTTP.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q854",
+      "topic": "Модель OSI",
+      "number": 55,
+      "question": "Узел передаёт ARP Announcement по RFC 5227: в полях sender IP и target IP указан его собственный новый IPv4-адрес. Зачем это делают?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc5227"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Назначение ARP Announcement",
+      "osiFocus": "L2 и IPv4",
+      "protocols": [
+        "ARP Announcement"
+      ],
+      "conceptIds": [
+        "arp",
+        "ip"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Запрашивают у DNS сертификат для этого адреса",
+          "correct": false,
+          "explanation": "ARP не обращается к DNS и не выдаёт сертификаты.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Сообщают соседям об использовании адреса, помогая устранить устаревшее соответствие IP–MAC",
+          "correct": true,
+          "explanation": "Это объявление локальным соседям. Оно само по себе не является криптографическим доказательством права на адрес.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Продлевают IPv4 TTL на всех маршрутизаторах",
+          "correct": false,
+          "explanation": "ARP-объявление не изменяет TTL IP-пакетов по всему маршруту.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Гарантируют подлинность узла цифровой подписью ARP",
+          "correct": false,
+          "explanation": "В обычном ARP Announcement нет такой обязательной цифровой подписи.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q855",
+      "topic": "Модель OSI",
+      "number": 56,
+      "question": "Анализатор не показывает Header Checksum в основном заголовке IPv6. Пакет разобран корректно. Какой вывод верен?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-proto-rfc8200"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Отсутствие контрольной суммы основного заголовка IPv6",
+      "osiFocus": "L3",
+      "protocols": [
+        "IPv6"
+      ],
+      "conceptIds": [
+        "ip"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Пакет повреждён: IPv6 обязан иметь такой же Header Checksum, как IPv4",
+          "correct": false,
+          "explanation": "Форматы основных заголовков различаются.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Контрольная сумма всегда находится в поле адреса назначения",
+          "correct": false,
+          "explanation": "Адрес назначения не хранит Header Checksum.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "В основном заголовке IPv6 такого поля нет",
+          "correct": true,
+          "explanation": "Нельзя переносить структуру IPv4 на IPv6. Другие уровни имеют собственные механизмы контроля; отсутствие этого поля не означает гарантированную доставку.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Это доказывает, что поверх IPv6 работает только UDP",
+          "correct": false,
+          "explanation": "Наличие TCP или UDP не определяется отсутствующим полем IPv6.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q856",
+      "topic": "Модель OSI",
+      "number": 57,
+      "question": "Обычный IPv6-маршрутизатор получил пакет, который больше MTU следующего канала. Что соответствует IPv6 при выполнении условий отправки диагностического ответа?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc8200"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Маршрутизатор IPv6 не фрагментирует слишком большой пакет",
+      "osiFocus": "L3",
+      "protocols": [
+        "IPv6",
+        "ICMPv6"
+      ],
+      "conceptIds": [
+        "ip",
+        "icmpv6",
+        "mtu"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Самостоятельно добавить Fragment header и разбить пакет как IPv4",
+          "correct": false,
+          "explanation": "IPv6 не возлагает фрагментацию на промежуточные маршрутизаторы.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Увеличить MTU удалённого канала записью в заголовке",
+          "correct": false,
+          "explanation": "Поле пакета не меняет возможности канала.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Передать пакет целиком, игнорируя предел размера канала",
+          "correct": false,
+          "explanation": "Ограничение следующего канала нельзя устранить таким решением.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Отбросить пакет и сообщить источнику ICMPv6 Packet Too Big; маршрутизатор не фрагментирует его сам",
+          "correct": true,
+          "explanation": "В IPv6 фрагментацию при необходимости выполняет источник. Сообщение о размере пути помогает источнику изменить передачу.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q857",
+      "topic": "Модель OSI",
+      "number": 58,
+      "question": "IPv6-клиент получил адрес через DHCPv6, но маршрута по умолчанию нет. В этой сети его должны объявлять маршрутизаторы. Какой обмен проверить прежде всего?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-prac-rfc4861"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Маршрут по умолчанию в IPv6 через RA",
+      "osiFocus": "L3",
+      "protocols": [
+        "IPv6 ND",
+        "Router Advertisement"
+      ],
+      "conceptIds": [
+        "dhcpv6",
+        "router-advertisement",
+        "icmpv6"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "ICMPv6 Router Advertisement и ненулевой Router Lifetime у ожидаемого маршрутизатора",
+          "correct": true,
+          "explanation": "Выдача адреса DHCPv6 и обнаружение маршрутизатора — разные функции. В заданной схеме список маршрутизаторов формируют объявления RA.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "ARP Reply с адресом 0.0.0.0",
+          "correct": false,
+          "explanation": "IPv6 не использует ARP для обнаружения маршрутизаторов.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "DNS MX-запись домена клиента",
+          "correct": false,
+          "explanation": "MX определяет почтовые серверы, а не локальный маршрут по умолчанию.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "TCP SYN от DHCPv6-сервера на порт 443",
+          "correct": false,
+          "explanation": "Такой обмен не является стандартным объявлением маршрута IPv6.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q858",
+      "topic": "Модель OSI",
+      "number": 59,
+      "question": "Узел сформировал IPv6-адрес по SLAAC. Обычная DAD включена, оптимистическая DAD не используется. Проверка обнаружила, что адрес уже занят. Что делать с этим tentative-адресом?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc4862"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Проверка конфликта адреса после SLAAC",
+      "osiFocus": "L3",
+      "protocols": [
+        "SLAAC",
+        "DAD"
+      ],
+      "conceptIds": [
+        "slaac",
+        "dad",
+        "ip-address"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Использовать его всё равно: SLAAC исключает любые совпадения",
+          "correct": false,
+          "explanation": "SLAAC не даёт абсолютной гарантии отсутствия конфликтов.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Не назначать его для обычной работы; обработать конфликт и получить допустимый уникальный адрес",
+          "correct": true,
+          "explanation": "Получение префикса не гарантирует уникальность адреса. Результат DAD нельзя проигнорировать только потому, что адрес сформирован автоматически.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Записать этот IPv6-адрес в ARP-кэш вместо проверки",
+          "correct": false,
+          "explanation": "ARP не является механизмом DAD IPv6.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Поменять лишь DNS-имя и оставить конфликтующий адрес активным",
+          "correct": false,
+          "explanation": "Другое имя не устраняет совпадение сетевых адресов.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q859",
+      "topic": "Модель OSI",
+      "number": 60,
+      "question": "Устройство доступно по IPv6 link-local адресу fe80::1234 на одном канале. Можно ли обычной маршрутизацией доставить пакет с таким адресом назначения на другой канал?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc4291"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Область действия link-local адреса",
+      "osiFocus": "L3",
+      "protocols": [
+        "IPv6 link-local"
+      ],
+      "conceptIds": [
+        "ip",
+        "link-local"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Да, достаточно увеличить Hop Limit до 255",
+          "correct": false,
+          "explanation": "Большой Hop Limit не расширяет область действия адреса.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да, если заменить TCP на UDP",
+          "correct": false,
+          "explanation": "Транспортный протокол не меняет scope IPv6-адреса.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет: link-local адреса имеют область действия канала и не маршрутизируются на другой канал",
+          "correct": true,
+          "explanation": "На одном устройстве одинаковый link-local адрес может относиться к разным интерфейсам, поэтому часто требуется указать зону или интерфейс.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Да, любой адрес fe80:: автоматически глобальный",
+          "correct": false,
+          "explanation": "Префикс link-local не является глобальной областью адресации.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q860",
+      "topic": "Модель OSI",
+      "number": 61,
+      "question": "OSPFv2 и BGP оба распространяют маршрутную информацию. Означает ли это, что оба используют TCP-порт 179?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc2328",
+        "osi-proto-rfc4271",
+        "osi-base-iana-protocols"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Назначение протокола маршрутизации и его перенос по сети",
+      "osiFocus": "L3 и транспорт протоколов маршрутизации",
+      "protocols": [
+        "OSPFv2",
+        "BGP"
+      ],
+      "conceptIds": [
+        "ospf",
+        "bgp",
+        "tcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Да: всем протоколам маршрутизации назначен один TCP-порт",
+          "correct": false,
+          "explanation": "У разных протоколов различается перенос управляющих сообщений.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "OSPFv2 использует TCP-порт 89, а BGP — IP Protocol 179",
+          "correct": false,
+          "explanation": "Вариант смешивает номер протокола IP и транспортный порт.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Оба используют только Ethernet без IP",
+          "correct": false,
+          "explanation": "Указанные механизмы работают поверх IP, хотя по-разному.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет: BGP использует TCP, обычно порт 179; OSPFv2 передаётся непосредственно в IPv4 с Protocol=89",
+          "correct": true,
+          "explanation": "Функция управления маршрутами не определяет одинаковую инкапсуляцию. IP Protocol и TCP-порт относятся к разным полям.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q861",
+      "topic": "Модель OSI",
+      "number": 62,
+      "question": "ESP передаётся непосредственно в IPv4, без UDP-инкапсуляции NAT-T. Администратор разрешил только TCP-порт 50 и ожидает прохождения ESP. Что нужно исправить?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc4303",
+        "osi-base-iana-protocols"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "ESP: номер протокола IP и порт — разные понятия",
+      "osiFocus": "L3",
+      "protocols": [
+        "IPsec ESP"
+      ],
+      "conceptIds": [
+        "esp",
+        "ip"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Проверять разрешение IP Protocol 50, а не TCP-порта 50",
+          "correct": true,
+          "explanation": "В этой форме ESP расположен прямо после IP. При NAT-T схема и правила меняются, но условие её исключает.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Разрешить UDP-порт 50: это обязательный порт любого ESP",
+          "correct": false,
+          "explanation": "У ESP без UDP-инкапсуляции нет такого UDP-порта.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Заменить номер VLAN на 50",
+          "correct": false,
+          "explanation": "VLAN и номер IP-протокола не взаимозаменяемы.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Разрешить только DNS, потому что ESP передаёт ключи в TXT",
+          "correct": false,
+          "explanation": "ESP не переносится через DNS TXT по стандартной схеме.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q862",
+      "topic": "Модель OSI",
+      "number": 63,
+      "question": "В IPsec VPN используется IKEv2 и ESP. Как лучше разделить их назначение, не смешивая управляющий обмен с защищаемыми пакетами?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc7296",
+        "osi-proto-rfc4303"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "IKEv2 согласует ключи и ассоциации, ESP защищает трафик",
+      "osiFocus": "L3 и управляющий обмен",
+      "protocols": [
+        "IKEv2",
+        "ESP"
+      ],
+      "conceptIds": [
+        "ikev2",
+        "esp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "IKEv2 переносит каждый HTTP-ответ, а ESP только выдаёт DNS-имена",
+          "correct": false,
+          "explanation": "Это не назначение данных протоколов.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "IKEv2 аутентифицирует стороны и согласует ассоциации и ключи; ESP применяет согласованную защиту к трафику",
+          "correct": true,
+          "explanation": "Это связанные, но разные функции. В типовой схеме IKE использует UDP 500/4500; ESP может идти непосредственно в IP или в UDP при NAT-T.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "ESP обязательно заменяет все TCP-подтверждения",
+          "correct": false,
+          "explanation": "Внутренний TCP сохраняет собственную семантику.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "IKEv2 и ESP — одно имя одного и того же заголовка",
+          "correct": false,
+          "explanation": "У них разные форматы сообщений и роли.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q863",
+      "topic": "Модель OSI",
+      "number": 64,
+      "question": "Между двумя офисами работает обычный GRE-туннель через недоверенную сеть. IPsec, TLS и других средств шифрования нет. Достаточно ли самого GRE для конфиденциальности передаваемых данных?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc2784"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "GRE не предоставляет шифрование и криптографическую аутентификацию",
+      "osiFocus": "L3",
+      "protocols": [
+        "GRE"
+      ],
+      "conceptIds": [
+        "gre",
+        "tls"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "sourceLetter": "А",
+          "text": "Да: любая инкапсуляция автоматически шифрует полезную нагрузку",
+          "correct": false,
+          "explanation": "Добавление внешнего заголовка не преобразует содержимое в шифртекст."
+        },
+        {
+          "sourceLetter": "Б",
+          "text": "Да: скрытый внутренний IP-адрес невозможно извлечь из GRE-пакета",
+          "correct": false,
+          "explanation": "При обычном GRE внутренний пакет доступен наблюдателю, получившему туннельный пакет."
+        },
+        {
+          "sourceLetter": "В",
+          "text": "Нет: GRE выполняет инкапсуляцию, а шифрование и криптографическую проверку сторон нужно обеспечить отдельно",
+          "correct": true,
+          "explanation": "Туннель задаёт способ переноса данных. Сам формат GRE не даёт требуемой конфиденциальности или криптографической аутентификации."
+        },
+        {
+          "sourceLetter": "Г",
+          "text": "Достаточно включить контрольную сумму GRE, и она заменит шифрование",
+          "correct": false,
+          "explanation": "Контрольная сумма не скрывает данные и не является криптографической защитой от активного противника."
+        }
+      ]
+    },
+    {
+      "id": "q864",
+      "topic": "Модель OSI",
+      "number": 65,
+      "question": "GRE-туннель соединяет шлюзы 192.0.2.1 и 192.0.2.2. Внутри передаётся IP-пакет от 10.1.0.5 к 10.2.0.8. NAT отсутствует. Какое назначение у двух пар адресов?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc2784"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Внутренние и внешние адреса GRE-туннеля",
+      "osiFocus": "L3, туннель",
+      "protocols": [
+        "GRE",
+        "IPv4"
+      ],
+      "conceptIds": [
+        "gre",
+        "ip"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Внутренний адрес назначения всегда заменяется на 192.0.2.2",
+          "correct": false,
+          "explanation": "Это подмена исходного пакета, не обязательное действие GRE.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Обе пары — MAC-адреса одного Ethernet-кадра",
+          "correct": false,
+          "explanation": "Все заданные адреса имеют формат IPv4.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Внешний адрес 192.0.2.2 обозначает TCP-порт приложения",
+          "correct": false,
+          "explanation": "IP-адрес не является номером транспортного порта.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Внешние адреса доставляют туннельный пакет между шлюзами; внутренние сохраняют адреса исходного обмена",
+          "correct": true,
+          "explanation": "Инкапсуляция добавляет внешний IP-заголовок, не превращая адреса приложения в адреса туннельных концов.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q865",
+      "topic": "Модель OSI",
+      "number": 66,
+      "question": "В кадре Ethernet находятся стек меток MPLS и затем IP-пакет. Коллега говорит «уровень 2.5». Как корректно понять это выражение?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc3032",
+        "osi-base-x200"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Условность термина Layer 2.5 для MPLS",
+      "osiFocus": "L2–L3, условное сопоставление",
+      "protocols": [
+        "MPLS"
+      ],
+      "conceptIds": [
+        "mpls",
+        "osi"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Это неформальное описание положения меток между канальным обрамлением и сетевым пакетом, а не восьмой уровень OSI",
+          "correct": true,
+          "explanation": "Стандартная OSI содержит семь уровней. Для MPLS точнее назвать инкапсуляцию и функцию переключения по метке.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "ISO официально добавила отдельный уровень 2.5 в семиуровневую модель",
+          "correct": false,
+          "explanation": "Промежуточное неформальное название не меняет структуру OSI.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Метка MPLS — это десятичная дробь в TCP-порту",
+          "correct": false,
+          "explanation": "Стек меток имеет собственные поля и не является портом TCP.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "MPLS всегда означает шифрование IP-пакета",
+          "correct": false,
+          "explanation": "Передача по меткам сама по себе не даёт такого свойства.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q866",
+      "topic": "Модель OSI",
+      "number": 67,
+      "question": "В таблице IPv4 установлены маршруты 10.20.0.0/16 через A, 10.20.30.0/24 через B и 0.0.0.0/0 через C. Policy routing отсутствует. Куда направят пакет для 10.20.30.77?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-prac-rfc1812"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Выбор маршрута по наиболее длинному совпадающему префиксу",
+      "osiFocus": "L3",
+      "protocols": [
+        "IPv4 routing"
+      ],
+      "conceptIds": [
+        "ip"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Через A: /16 содержит больше адресов",
+          "correct": false,
+          "explanation": "Более широкий диапазон не имеет приоритета над подходящим более длинным префиксом.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Через B: совпадающий префикс /24 наиболее специфичен",
+          "correct": true,
+          "explanation": "Сначала учитывают длину совпадения префикса. Маршрут по умолчанию нужен, когда нет более специфичного подходящего маршрута.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Через C: маршрут по умолчанию всегда первый по смыслу",
+          "correct": false,
+          "explanation": "Он не отменяет подходящие более специфичные маршруты.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Поровну через A, B и C, потому что адрес подходит ко всем",
+          "correct": false,
+          "explanation": "Сам факт нескольких совпадений разной длины не означает балансировку между ними.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q867",
+      "topic": "Модель OSI",
+      "number": 68,
+      "question": "TCP-получатель ожидает байт 7000. Пришёл следующий непрерывный сегмент: SEQ=7000, 300 байт данных, без SYN и FIN. Все прежние байты приняты. Какой ACK подтверждает получение этого диапазона?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-tcp",
+        "osi-proto-lab-tcp"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Номер ACK указывает следующий ожидаемый байт",
+      "osiFocus": "L4",
+      "protocols": [
+        "TCP"
+      ],
+      "conceptIds": [
+        "tcp"
+      ],
+      "exerciseSourceIds": [
+        "osi-proto-lab-tcp"
+      ],
+      "options": [
+        {
+          "text": "7299",
+          "correct": false,
+          "explanation": "Это номер последнего полученного байта, а не следующего ожидаемого.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "300",
+          "correct": false,
+          "explanation": "ACK не равен длине только последнего сегмента.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "7300",
+          "correct": true,
+          "explanation": "Диапазон данных — от 7000 до 7299 включительно; ACK указывает номер следующего ожидаемого байта.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "7001",
+          "correct": false,
+          "explanation": "Один номер занимал бы SYN без данных; здесь переданы 300 байт, SYN и FIN исключены.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q868",
+      "topic": "Модель OSI",
+      "number": 69,
+      "question": "TCP-получатель объявил нулевое окно приёма. Соединение не закрыто. Что в первую очередь означает это объявление?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-tcp"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Receive window управляет нагрузкой на получателя",
+      "osiFocus": "L4",
+      "protocols": [
+        "TCP"
+      ],
+      "conceptIds": [
+        "tcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Удалённое приложение доказанно удалило полученный файл",
+          "correct": false,
+          "explanation": "Транспортное окно не сообщает такой результат работы приложения.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "В сети гарантированно потерян каждый пакет",
+          "correct": false,
+          "explanation": "Нулевое окно описывает возможности получателя, а не доказывает такую потерю.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Соединение уже обязательно закрыто через FIN",
+          "correct": false,
+          "explanation": "Нулевое окно может существовать в открытом соединении.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Получатель временно не разрешает новые байты данных сверх объявленного окна; это контроль потока",
+          "correct": true,
+          "explanation": "Окно ограничивает объём данных, который получатель готов принять. Механизм проверки открытия окна отличается от завершения соединения и от оценки перегрузки пути.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q869",
+      "topic": "Модель OSI",
+      "number": 70,
+      "question": "Клиент отправил запрос записи в базу по TCP и получил ACK всех байтов. Прикладного ответа ещё нет. Можно ли объявить транзакцию успешно зафиксированной?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-tcp"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Транспортное подтверждение не равно завершению прикладной операции",
+      "osiFocus": "L4 → L7",
+      "protocols": [
+        "TCP"
+      ],
+      "conceptIds": [
+        "tcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Нет: TCP подтвердил приём байтов, а результат транзакции определяется прикладным протоколом",
+          "correct": true,
+          "explanation": "Транспортная доставка и выполнение операции — разные события. Нужен предусмотренный приложением ответ или проверка состояния операции.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да: любой TCP ACK является подтверждением COMMIT",
+          "correct": false,
+          "explanation": "TCP не интерпретирует команды базы данных.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Да: если размер ACK меньше размера запроса",
+          "correct": false,
+          "explanation": "Размер подтверждения не доказывает прикладной результат.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет: TCP никогда не подтверждает получение данных",
+          "correct": false,
+          "explanation": "TCP подтверждает байты; неверно отрицать само транспортное подтверждение.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q870",
+      "topic": "Модель OSI",
+      "number": 71,
+      "question": "Клиент завершил своё направление TCP через FIN, а сервер подтвердил этот FIN. Сервер своё направление ещё не закрыл. Может ли сервер продолжать отправку данных?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-tcp"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "TCP допускает закрытие одного направления",
+      "osiFocus": "L4",
+      "protocols": [
+        "TCP FIN"
+      ],
+      "conceptIds": [
+        "tcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Нет: первый FIN немедленно запрещает данные в обоих направлениях",
+          "correct": false,
+          "explanation": "Это смешивает завершение одного направления с полным закрытием соединения.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да: закрытие направления клиента само по себе не закрывает направление сервера",
+          "correct": true,
+          "explanation": "TCP поддерживает независимое завершение двух направлений. Приложение должно корректно работать с таким состоянием.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Только если сервер сменит IP-адрес в текущем соединении",
+          "correct": false,
+          "explanation": "Смена адреса не является условием half-close в TCP.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Только если TCP автоматически преобразуется в UDP",
+          "correct": false,
+          "explanation": "Перехода на другой транспорт здесь не происходит.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q871",
+      "topic": "Модель OSI",
+      "number": 72,
+      "question": "В обычной UDP-датаграмме, не IPv6 jumbogram, поле Length равно 100 байтам. Сколько байт приходится на данные после UDP-заголовка?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-base-udp",
+        "osi-proto-lab-udp"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "UDP Length включает заголовок и данные",
+      "osiFocus": "L4",
+      "protocols": [
+        "UDP"
+      ],
+      "conceptIds": [
+        "udp"
+      ],
+      "exerciseSourceIds": [
+        "osi-proto-lab-udp"
+      ],
+      "options": [
+        {
+          "text": "100 байт",
+          "correct": false,
+          "explanation": "Length включает также UDP-заголовок.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "80 байт",
+          "correct": false,
+          "explanation": "20 байт — типичный минимальный IPv4-заголовок, но вычитать его из UDP Length нельзя.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "92 байта",
+          "correct": true,
+          "explanation": "Обычный UDP-заголовок занимает 8 байт и входит в поле Length: 100 − 8 = 92. IP-заголовок в это поле не входит.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "108 байт",
+          "correct": false,
+          "explanation": "Заголовок уже включён в 100 байт; его нужно вычесть, а не прибавить.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q872",
+      "topic": "Модель OSI",
+      "number": 73,
+      "question": "Программа дважды записала в TCP-соединение по 20 байт. Получатель читает из сокета произвольными порциями. Гарантирует ли TCP два чтения ровно по 20 байт?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "research-tcp"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Границы вызовов записи не сохраняются в TCP",
+      "osiFocus": "L4",
+      "protocols": [
+        "TCP byte stream"
+      ],
+      "conceptIds": [
+        "tcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Да: каждый вызов записи автоматически создаёт отдельное сообщение TCP",
+          "correct": false,
+          "explanation": "TCP не предоставляет такие границы сообщений приложению.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да, если оба приложения используют одинаковый номер порта",
+          "correct": false,
+          "explanation": "Порты не меняют потоковую модель TCP.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет, потому что TCP намеренно переставляет байты внутри потока",
+          "correct": false,
+          "explanation": "TCP обеспечивает порядок байтов; отсутствие границ сообщений — другое свойство.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет: приложение получает поток байтов и должно само распознавать границы своих сообщений",
+          "correct": true,
+          "explanation": "Одна запись может прийти несколькими чтениями, а несколько записей — одним. Нужен прикладной формат, например длина сообщения или разделитель.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q873",
+      "topic": "Модель OSI",
+      "number": 74,
+      "question": "Разработчик говорит: «QUIC идёт поверх UDP, значит данные его обычных streams всегда передаются без восстановления потерь». Что уточнить?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc9000"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "QUIC может обеспечивать надёжность поверх UDP",
+      "osiFocus": "L4, транспорт над UDP",
+      "protocols": [
+        "QUIC"
+      ],
+      "conceptIds": [
+        "quic",
+        "udp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "QUIC сам обеспечивает надёжную упорядоченную доставку байтов в stream, хотя использует UDP для переноса пакетов",
+          "correct": true,
+          "explanation": "Гарантии верхнего протокола не ограничиваются гарантиями UDP. Расширение QUIC DATAGRAM имеет другую семантику и здесь не рассматривается.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "UDP автоматически превращается в TCP, когда его порт равен 443",
+          "correct": false,
+          "explanation": "Номер порта не меняет формат транспортного протокола.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "QUIC не может иметь подтверждений и восстановления потерь",
+          "correct": false,
+          "explanation": "Собственные механизмы QUIC реализуют эти функции.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Все UDP-приложения обязаны получать надёжный поток от операционной системы",
+          "correct": false,
+          "explanation": "Обычный UDP такого сервиса не предоставляет; здесь его строит QUIC.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q874",
+      "topic": "Модель OSI",
+      "number": 75,
+      "question": "В QUIC потерялись данные stream A. Данные stream B уже полностью получены и доступны приложению. Требует ли транспорт ждать восстановления A перед выдачей B только ради общего порядка streams?",
+      "origin": "authored",
+      "difficulty": "advanced",
+      "sourceIds": [
+        "osi-proto-rfc9000"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Независимый порядок данных в разных streams QUIC",
+      "osiFocus": "L4",
+      "protocols": [
+        "QUIC streams"
+      ],
+      "conceptIds": [
+        "quic"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Да: все streams образуют один общий TCP-поток",
+          "correct": false,
+          "explanation": "QUIC не использует TCP и не объединяет streams в такую общую очередь.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Нет: порядок обеспечивается внутри каждого stream; общей очереди байтов между ними нет",
+          "correct": true,
+          "explanation": "Это не обещает отсутствия любых задержек: общие ограничения соединения, congestion control или зависимости приложения всё ещё могут влиять на работу.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет: потому что QUIC всегда отбрасывает потерянные данные A навсегда",
+          "correct": false,
+          "explanation": "Для обычного надёжного stream потерю требуется восстановить.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Да: номера stream обязаны полностью завершаться по возрастанию",
+          "correct": false,
+          "explanation": "Идентификатор stream не задаёт такого порядка завершения.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q875",
+      "topic": "Модель OSI",
+      "number": 76,
+      "question": "Нужен транспорт с границами пользовательских сообщений и несколькими streams внутри ассоциации. Какое свойство SCTP отличает его от обычного TCP-потока?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc9260",
+        "research-tcp"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "SCTP сохраняет границы сообщений",
+      "osiFocus": "L4",
+      "protocols": [
+        "SCTP"
+      ],
+      "conceptIds": [
+        "sctp",
+        "tcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "SCTP предназначен только для разрешения IP в MAC",
+          "correct": false,
+          "explanation": "Это назначение не относится к SCTP.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "SCTP гарантирует, что каждое сообщение всегда помещается в один IP-пакет",
+          "correct": false,
+          "explanation": "Большое сообщение может потребовать фрагментации и сборки на уровне SCTP.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "SCTP передаёт сообщения и поддерживает несколько streams; TCP предоставляет поток байтов без границ записей",
+          "correct": true,
+          "explanation": "Ассоциация SCTP и TCP-соединение имеют разные интерфейсы доставки. Наличие streams не означает автоматического шифрования.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "TCP всегда сохраняет границы каждого вызова write, а SCTP их стирает",
+          "correct": false,
+          "explanation": "Вариант меняет местами ключевое различие.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q876",
+      "topic": "Модель OSI",
+      "number": 77,
+      "question": "Сайт предлагает HTTP/3 на UDP/443 и HTTP/2 на TCP/443. Сеть разрешает TCP/443, но блокирует UDP/443. Что можно ожидать при остальных исправных компонентах?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc9114",
+        "osi-proto-rfc9113"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "HTTP/3 требует доступности соответствующего UDP-пути",
+      "osiFocus": "L4–L7",
+      "protocols": [
+        "HTTP/3",
+        "QUIC"
+      ],
+      "conceptIds": [
+        "http3",
+        "quic",
+        "tcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Разрешение TCP/443 автоматически разрешает QUIC на UDP/443",
+          "correct": false,
+          "explanation": "У правил TCP и UDP разные транспортные условия.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "HTTP/2 обязательно перестанет работать, потому что для него тоже нужен UDP",
+          "correct": false,
+          "explanation": "HTTP/2 использует TCP; условие разрешает этот путь.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Клиент обязан продолжить тот же QUIC-сеанс внутри TCP без изменения протокола",
+          "correct": false,
+          "explanation": "Для работы по HTTP/2 создаётся другой стек, а не перенос прежнего QUIC в TCP.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "HTTP/3 по этому пути не установится; клиент с поддержкой отката может использовать HTTP/2",
+          "correct": true,
+          "explanation": "Одинаковое число порта у TCP и UDP не делает правила взаимозаменяемыми. Откат зависит от возможностей и политики клиента.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q877",
+      "topic": "Модель OSI",
+      "number": 78,
+      "question": "Нужен именно стандарт протокола сеансового уровня классической OSI, а не условная аналогия с веб-сеансом. Какой вариант подходит?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-proto-x225"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Реальный пример сеансового протокола OSI",
+      "osiFocus": "L5, классическая OSI",
+      "protocols": [
+        "ITU-T X.225"
+      ],
+      "conceptIds": [
+        "x225",
+        "osi"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "ITU-T X.225 — Connection-oriented Session protocol",
+          "correct": true,
+          "explanation": "X.225 определяет сеансовый протокол классической OSI. Это исторически и архитектурно конкретный пример, а не утверждение, что современные сайты обязательно используют его.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "HTTP cookie как обязательный протокол OSI L5",
+          "correct": false,
+          "explanation": "Cookie — механизм HTTP-приложения, а не спецификация X.225.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "UDP, потому что любое сообщение является сеансом",
+          "correct": false,
+          "explanation": "UDP — транспортный протокол, название прикладного сеанса этого не меняет.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "IEEE 802.3, потому что физическая линия долго остаётся активной",
+          "correct": false,
+          "explanation": "Время существования линии не превращает Ethernet в сеансовый протокол.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q878",
+      "topic": "Модель OSI",
+      "number": 79,
+      "question": "В классическом сеансовом сервисе OSI выбран полудуплексный обмен с data token. Что регулирует владение этим токеном?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-base-session"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Сеансовый data token и токен доступа различаются",
+      "osiFocus": "L5, классическая OSI",
+      "protocols": [
+        "OSI session data token"
+      ],
+      "conceptIds": [
+        "osi",
+        "data-token"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Подпись JWT и права пользователя на HTTP-ресурс",
+          "correct": false,
+          "explanation": "Это иной смысл слова token и другой механизм.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Право стороны передавать обычные данные в согласованном диалоге",
+          "correct": true,
+          "explanation": "Здесь token — элемент управления диалогом. Его нельзя автоматически отождествлять с OAuth access token или JWT для проверки доступа.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "MAC-адрес ближайшего IP-маршрутизатора",
+          "correct": false,
+          "explanation": "Data token сеансового сервиса не является записью соседства.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Шифрование каждого Ethernet-кадра независимо от настроек",
+          "correct": false,
+          "explanation": "Управление очередностью диалога само по себе не задаёт шифрование канала.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q879",
+      "topic": "Модель OSI",
+      "number": 80,
+      "question": "ONC RPC по RFC 5531 передаёт сообщения вызова и ответа, например поверх TCP. Кандидат относит его строго к L5 только потому, что вызовы происходят в сеансе. Как улучшить объяснение?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc5531",
+        "osi-base-x200"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "RPC нельзя классифицировать только по слову сеанс",
+      "osiFocus": "L5–L7, условное сопоставление",
+      "protocols": [
+        "ONC RPC"
+      ],
+      "conceptIds": [
+        "rpc",
+        "tcp",
+        "osi"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Назвать RPC протоколом L1, если сервер подключён кабелем",
+          "correct": false,
+          "explanation": "Среда передачи не определяет назначение вложенного протокола.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Считать RPC синонимом TCP и убрать формат вызова процедуры",
+          "correct": false,
+          "explanation": "TCP переносит байты, а RPC определяет сообщения вызовов и ответов.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Описать прикладной вызов процедуры и фактический транспорт; одно слово «сеанс» не задаёт жёсткий уровень OSI",
+          "correct": true,
+          "explanation": "В модели TCP/IP RPC — механизм взаимодействия приложений. Сопоставление его функций с верхними уровнями OSI нужно оговаривать, а не выводить из бытового названия сеанса.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Приписать RPC номер уровня, равный номеру TCP-порта",
+          "correct": false,
+          "explanation": "Номер порта не кодирует уровень OSI.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q880",
+      "topic": "Модель OSI",
+      "number": 81,
+      "question": "В классической OSI стороны используют X.226 и согласуют presentation context. Что связывает такой контекст?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-x226",
+        "osi-base-presentation"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Согласование контекста представления в X.226",
+      "osiFocus": "L6, классическая OSI",
+      "protocols": [
+        "ITU-T X.226"
+      ],
+      "conceptIds": [
+        "x226",
+        "osi"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Только IP-префикс с ближайшим маршрутизатором",
+          "correct": false,
+          "explanation": "Это задача маршрутизации, а не контекста представления.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Только TCP-порт с физическим разъёмом",
+          "correct": false,
+          "explanation": "Такое сопоставление не описывает presentation context.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Пароль пользователя с перечнем разрешённых URL",
+          "correct": false,
+          "explanation": "Контекст представления не заменяет прикладную авторизацию.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Абстрактный синтаксис данных с согласованным синтаксисом их передачи",
+          "correct": true,
+          "explanation": "Контекст позволяет сторонам одинаково интерпретировать представление данных. Это не таблица IP-маршрутов и не назначение транспортных портов.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q881",
+      "topic": "Модель OSI",
+      "number": 82,
+      "question": "В спецификации протокола типы сообщений описаны ASN.1, а для передачи выбраны BER. Как соотносятся эти понятия?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-proto-x690"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "ASN.1 и правила кодирования выполняют разные задачи",
+      "osiFocus": "L6, представление данных",
+      "protocols": [
+        "ASN.1",
+        "BER"
+      ],
+      "conceptIds": [
+        "asn1",
+        "ber"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "ASN.1 описывает типы и структуру значений, а BER задаёт их кодирование в байты",
+          "correct": true,
+          "explanation": "Абстрактная запись структуры и конкретное представление в передаче — разные части спецификации.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "ASN.1 шифрует сообщение, а BER выбирает TCP-маршрут",
+          "correct": false,
+          "explanation": "Ни описание типов, ни BER не выполняют указанные функции.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "BER — номер сеансового порта, а ASN.1 — IP-адрес",
+          "correct": false,
+          "explanation": "Это не адресация и не транспортные порты.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "ASN.1 и BER — два имени одного обязательного алгоритма подписи",
+          "correct": false,
+          "explanation": "Они относятся к описанию и кодированию данных, а не к алгоритму подписи.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q882",
+      "topic": "Модель OSI",
+      "number": 83,
+      "question": "Два кодирования BER выражают одно значение, но приложение требует DER. Достаточно ли того, что оба успешно декодируются как BER?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-x690"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "DER ограничивает допустимые варианты BER",
+      "osiFocus": "L6, представление данных",
+      "protocols": [
+        "BER",
+        "DER"
+      ],
+      "conceptIds": [
+        "ber",
+        "der"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Да: любое BER-кодирование по определению является DER",
+          "correct": false,
+          "explanation": "Обратное включение неверно: DER строже.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Нет: DER накладывает дополнительные ограничения для однозначного кодирования; допустимость BER этого не доказывает",
+          "correct": true,
+          "explanation": "DER является ограниченным набором правил BER. Проверяют именно требования DER, а не только возможность извлечь значение.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет: потому что DER обязательно шифрует содержимое секретным ключом",
+          "correct": false,
+          "explanation": "Кодирование DER не является шифрованием.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Да: номер IP-протокола автоматически исправляет некорректное DER",
+          "correct": false,
+          "explanation": "IP не преобразует прикладное кодирование данных.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q883",
+      "topic": "Модель OSI",
+      "number": 84,
+      "question": "DNS-сервер вернул записи A и AAAA для одного имени. Что они содержат?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-proto-rfc1035",
+        "osi-proto-rfc3596",
+        "osi-proto-lab-dns"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "A и AAAA содержат адреса разных версий IP",
+      "osiFocus": "L7",
+      "protocols": [
+        "DNS A",
+        "DNS AAAA"
+      ],
+      "conceptIds": [
+        "dns",
+        "ip-address"
+      ],
+      "exerciseSourceIds": [
+        "osi-proto-lab-dns"
+      ],
+      "options": [
+        {
+          "text": "A — MAC-адрес, AAAA — номер VLAN",
+          "correct": false,
+          "explanation": "DNS A/AAAA не являются локальным разрешением MAC или VLAN.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "A — адрес DNS-сервера, AAAA — только адрес шлюза",
+          "correct": false,
+          "explanation": "Оба типа относятся к указанному в записи имени, а не обязательно к этим ролям.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "A — IPv4-адрес, AAAA — IPv6-адрес",
+          "correct": true,
+          "explanation": "Тип записи определяет смысл данных ответа. Адрес самого DNS-сервера нужно отличать от адресов, возвращённых для имени.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "A — открытый ключ, AAAA — сертификат TLS",
+          "correct": false,
+          "explanation": "Ключи и сертификаты не являются данными записей A/AAAA.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q884",
+      "topic": "Модель OSI",
+      "number": 85,
+      "question": "В UDP DNS-ответе совпали ID транзакции и ожидаемые адреса и порты. Можно ли считать одно это криптографическим подтверждением подлинности ответа?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc1035",
+        "net-dnssec"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "DNS Transaction ID помогает сопоставить ответ, но не аутентифицирует его",
+      "osiFocus": "L7",
+      "protocols": [
+        "DNS over UDP"
+      ],
+      "conceptIds": [
+        "dns",
+        "udp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Да: ID транзакции является цифровой подписью DNS-сервера",
+          "correct": false,
+          "explanation": "Обычный ID — короткое поле сопоставления, не подпись.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да: UDP-порт 53 автоматически шифрует DNS",
+          "correct": false,
+          "explanation": "Номер порта не включает шифрование.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет: DNS вообще не предусматривает сопоставления запроса и ответа",
+          "correct": false,
+          "explanation": "Сопоставление предусмотрено; неверно приравнивать его к аутентификации.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет: это признаки сопоставления обмена, но сами по себе они не являются криптографической проверкой",
+          "correct": true,
+          "explanation": "Проверяют также параметры запроса и принятые меры защиты. DNSSEC решает другую задачу — проверку подлинности подписанных DNS-данных.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q885",
+      "topic": "Модель OSI",
+      "number": 86,
+      "question": "В DNS-записи TTL=300, а в IPv4-пакете с ответом TTL=57. Почему эти значения не обязаны совпадать?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc1035",
+        "osi-prac-rfc1812"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Одинаковое имя TTL не означает одинаковую функцию",
+      "osiFocus": "L7 и L3",
+      "protocols": [
+        "DNS TTL",
+        "IPv4 TTL"
+      ],
+      "conceptIds": [
+        "dns",
+        "ip"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "DNS TTL ограничивает срок кэширования записи, а IPv4 TTL ограничивает существование пакета при пересылке",
+          "correct": true,
+          "explanation": "Это независимые поля разных протоколов. В IPv4 при каждом переходе TTL уменьшается как минимум на единицу; DNS TTL описывается в секундах кэширования.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Оба значения — номера TCP-портов, но для разных направлений",
+          "correct": false,
+          "explanation": "TTL не является портом ни в DNS, ни в IPv4.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "DNS TTL считает маршрутизаторы, а IPv4 TTL — срок сертификата",
+          "correct": false,
+          "explanation": "Здесь перепутаны функции и добавлена не связанная с ними проверка сертификата.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Несовпадение доказывает подмену пакета",
+          "correct": false,
+          "explanation": "Нормальные независимые поля не должны быть равны.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q886",
+      "topic": "Модель OSI",
+      "number": 87,
+      "question": "При разборе обычного DNS поверх TCP перед DNS-сообщением стоят два байта длины. Зачем они нужны?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc1035",
+        "net-dns-tcp"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Двухбайтовая длина сообщения DNS поверх TCP",
+      "osiFocus": "L7 поверх L4",
+      "protocols": [
+        "DNS over TCP"
+      ],
+      "conceptIds": [
+        "dns",
+        "tcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Это обязательное начало каждого UDP DNS-сообщения",
+          "correct": false,
+          "explanation": "У UDP есть границы датаграммы; описанный префикс относится к TCP-формату.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Чтобы выделить границы DNS-сообщения в потоке TCP; указана длина сообщения без самих этих двух байт",
+          "correct": true,
+          "explanation": "TCP не хранит границы прикладных сообщений. DNS задаёт собственное обрамление для потока.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Это номер уровня OSI и версия Ethernet",
+          "correct": false,
+          "explanation": "Поля не имеют такого назначения.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Это длина всего IP-пакета вместе с Ethernet-заголовком",
+          "correct": false,
+          "explanation": "Префикс описывает DNS-сообщение, а не внешние заголовки.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q887",
+      "topic": "Модель OSI",
+      "number": 88,
+      "question": "Новый DHCPv4-клиент по UDP получает аренду обычным четырёхсообщенческим обменом, без ускоренных расширений. Каков порядок?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-proto-rfc2131"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Порядок обычного получения аренды DHCPv4",
+      "osiFocus": "L7 поверх UDP",
+      "protocols": [
+        "DHCPv4"
+      ],
+      "conceptIds": [
+        "dhcp",
+        "udp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "DHCPACK → DHCPDISCOVER → DHCPREQUEST → DHCPOFFER",
+          "correct": false,
+          "explanation": "Подтверждение не начинает описанный процесс получения новой аренды.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "SYN → SYN-ACK → ACK → FIN",
+          "correct": false,
+          "explanation": "Это элементы TCP, а DHCPv4 в данной схеме работает поверх UDP.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "DHCPDISCOVER → DHCPOFFER → DHCPREQUEST → DHCPACK",
+          "correct": true,
+          "explanation": "Клиент ищет сервер, получает предложение, запрашивает выбранные параметры и получает подтверждение. Обычно используются UDP-порты 68 клиента и 67 сервера.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "ARP → DNS → HTTP → TLS",
+          "correct": false,
+          "explanation": "Перечисленные протоколы не являются четырьмя сообщениями DHCPv4.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q888",
+      "topic": "Модель OSI",
+      "number": 89,
+      "question": "В обычном четырёхсообщенческом DHCPv6-обмене без Rapid Commit клиент начинает с Solicit. На каких портах клиент и сервер должны слушать входящие DHCPv6-сообщения?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-proto-rfc9915"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "DHCPv6 имеет собственные сообщения и порты",
+      "osiFocus": "L7 поверх UDP",
+      "protocols": [
+        "DHCPv6"
+      ],
+      "conceptIds": [
+        "dhcpv6",
+        "udp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "TCP 546 и TCP 547",
+          "correct": false,
+          "explanation": "DHCPv6 использует UDP, поэтому совпадения чисел недостаточно.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "UDP 68 и UDP 67",
+          "correct": false,
+          "explanation": "Это обычные порты DHCPv4, не DHCPv6.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Никакие: DHCPv6 всегда передаётся только как ARP-кадр",
+          "correct": false,
+          "explanation": "IPv6 не использует ARP; DHCPv6 — отдельный протокол поверх UDP.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "UDP 546 у клиента и UDP 547 у сервера",
+          "correct": true,
+          "explanation": "Клиент слушает UDP 546, сервер — UDP 547. Исходный порт не обязательно совпадает с портом приёма. Обычный процесс продолжится Advertise, Request и Reply.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q889",
+      "topic": "Модель OSI",
+      "number": 90,
+      "question": "Несколько HTTP/2 streams используют одно TCP-соединение. Потеря сегмента создала пробел в TCP-потоке перед данными разных streams. Устраняет ли мультиплексирование HTTP/2 ожидание восстановления этого пробела?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc9113",
+        "research-tcp"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Streams HTTP/2 не устраняют задержку общей доставки TCP",
+      "osiFocus": "L7 поверх TCP",
+      "protocols": [
+        "HTTP/2"
+      ],
+      "conceptIds": [
+        "http2",
+        "tcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Нет: TCP выдаёт общий поток по порядку, поэтому потеря может задержать данные разных HTTP/2 streams",
+          "correct": true,
+          "explanation": "Прикладные streams помогают мультиплексировать запросы, но ниже остаётся один упорядоченный TCP-поток.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да: каждый stream HTTP/2 всегда имеет отдельный TCP-сокет",
+          "correct": false,
+          "explanation": "Условие прямо задаёт одно соединение для нескольких streams.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Да: HTTP/2 отменяет порядок байтов TCP",
+          "correct": false,
+          "explanation": "Прикладной протокол не меняет сервис упорядоченной доставки TCP.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет: потому что HTTP/2 допускает только один запрос за всё соединение",
+          "correct": false,
+          "explanation": "HTTP/2 поддерживает несколько streams; проблема находится в общем транспорте.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q890",
+      "topic": "Модель OSI",
+      "number": 91,
+      "question": "В одном SSH-соединении запущены shell и передача через port forwarding. Обязательно ли каждому каналу SSH соответствует отдельное TCP-соединение между SSH-клиентом и SSH-сервером?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc4254"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "SSH мультиплексирует каналы в защищённом соединении",
+      "osiFocus": "L7",
+      "protocols": [
+        "SSH channels"
+      ],
+      "conceptIds": [
+        "ssh",
+        "tcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Да: SSH допускает только один канал на любое соединение",
+          "correct": false,
+          "explanation": "SSH предусматривает несколько каналов разных типов.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Нет: SSH connection protocol позволяет мультиплексировать несколько логических каналов в одном защищённом соединении",
+          "correct": true,
+          "explanation": "Нужно различать каналы SSH и транспорт между SSH-узлами. На внешних концах перенаправления могут существовать дополнительные соединения.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет: потому что port forwarding всегда отключает шифрование SSH",
+          "correct": false,
+          "explanation": "Перенаправляемые данные могут переноситься внутри защищённого канала.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Да: номер канала SSH всегда равен локальному TCP-порту",
+          "correct": false,
+          "explanation": "Идентификаторы каналов и номера сетевых портов имеют разные области значения.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q891",
+      "topic": "Модель OSI",
+      "number": 92,
+      "question": "В FTP установлено управляющее TCP-соединение. Сервер в ответ на EPSV сообщил порт 50020. Клиент не может получить листинг. Что нужно проверить дополнительно?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc959",
+        "osi-proto-rfc2428"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Управляющее соединение FTP не заменяет соединение данных",
+      "osiFocus": "L7 и отдельные TCP-соединения",
+      "protocols": [
+        "FTP",
+        "EPSV"
+      ],
+      "conceptIds": [
+        "ftp",
+        "tcp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Только повторно открыть TCP/21: все данные обязаны идти в нём",
+          "correct": false,
+          "explanation": "FTP разделяет управление и передачу данных.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Только входящее соединение с порта 20 сервера, игнорируя EPSV",
+          "correct": false,
+          "explanation": "Это не описанный пассивный режим с объявленным сервером портом.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Соединение данных от клиента к объявленному порту 50020 и связанные сетевые правила",
+          "correct": true,
+          "explanation": "В пассивном FTP данные идут по отдельному соединению. Успех управляющего канала не доказывает доступность канала данных.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Изменить DNS MX-запись, чтобы разрешить листинг",
+          "correct": false,
+          "explanation": "Почтовая DNS-запись не управляет каналом данных FTP.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q892",
+      "topic": "Модель OSI",
+      "number": 93,
+      "question": "Почтовый клиент должен отправлять сообщения и синхронизировать папки уже существующего ящика на сервере. Как правильно разделить роли SMTP и IMAP?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-proto-rfc5321",
+        "osi-proto-rfc9051"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "SMTP передаёт почту, IMAP предоставляет доступ к ящику",
+      "osiFocus": "L7",
+      "protocols": [
+        "SMTP",
+        "IMAP"
+      ],
+      "conceptIds": [
+        "smtp",
+        "imap"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "SMTP синхронизирует папки, а IMAP маршрутизирует IP-пакеты",
+          "correct": false,
+          "explanation": "SMTP не предоставляет модель папок IMAP, а IMAP не занимается IP-маршрутизацией.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "IMAP — канальная замена Ethernet для почтовых серверов",
+          "correct": false,
+          "explanation": "IMAP является прикладным протоколом.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Оба протокола нужны только для проверки SPF в DNS",
+          "correct": false,
+          "explanation": "SPF — отдельный механизм почтовой проверки; он не заменяет передачу и чтение сообщений.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "SMTP используется для передачи почты; IMAP — для доступа к сообщениям и состоянию ящика",
+          "correct": true,
+          "explanation": "Это разные прикладные задачи, даже если обе службы работают на одном сервере и защищены TLS.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q893",
+      "topic": "Модель OSI",
+      "number": 94,
+      "question": "Два компьютера синхронизировали часы по NTP, но один показывает 12:00, другой 15:00 из-за настроек часового пояса. Доказывает ли это сбой NTP?",
+      "origin": "authored",
+      "difficulty": "basic",
+      "sourceIds": [
+        "osi-proto-rfc5905"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Синхронизация времени и часовой пояс различаются",
+      "osiFocus": "L7",
+      "protocols": [
+        "NTP"
+      ],
+      "conceptIds": [
+        "ntp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Нет: синхронизация времени и отображение местного часового пояса — разные задачи",
+          "correct": true,
+          "explanation": "NTP работает со шкалой времени и оценкой смещения часов. Локальное представление времени определяется отдельно.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да: NTP обязан задавать всем компьютерам одинаковую местную строку времени",
+          "correct": false,
+          "explanation": "Протокол не требует одинакового часового пояса интерфейса пользователя.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Да: NTP автоматически вычитает три часа на каждом IP-маршрутизаторе",
+          "correct": false,
+          "explanation": "Маршрутизаторы не меняют время так, как уменьшают TTL.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет: потому что NTP вообще не синхронизирует часы",
+          "correct": false,
+          "explanation": "Назначение NTP именно связано с синхронизацией времени, но не с выбором отображаемого пояса.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q894",
+      "topic": "Модель OSI",
+      "number": 95,
+      "question": "В системе управления настроен SNMPv3 с уровнем authNoPriv. Требуется также скрыть содержимое управляющих сообщений от наблюдателя в сети. Какое изменение относится к этому требованию?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc3411"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Имя SNMPv3 не гарантирует включённую конфиденциальность",
+      "osiFocus": "L7",
+      "protocols": [
+        "SNMPv3"
+      ],
+      "conceptIds": [
+        "snmp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Оставить authNoPriv: слово v3 всегда означает обязательное шифрование",
+          "correct": false,
+          "explanation": "В SNMPv3 существуют разные уровни безопасности.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Настроить поддерживаемый режим authPriv и его параметры защиты",
+          "correct": true,
+          "explanation": "authNoPriv предусматривает аутентификацию без privacy. Сам номер версии SNMP не означает, что шифрование уже включено.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Поменять только UDP-порт со 161 на 162",
+          "correct": false,
+          "explanation": "Смена порта не включает privacy; 162 обычно связан с уведомлениями.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Заменить IP-адрес сервера его DNS-именем",
+          "correct": false,
+          "explanation": "Представление адреса назначения не шифрует сообщения управления.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q895",
+      "topic": "Модель OSI",
+      "number": 96,
+      "question": "SIP-установление звонка успешно завершилось, но звука нет. Медиаданные в этой схеме должны идти отдельным RTP-потоком. Что проверить?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc3261",
+        "osi-proto-rfc3550"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Сигнализация SIP не доказывает прохождение медиапотока",
+      "osiFocus": "L7, сигнализация и медиаданные",
+      "protocols": [
+        "SIP",
+        "RTP"
+      ],
+      "conceptIds": [
+        "sip",
+        "rtp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Только SIP: аудиобайты обязаны всегда находиться внутри SIP INVITE",
+          "correct": false,
+          "explanation": "В заданной схеме медиа передаётся отдельно по RTP.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Только наличие HTML-страницы телефонного аппарата",
+          "correct": false,
+          "explanation": "Страница управления не подтверждает доставку медиаданных.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Согласованные адреса и порты медиапотока, RTP-трафик и правила его прохождения",
+          "correct": true,
+          "explanation": "Сигнализация установления сеанса и доставка медиа — разные обмены. Успех SIP не доказывает работоспособность RTP-пути.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Ничего: успешный SIP гарантирует звук независимо от сети",
+          "correct": false,
+          "explanation": "Такой гарантии у успешной сигнализации нет.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q896",
+      "topic": "Модель OSI",
+      "number": 97,
+      "question": "SMTP-сервер объявил STARTTLS. Клиент отправил эту команду и получил 220 Ready to start TLS. Какой следующий обмен ожидается в том же TCP-соединении?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc3207"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "STARTTLS переключает существующее соединение на TLS",
+      "osiFocus": "L7 и защита соединения",
+      "protocols": [
+        "SMTP STARTTLS"
+      ],
+      "conceptIds": [
+        "smtp",
+        "tls"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Обязательное создание отдельного UDP-сеанса для всех SMTP-команд",
+          "correct": false,
+          "explanation": "STARTTLS в этой схеме работает поверх существующего TCP.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Открытая передача пароля до TLS, потому что ответ 220 уже является шифром",
+          "correct": false,
+          "explanation": "Готовность начать TLS ещё не является завершённым защищённым обменом.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Немедленное завершение TCP, поскольку TLS не может работать поверх него",
+          "correct": false,
+          "explanation": "TLS как раз может защищать данные над TCP.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "TLS-рукопожатие, затем продолжение SMTP по установленным для STARTTLS правилам",
+          "correct": true,
+          "explanation": "STARTTLS переводит существующее соединение в защищённый режим. До рукопожатия нельзя считать дальнейший SMTP-обмен уже зашифрованным.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q897",
+      "topic": "Модель OSI",
+      "number": 98,
+      "question": "В типовом VXLAN-пакете внешний UDP направлен на порт 4789, затем следует заголовок VXLAN. Что он инкапсулирует?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc7348"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "VXLAN переносит внутренний Ethernet-кадр поверх UDP/IP",
+      "osiFocus": "Несколько уровней, оверлей",
+      "protocols": [
+        "VXLAN"
+      ],
+      "conceptIds": [
+        "vxlan",
+        "udp",
+        "ethernet"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Внутренний Ethernet-кадр; внешний IP-путь связывает VXLAN-концы",
+          "correct": true,
+          "explanation": "Внутренняя L2-сеть переносится через L3-инфраструктуру. Внешние адреса и VNI нужно отличать от внутренних адресов и VLAN.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Только голый TCP-порт без каких-либо данных",
+          "correct": false,
+          "explanation": "VXLAN переносит кадр, а не одно поле транспорта.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Обязательный HTTP-запрос на настройки коммутатора",
+          "correct": false,
+          "explanation": "Это не назначение VXLAN-инкапсуляции.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Физический оптический сигнал без пакетизации",
+          "correct": false,
+          "explanation": "VXLAN является пакетным механизмом поверх UDP/IP.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q898",
+      "topic": "Модель OSI",
+      "number": 99,
+      "question": "Клиент использует HTTP/3 поверх QUIC и UDP в IPv4-сети Ethernet, без туннелей. Какой порядок от внешнего обрамления к прикладным данным корректен?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc9114",
+        "osi-proto-rfc9000"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Порядок инкапсуляции HTTP/3 без туннелей",
+      "osiFocus": "Несколько уровней",
+      "protocols": [
+        "HTTP/3",
+        "QUIC",
+        "UDP",
+        "IPv4",
+        "Ethernet"
+      ],
+      "conceptIds": [
+        "http3",
+        "quic",
+        "udp",
+        "ethernet"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Ethernet → IPv4 → TCP → UDP → HTTP/3",
+          "correct": false,
+          "explanation": "В указанном стеке между IP и UDP нет TCP.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Ethernet → IPv4 → UDP → QUIC → HTTP/3",
+          "correct": true,
+          "explanation": "QUIC переносится в UDP, а HTTP/3 использует streams QUIC. Криптографическая защита интегрирована в QUIC; отдельный TCP здесь не появляется.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "HTTP/3 → Ethernet → UDP → IPv4 → QUIC",
+          "correct": false,
+          "explanation": "Этот порядок не соответствует вложенности заголовков.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Ethernet → DNS → TCP → HTTP/3",
+          "correct": false,
+          "explanation": "DNS может участвовать в поиске адреса, но не является обязательной обёрткой каждого HTTP/3-пакета.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q899",
+      "topic": "Модель OSI",
+      "number": 100,
+      "question": "В IPv6 Next Header=60. Следующий заголовок Destination Options содержит Next Header=17. Пакет не фрагментирован, длины корректны. Где искать UDP-порты?",
+      "origin": "authored",
+      "difficulty": "advanced",
+      "sourceIds": [
+        "osi-proto-rfc8200",
+        "osi-base-iana-protocols"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Next Header может указывать расширение, а не транспорт",
+      "osiFocus": "L3 → L4",
+      "protocols": [
+        "IPv6 extension headers"
+      ],
+      "conceptIds": [
+        "ip",
+        "udp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Всегда в первых четырёх байтах сразу после основного IPv6-заголовка",
+          "correct": false,
+          "explanation": "Здесь там начинается расширение, а не UDP.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "В младших байтах адреса IPv6 назначения",
+          "correct": false,
+          "explanation": "IPv6-адрес не хранит транспортные порты.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "После корректного разбора и пропуска Destination Options, в следующем UDP-заголовке",
+          "correct": true,
+          "explanation": "Первое Next Header указывает расширение. Его размер определяют по формату заголовка, затем переходят к протоколу с номером 17.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Их нет, потому что наличие любого extension header запрещает UDP",
+          "correct": false,
+          "explanation": "Расширения IPv6 не исключают последующий транспортный заголовок.",
+          "sourceLetter": "Г"
+        }
+      ]
+    },
+    {
+      "id": "q900",
+      "topic": "Модель OSI",
+      "number": 101,
+      "question": "ICMPv4 Destination Unreachable содержит заголовок исходного IPv4-пакета и начальные байты его UDP-датаграммы. Анализатор показывает там UDP-порты. Значит ли это, что сам ICMP отправлен через UDP?",
+      "origin": "authored",
+      "difficulty": "intermediate",
+      "sourceIds": [
+        "osi-proto-rfc792",
+        "osi-base-iana-protocols"
+      ],
+      "researchBatch": "osi-protocols-2026-10",
+      "reviewedAt": "2026-10-10",
+      "learningObjective": "Порты процитированного пакета не являются портами ICMP",
+      "osiFocus": "L3 и цитирование пакета",
+      "protocols": [
+        "ICMPv4"
+      ],
+      "conceptIds": [
+        "icmp",
+        "udp"
+      ],
+      "exerciseSourceIds": [],
+      "options": [
+        {
+          "text": "Да: любые два числа портов внутри пакета доказывают внешний UDP",
+          "correct": false,
+          "explanation": "Поля внутри цитируемых данных не определяют внешний протокол.",
+          "sourceLetter": "А"
+        },
+        {
+          "text": "Да: ICMP использует UDP-порт, равный своему типу сообщения",
+          "correct": false,
+          "explanation": "Тип и код ICMP не являются UDP-портами.",
+          "sourceLetter": "Б"
+        },
+        {
+          "text": "Нет: потому что ICMP никогда не содержит частей других пакетов",
+          "correct": false,
+          "explanation": "Сообщения ICMP об ошибках как раз включают такие сведения.",
+          "sourceLetter": "В"
+        },
+        {
+          "text": "Нет: это цитата исходного пакета для сопоставления ошибки; внешний ICMP передаётся как отдельный IP-протокол",
+          "correct": true,
+          "explanation": "Нужно различать внешний заголовок сообщения об ошибке и вложенные сведения о вызвавшем её пакете. У ICMP нет собственных TCP/UDP-портов.",
+          "sourceLetter": "Г"
+        }
+      ]
     }
   ],
   "sources": [
@@ -38764,6 +41760,300 @@
       "id": "research-suricata-rules",
       "title": "Suricata 8.0.3 — Rule source, destination and direction",
       "url": "https://docs.suricata.io/en/suricata-8.0.3/rules/intro.html"
+    },
+    {
+      "id": "osi-proto-rfc8200",
+      "title": "IETF RFC 8200 — IPv6",
+      "url": "https://www.rfc-editor.org/rfc/rfc8200.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc4862",
+      "title": "IETF RFC 4862 — IPv6 Stateless Address Autoconfiguration",
+      "url": "https://www.rfc-editor.org/rfc/rfc4862.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc4291",
+      "title": "IETF RFC 4291 — IPv6 Addressing Architecture",
+      "url": "https://www.rfc-editor.org/rfc/rfc4291.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc2328",
+      "title": "IETF RFC 2328 — OSPFv2",
+      "url": "https://www.rfc-editor.org/rfc/rfc2328.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc4271",
+      "title": "IETF RFC 4271 — BGP-4",
+      "url": "https://www.rfc-editor.org/rfc/rfc4271.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc4303",
+      "title": "IETF RFC 4303 — IP Encapsulating Security Payload (ESP)",
+      "url": "https://www.rfc-editor.org/rfc/rfc4303.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc7296",
+      "title": "IETF RFC 7296 — IKEv2",
+      "url": "https://www.rfc-editor.org/rfc/rfc7296.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc2784",
+      "title": "IETF RFC 2784 — Generic Routing Encapsulation (GRE)",
+      "url": "https://www.rfc-editor.org/rfc/rfc2784.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc3032",
+      "title": "IETF RFC 3032 — MPLS Label Stack Encoding",
+      "url": "https://www.rfc-editor.org/rfc/rfc3032.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc9000",
+      "title": "IETF RFC 9000 — QUIC",
+      "url": "https://www.rfc-editor.org/rfc/rfc9000.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc9260",
+      "title": "IETF RFC 9260 — Stream Control Transmission Protocol",
+      "url": "https://www.rfc-editor.org/rfc/rfc9260.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc9114",
+      "title": "IETF RFC 9114 — HTTP/3",
+      "url": "https://www.rfc-editor.org/rfc/rfc9114.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc5531",
+      "title": "IETF RFC 5531 — Remote Procedure Call Protocol Version 2",
+      "url": "https://www.rfc-editor.org/rfc/rfc5531.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc1035",
+      "title": "IETF RFC 1035 — Domain Names — Implementation",
+      "url": "https://www.rfc-editor.org/rfc/rfc1035.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc3596",
+      "title": "IETF RFC 3596 — DNS Extensions to Support IP Version 6",
+      "url": "https://www.rfc-editor.org/rfc/rfc3596.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc2131",
+      "title": "IETF RFC 2131 — DHCP",
+      "url": "https://www.rfc-editor.org/rfc/rfc2131.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc9915",
+      "title": "IETF RFC 9915 — DHCP for IPv6 (STD 102; obsoletes RFC 8415)",
+      "url": "https://www.rfc-editor.org/rfc/rfc9915.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc9113",
+      "title": "IETF RFC 9113 — HTTP/2",
+      "url": "https://www.rfc-editor.org/rfc/rfc9113.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc4254",
+      "title": "IETF RFC 4254 — SSH Connection Protocol",
+      "url": "https://www.rfc-editor.org/rfc/rfc4254.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc959",
+      "title": "IETF RFC 959 — FTP",
+      "url": "https://www.rfc-editor.org/rfc/rfc959.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc2428",
+      "title": "IETF RFC 2428 — FTP Extensions — EPSV",
+      "url": "https://www.rfc-editor.org/rfc/rfc2428.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc5321",
+      "title": "IETF RFC 5321 — SMTP",
+      "url": "https://www.rfc-editor.org/rfc/rfc5321.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc9051",
+      "title": "IETF RFC 9051 — IMAP4rev2",
+      "url": "https://www.rfc-editor.org/rfc/rfc9051.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc5905",
+      "title": "IETF RFC 5905 — NTPv4",
+      "url": "https://www.rfc-editor.org/rfc/rfc5905.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc3411",
+      "title": "IETF RFC 3411 — SNMP Management Frameworks",
+      "url": "https://www.rfc-editor.org/rfc/rfc3411.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc3261",
+      "title": "IETF RFC 3261 — SIP",
+      "url": "https://www.rfc-editor.org/rfc/rfc3261.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc3550",
+      "title": "IETF RFC 3550 — RTP",
+      "url": "https://www.rfc-editor.org/rfc/rfc3550.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc3207",
+      "title": "IETF RFC 3207 — SMTP STARTTLS",
+      "url": "https://www.rfc-editor.org/rfc/rfc3207.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc7348",
+      "title": "IETF RFC 7348 — VXLAN",
+      "url": "https://www.rfc-editor.org/rfc/rfc7348.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc5227",
+      "title": "IETF RFC 5227 — IPv4 Address Conflict Detection",
+      "url": "https://www.rfc-editor.org/rfc/rfc5227.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc792",
+      "title": "IETF RFC 792 — ICMP",
+      "url": "https://www.rfc-editor.org/rfc/rfc792.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc1661",
+      "title": "IETF RFC 1661 — PPP",
+      "url": "https://www.rfc-editor.org/rfc/rfc1661.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-rfc1332",
+      "title": "IETF RFC 1332 — IPCP",
+      "url": "https://www.rfc-editor.org/rfc/rfc1332.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-ethernet",
+      "title": "Cisco — Ethernet (IEEE 802.3), physical and data-link functions",
+      "url": "https://www.cisco.com/c/en/us/td/docs/net_mgmt/prime/network/3-8/reference/guide/ethrnt.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-media",
+      "title": "Cisco — 1000BASE-T and 1000BASE-SX media",
+      "url": "https://www.cisco.com/c/en/us/products/collateral/interfaces-modules/gigabit-ethernet-gbic-sfp-modules/datasheet-c78-366584.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-autoneg",
+      "title": "Cisco — Ethernet speed, duplex and autonegotiation",
+      "url": "https://www.cisco.com/c/en/us/support/docs/lan-switching/ethernet/10561-3.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-vlan",
+      "title": "Cisco — IEEE 802.1Q and native VLAN",
+      "url": "https://www.cisco.com/en/US/docs/ios/lanswitch/configuration/guide/lsw_rtng_vlan_ovw.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-stp",
+      "title": "Cisco — Spanning Tree Protocol and BPDUs",
+      "url": "https://www.cisco.com/c/en/us/support/docs/lan-switching/spanning-tree-protocol/24063-pvid-inconsistency-24063.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-lacp",
+      "title": "Cisco — EtherChannel and flow-based load balancing",
+      "url": "https://www.cisco.com/c/en/us/support/docs/lan-switching/etherchannel/12023-4.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-lldp",
+      "title": "IEEE 802.1AB — Link Layer Discovery Protocol",
+      "url": "https://standards.ieee.org/standard/802_1AB-2016.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-macsec",
+      "title": "Cisco — MACsec, IEEE 802.1AE link protection",
+      "url": "https://www.cisco.com/c/en/us/td/docs/dcn/aci/apic/6x/l2-configuration/cisco-apic-layer-2-networking-configuration-guide-62x/g_macsec.html",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-ethertype",
+      "title": "IANA — IEEE 802 Numbers, EtherTypes",
+      "url": "https://www.iana.org/assignments/ieee-802-numbers/ieee-802-numbers.xhtml",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-x225",
+      "title": "ITU-T X.225 — Connection-oriented Session protocol",
+      "url": "https://www.itu.int/rec/T-REC-X.225-199511-I/en",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-x226",
+      "title": "ITU-T X.226 — Connection-oriented Presentation protocol",
+      "url": "https://www.itu.int/rec/T-REC-X.226-199407-I/en",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-x690",
+      "title": "ITU-T X.690 — ASN.1 encoding: BER, CER and DER",
+      "url": "https://www.itu.int/rec/T-REC-X.690-202102-I/en",
+      "kind": "technical"
+    },
+    {
+      "id": "osi-proto-cisco-questions",
+      "title": "Cisco Networking Academy — открытые Check Your Understanding Questions",
+      "url": "https://www.ciscopress.com/articles/article.asp?p=3192417&seqNum=9",
+      "kind": "practice"
+    },
+    {
+      "id": "osi-proto-lab-tcp",
+      "title": "Kurose/Ross — открытая лабораторная Wireshark TCP v9",
+      "url": "https://www-net.cs.umass.edu/wireshark-labs/Wireshark_TCP_v9.pdf",
+      "kind": "practice"
+    },
+    {
+      "id": "osi-proto-lab-udp",
+      "title": "Kurose/Ross — открытая лабораторная Wireshark UDP v9",
+      "url": "https://www-net.cs.umass.edu/wireshark-labs/Wireshark_UDP_v9.pdf",
+      "kind": "practice"
+    },
+    {
+      "id": "osi-proto-lab-dns",
+      "title": "Kurose/Ross — открытая лабораторная Wireshark DNS v9",
+      "url": "https://www-net.cs.umass.edu/wireshark-labs/Wireshark_DNS_v9.pdf",
+      "kind": "practice"
     }
   ],
   "updatedAt": "2026-10-10",

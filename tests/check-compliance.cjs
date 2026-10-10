@@ -15,7 +15,7 @@ const files = { './questions.json': base, './data/compliance-ru/manifest.json': 
   const original = JSON.stringify([base, manifest, parts]);
   const data = composed();
   assert.equal(JSON.stringify([base, manifest, parts]), original, 'Source banks must not mutate');
-  assert.equal(data.questions.length, 955); assert.equal(data.topics.length, 45);
+  assert.equal(data.questions.length, 1015); assert.equal(data.topics.length, 45);
   assert.equal(data.topics.filter(topic => topic === 'Комплаенс РФ').length, 1);
   const topic = data.questions.filter(question => question.topic === 'Комплаенс РФ');
   assert.equal(topic.length, 120); assert.equal(topic.filter(question => question.compliance.reused).length, 5);
@@ -97,7 +97,7 @@ const files = { './questions.json': base, './data/compliance-ru/manifest.json': 
   browser.fetch = async url => ({ ok: true, json: async () => copy(aggregateFiles[url]) });
   vm.runInContext(code('all-questions.js'), browser);
   const all = await browser.window.TrainerAllQuestions.load({ includeTopics: true });
-  assert.equal(all.questions.length, 1031); assert.equal(all.topicGroups.length, 52);
+  assert.equal(all.questions.length, 1091); assert.equal(all.topicGroups.length, 52);
   const wheelTopic = all.topicGroups.filter(group => group.title === 'Комплаенс РФ');
   assert.equal(wheelTopic.length, 1); assert.equal(wheelTopic[0].questionIds.length, 120);
   assert.equal(all.questions.filter(question => question.compliance).length, 120);

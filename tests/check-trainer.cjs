@@ -428,10 +428,14 @@ function choose(a,correct) {
   const previous600={...base,questions:base.questions.filter(q=>Number(q.id.slice(1))<=600)};
   previous600.topics=base.topics.filter(topic=>previous600.questions.some(q=>q.topic===topic));
   assert.equal(previous600.questions.length,600);assert.equal(previous600.topics.length,36);
+  const previous840={...base,questions:base.questions.filter(q=>Number(q.id.slice(1))<=840)};
+  previous840.topics=base.topics.filter(topic=>previous840.questions.some(q=>q.topic===topic));
+  const previousComposed=require('../basic-bank.js').merge(previous840,require('./compliance-fixtures.cjs').manifest,require('./compliance-fixtures.cjs').parts);
+  assert.equal(previousComposed.questions.length,955);
   const previous740={...base,questions:base.questions.filter(q=>Number(q.id.slice(1))<=740)};
   previous740.topics=base.topics.filter(topic=>previous740.questions.some(q=>q.topic===topic));
   assert.equal(previous740.questions.length,740);assert.equal(previous740.topics.length,40);
-  for(const [priorData,ticketSize] of [[base,50],[previous740,50],[previous600,50],[previous500,50],[previousData,50],[previousData,20],[data,20]]){
+  for(const [priorData,ticketSize] of [[previousComposed,50],[previous840,50],[base,50],[previous740,50],[previous600,50],[previous500,50],[previousData,50],[previousData,20],[data,20]]){
     const migrationStorage=new Map();
     ({a,nodes}=await runtime(migrationStorage,{data:priorData,ticketSize}));
     a.startSession(state().tickets[0],'Old completed ticket',0);choose(a,true);a.checkAnswer();a.finishSession();
