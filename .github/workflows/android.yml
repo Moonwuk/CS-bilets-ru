@@ -24,6 +24,10 @@ jobs:
           java-version: '17'
       - name: Check trainer
         run: |
+          node --check basic-bank.js
+          node --check compliance-glossary.js
+          node --check compliance-materials.js
+          node tests/check-compliance.cjs
           node --check app.js
           node --check android/googleplay-feedback.js
           node --check android/android-adapter.js

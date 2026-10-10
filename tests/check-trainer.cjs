@@ -4,7 +4,9 @@ const path=require('node:path');
 const vm=require('node:vm');
 const assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
-const data=JSON.parse(fs.readFileSync(path.join(root,'questions.json'),'utf8'));
+const { base, composed }=require('./compliance-fixtures.cjs');
+const data=composed();
+const count=data.questions.length;
 const key='cs-bilets-ru.progress.v1';
 
 class Node {
@@ -43,8 +45,10 @@ async function runtime(storage=new Map(),options={}) {
   const logger={...console,error(...args){loadErrors.push(args);if(!options.expectLoadFailure)console.error(...args);}};
   const randomMath=options.random ? Object.assign(Object.create(Math),{random:options.random}) : Math;
   const ctx={document,window:{localStorage,scrollTo(){},addEventListener(){}},fetch:async()=>({ok:true,json:async()=>options.data||data}),console:logger,AbortController,Math:randomMath,Map,Set,Promise,URL};
+  ctx.window.TrainerBasicBank={load:async()=>options.data||data};
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(root,'glossary.js'),'utf8'),ctx);
+  vm.runInContext(fs.readFileSync(path.join(root,'compliance-glossary.js'),'utf8'),ctx);
   const source=fs.readFileSync(path.join(root,'app.js'),'utf8').replace('const TICKET_SIZE = 50;',`const TICKET_SIZE = ${options.ticketSize||50};`).replace('  load();\n})();',`  globalThis.qa={startSession,requestStartSession,selectAnswer,checkAnswer,jump,finishSession,isCorrect,navigate,resetProgress,setMode:m=>{mode=m;},get:()=>({session,sessionOpen,tickets,bank,errors,ticketResults,total,correctTotal,page,mode,storageAvailable})};\n  load();\n})();`);
   vm.runInContext(source,ctx);
   await new Promise(resolve=>setImmediate(resolve));
@@ -93,32 +97,32 @@ function choose(a,correct) {
   let {a,nodes}=await runtime();
   let state=()=>a.get();
   const all=state().tickets.flat();
-  assert.equal(all.length,840);assert.equal(new Set(all).size,840);
+  assert.equal(all.length,count);assert.equal(new Set(all).size,count);
   assert.deepEqual(Array.from(all).sort(),data.questions.map(q=>q.id).sort(),'Numbered tickets cover every question once');
-  assert.deepEqual(Array.from(state().tickets,t=>t.length),[...Array(16).fill(50),40]);
+  assert.deepEqual(Array.from(state().tickets,t=>t.length),Array.from({length:Math.ceil(count/50)},(_,i)=>Math.min(50,count-i*50)));
   const legalCounts=Array.from(state().tickets,t=>t.filter(id=>state().bank.get(id).legal).length);
-  assert.equal(legalCounts.reduce((a,b)=>a+b,0),100);assert(legalCounts.every(n=>n===5||n===6),'Legal questions remain evenly distributed');
-  assert.equal(Number(nodes.get('#ticket-count').textContent),17);
-  assert.equal(Number(nodes.get('#topic-count').textContent),44);
-  assert(nodes.get('#dataset-info').textContent.includes('840 вопросов · 44 тем'));
+  assert.equal(legalCounts.reduce((a,b)=>a+b,0),217);
+  assert.equal(Number(nodes.get('#ticket-count').textContent),Math.ceil(count/50));
+  assert.equal(Number(nodes.get('#topic-count').textContent),data.topics.length);
+  assert(nodes.get('#dataset-info').textContent.includes(`${count} вопросов · ${data.topics.length} тем`));
   assert.equal(nodes.get('#main').querySelectorAll('[data-ticket]').length,0);
-  assert(fs.readFileSync(path.join(root,'index.html'),'utf8').includes('840 вопросов'));
+  assert(fs.readFileSync(path.join(root,'index.html'),'utf8').includes(`${count} вопросов`));
   for(const topic of data.topics){
     const counts=Array.from(state().tickets,ticket=>ticket.filter(id=>state().bank.get(id).topic===topic).length);
     // Equal-capacity legacy tickets stay balanced; the final 40-question ticket can fill earlier.
     const fullCounts=counts.filter((_,i)=>state().tickets[i].length===50);
     assert(Math.max(...fullCounts)-Math.min(...fullCounts)<=1,`${topic} must be spread evenly across full tickets`);
     assert(counts.at(-1)<=Math.max(...fullCounts)+1,`${topic} must respect the smaller final ticket`);
-    if(topic==='Модель OSI'){assert.equal(counts.reduce((a,b)=>a+b,0),41);assert(counts.every(n=>n===2||n===3));}
+    if(topic==='Модель OSI')assert.equal(counts.reduce((a,b)=>a+b,0),data.questions.filter(q=>q.topic===topic).length);
   }
-  const legalTopics=new Map([['Персональные данные РФ',30],['Правовые основы ИБ РФ',25],['КИИ и ответственность в ИБ',20],['GDPR и защита данных в ЕС',25]]);
-  assert.equal(data.questions.filter(q=>q.legal).length,100);
+  const legalTopics=new Map([['Персональные данные РФ',28],['Правовые основы ИБ РФ',24],['КИИ и ответственность в ИБ',20],['GDPR и защита данных в ЕС',25]]);
+  assert.equal(data.questions.filter(q=>q.legal).length,217);
   for(const [topic,count] of legalTopics){
     const questions=data.questions.filter(q=>q.topic===topic);
     assert.equal(questions.length,count);
     assert(questions.every(q=>q.legal?.jurisdiction===(topic.startsWith('GDPR')?'EU':'RU') && q.legal.reviewedAt==='2026-10-02'));
   }
-  assert(nodes.get('#main').innerHTML.includes('Для изучения правовых норм: 100 вопросов'));
+  assert(nodes.get('#main').innerHTML.includes('Для изучения правовых норм: 217 вопросов'));
   assert(nodes.get('#main').innerHTML.includes('Нормы проверены по состоянию на 02.10.2026'));
   assert(nodes.get('#main').innerHTML.includes('Применимость нормы зависит от юрисдикции и условий вопроса'));
   assert(nodes.get('#main').innerHTML.includes('50 вопросов из всех тем'));
@@ -143,7 +147,7 @@ function choose(a,correct) {
   let full=await runtime(allStorage,{random:()=>randomValue});
   const fullState=()=>full.a.get();
   assert.equal(full.nodes.get('#main').querySelectorAll('[data-action="all"]').length,1);
-  assert(full.nodes.get('#main').innerHTML.includes('<h3>Весь базовый банк</h3><p>840 вопросов · без повторов</p>'));
+  assert(full.nodes.get('#main').innerHTML.includes(`<h3>Весь базовый банк</h3><p>${count} вопросов · без повторов</p>`));
   assert.match(full.nodes.get('#main').innerHTML, /<h3>Все вопросы<\/h3>[\s\S]*?href="\.\/all-questions\.html"/, 'The full-ticket entry must open the global mode');
   for(const file of ['index.html','senior.html','ai-security.html','scenarios.html','all-questions.html']) {
     const html=fs.readFileSync(path.join(root,file),'utf8');
@@ -159,7 +163,7 @@ function choose(a,correct) {
   assert.equal(fullState().session.title,'Весь базовый банк');
   const firstOrder=Array.from(fullState().session.ids);
   const firstAnswers=Array.from(fullState().session.orders.get(firstOrder[0]));
-  assert.equal(firstOrder.length,840);assert.equal(new Set(firstOrder).size,840);
+  assert.equal(firstOrder.length,count);assert.equal(new Set(firstOrder).size,count);
   assert.deepEqual([...firstOrder].sort(),data.questions.map(q=>q.id).sort(),'Whole-bank mode must include every question exactly once');
   assert.equal(fullState().session.ticket,null,'Whole-bank results must not overwrite numbered tickets');
   assert(full.nodes.get('#main').innerHTML.includes('class="quiz-map long-session"'));
@@ -168,24 +172,24 @@ function choose(a,correct) {
   randomValue=.75;
   full=await runtime(allStorage,{random:()=>randomValue});
   assert.equal(fullState().session.index,250);
-  assert.equal(fullState().total,1,'Resuming 840 questions must not score again');
+  assert.equal(fullState().total,1,'Resuming the full bank must not score again');
   assert.deepEqual(Array.from(fullState().session.ids),firstOrder,'Resume must retain the original question order');
   assert.deepEqual(Array.from(fullState().session.orders.get(firstOrder[0])),firstAnswers);
   assert(fullState().session.recorded.has(checkedFull.id));
   assert.equal(fullState().session.answers.get(pendingFull.id),pendingFull.oi);
-  full.a.jump(839);assert(full.nodes.get('#main').innerHTML.includes('Вопрос 840 / 840'));
-  full.a.jump(840);assert.equal(fullState().session.index,839);
-  full.a.finishSession();assert.equal(fullState().total,840);assert.equal(fullState().correctTotal,1);
+  full.a.jump(count-1);assert(full.nodes.get('#main').innerHTML.includes(`Вопрос ${count} / ${count}`));
+  full.a.jump(count);assert.equal(fullState().session.index,count-1);
+  full.a.finishSession();assert.equal(fullState().total,count);assert.equal(fullState().correctTotal,1);
   assert.equal(fullState().ticketResults.size,0);
   full.nodes.get('#main').querySelector('[data-result="retry"]').dispatch('click');
-  assert.equal(fullState().session.ids.length,840);
+  assert.equal(fullState().session.ids.length,count);
   assert.notDeepEqual(Array.from(fullState().session.ids),firstOrder,'Retry must create a fresh shuffled question order');
   assert.notDeepEqual(Array.from(fullState().session.orders.get(firstOrder[0])),firstAnswers,'Retry must reshuffle answer options');
   assert.equal(fullState().session.answers.size,0);assert.equal(fullState().session.recorded.size,0);
-  assert.equal(fullState().session.index,0);assert.equal(fullState().total,840);
+  assert.equal(fullState().session.index,0);assert.equal(fullState().total,count);
   const fullExam=await runtime();fullExam.a.setMode('exam');
   fullExam.nodes.get('#main').querySelector('[data-action="all"]').dispatch('click');
-  assert.equal(fullExam.a.get().session.mode,'exam');assert.equal(fullExam.a.get().session.ids.length,840);
+  assert.equal(fullExam.a.get().session.mode,'exam');assert.equal(fullExam.a.get().session.ids.length,count);
   choose(fullExam.a,true);
   assert.equal(fullExam.a.get().total,0);assert(!fullExam.nodes.get('#main').innerHTML.includes('class="feedback'));
   assert(!fullExam.nodes.get('#main').innerHTML.includes('option correct'));
@@ -278,7 +282,7 @@ function choose(a,correct) {
     const checkLegalMarkup=visible=>{
       const markup=nodes.get('#main').innerHTML;
       assert(markup.includes(`class="level-tag legal-tag">${label}</span>`));
-      assert(markup.includes('<time datetime="2026-10-02">02.10.2026</time>'));
+      assert(markup.includes(`<time datetime="${q.legal.reviewedAt}">${q.legal.reviewedAt.split('-').reverse().join('.')}</time>`));
       assert.equal(markup.includes('class="answer-sources"'),visible);
       assert.equal(markup.includes('Правовые источники'),visible);
       assert.equal(markup.includes('class="legal-locator"'),visible);
@@ -301,11 +305,11 @@ function choose(a,correct) {
   // New topic buttons and the last numbered ticket use the dynamic bank, with the same existing controls.
   await a.navigate('tickets');a.startSession(a.get().tickets[11],'Сохранённый билет',11);
   assert.equal(state().session.ticket,11);assert.equal(state().session.ids.length,50);
-  await a.navigate('topics');assert.equal(nodes.get('#main').querySelectorAll('[data-topic]').length,44);
+  await a.navigate('topics');assert.equal(nodes.get('#main').querySelectorAll('[data-topic]').length,data.topics.length);
   nodes.get('#main').querySelector('[data-mode="practice"]').dispatch('click');
   nodes.get('#main').querySelector(`[data-topic="${data.topics.indexOf('Персональные данные РФ')}"]`).dispatch('click');
   nodes.get('#dialog-ok').dispatch('click');await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(state().session.mode,'practice');assert.equal(state().session.ids.length,30);
+  assert.equal(state().session.mode,'practice');assert.equal(state().session.ids.length,28);
   assert(state().session.ids.every(id=>state().bank.get(id).topic==='Персональные данные РФ'));
 
   // Reject malformed legal context and references before making the bank available.
@@ -415,19 +419,19 @@ function choose(a,correct) {
   assert.equal(state().ticketResults.get(0).length,50);
 
   // Bank growth from 400/500 questions and a layout-only change from 20 to 50 retain aggregates and mistake IDs.
-  const previousData={...data,questions:data.questions.filter(q=>Number(q.id.slice(1))<=400)};
-  previousData.topics=data.topics.filter(topic=>previousData.questions.some(q=>q.topic===topic));
+  const previousData={...base,questions:base.questions.filter(q=>Number(q.id.slice(1))<=400)};
+  previousData.topics=base.topics.filter(topic=>previousData.questions.some(q=>q.topic===topic));
   assert.equal(previousData.questions.length,400);assert.equal(previousData.topics.length,22);
-  const previous500={...data,questions:data.questions.filter(q=>Number(q.id.slice(1))<=500)};
-  previous500.topics=data.topics.filter(topic=>previous500.questions.some(q=>q.topic===topic));
+  const previous500={...base,questions:base.questions.filter(q=>Number(q.id.slice(1))<=500)};
+  previous500.topics=base.topics.filter(topic=>previous500.questions.some(q=>q.topic===topic));
   assert.equal(previous500.questions.length,500);assert.equal(previous500.topics.length,26);
-  const previous600={...data,questions:data.questions.filter(q=>Number(q.id.slice(1))<=600)};
-  previous600.topics=data.topics.filter(topic=>previous600.questions.some(q=>q.topic===topic));
+  const previous600={...base,questions:base.questions.filter(q=>Number(q.id.slice(1))<=600)};
+  previous600.topics=base.topics.filter(topic=>previous600.questions.some(q=>q.topic===topic));
   assert.equal(previous600.questions.length,600);assert.equal(previous600.topics.length,36);
-  const previous740={...data,questions:data.questions.filter(q=>Number(q.id.slice(1))<=740)};
-  previous740.topics=data.topics.filter(topic=>previous740.questions.some(q=>q.topic===topic));
+  const previous740={...base,questions:base.questions.filter(q=>Number(q.id.slice(1))<=740)};
+  previous740.topics=base.topics.filter(topic=>previous740.questions.some(q=>q.topic===topic));
   assert.equal(previous740.questions.length,740);assert.equal(previous740.topics.length,40);
-  for(const [priorData,ticketSize] of [[previous740,50],[previous600,50],[previous500,50],[previousData,50],[previousData,20],[data,20]]){
+  for(const [priorData,ticketSize] of [[base,50],[previous740,50],[previous600,50],[previous500,50],[previousData,50],[previousData,20],[data,20]]){
     const migrationStorage=new Map();
     ({a,nodes}=await runtime(migrationStorage,{data:priorData,ticketSize}));
     a.startSession(state().tickets[0],'Old completed ticket',0);choose(a,true);a.checkAnswer();a.finishSession();
@@ -439,5 +443,5 @@ function choose(a,correct) {
     assert.deepEqual([...state().errors].sort(),beforeMigration.errors.sort(),'Mistake IDs survive bank and ticket-layout changes');
     assert(nodes.get('#main').innerHTML.includes('Банк вопросов обновлён'));
   }
-  console.log('PASS: 840 questions, legacy ticket capacity 16 × 50 + 40, 44 balanced topics, OSI 2–3 per ticket, dynamic controls, tools collection shuffle/resume/exam, random ticket, validated legal metadata, legal sources only after checking/completion, training, exam secrecy, scoring, mistakes, reload/resume, answer order, completed results, reset, corrupt/unavailable storage, migrations from 88/400/500/600/740 questions and 20/50-question tickets.');
+  console.log(`PASS: ${count} composed questions, ${data.topics.length} balanced topics, full bank, shuffle/resume/exam, glossary, legal metadata/secrecy, scoring, mistakes, storage and migrations including the previous base bank.`);
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -19,7 +19,9 @@ SITE_FILES = [
     "support.js", "style.css", "case-trainer.css", "feedback.css", "app.js",
     "case-trainer.js", "all-questions.js", "wheel-visual.js", "wheel-visual.css",
     "feedback.js", "glossary.js", "questions.json", "senior-questions.json",
-    "ai-security-questions.json", "scenarios-questions.json"
+    "ai-security-questions.json", "scenarios-questions.json",
+    "basic-bank.js", "compliance-glossary.js", "compliance-materials.html",
+    "compliance-materials.js", "data"
 ]
 
 def run(*args):
@@ -75,7 +77,11 @@ def main():
     for name in SITE_FILES:
         if args.store == "googleplay" and name in ("support.html", "support.js"):
             continue
-        shutil.copy2(ROOT / name, assets / name)
+        source = ROOT / name
+        if source.is_dir():
+            shutil.copytree(source, assets / name)
+        else:
+            shutil.copy2(source, assets / name)
     if args.store == "googleplay":
         home = assets / "index.html"
         page = home.read_text()

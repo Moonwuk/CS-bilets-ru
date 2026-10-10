@@ -27,6 +27,11 @@
 
   async function load({ includeTopics = false } = {}) {
     const banks = await Promise.all(FILES.map(async file => {
+      if (file.id === 'basic') {
+        const data = await window.TrainerBasicBank.load();
+        validateOrigin(data, file);
+        return data;
+      }
       const response = await fetch(file.url);
       if (!response.ok) throw new Error(`Не удалось получить ${file.url}: HTTP ${response.status}.`);
       const data = await response.json();

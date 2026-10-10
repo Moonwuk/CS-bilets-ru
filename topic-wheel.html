@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#132341">
-  <meta name="description" content="Барабан тем по информационной безопасности. Пройдите выпавшую тему без ошибок, чтобы убрать её из барабана. Все темы базового банка, защиты ИИ и ситуационных задач; сохранение прогресса и пояснения терминов.">
+  <meta name="description" content="Барабан тем по информационной безопасности. Пройдите выпавшую тему без ошибок, чтобы убрать её из барабана. Темы базового банка, защиты ИИ и ситуационных задач; сохранение прогресса и пояснения терминов.">
   <title>Барабан тем · Тренажёр по ИБ</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23132341'/%3E%3Cpath d='M9 16l5 5 10-11' fill='none' stroke='%2371b6ff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./style.css">
@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="./wheel-visual.css">
   <script src="./feedback.js" defer></script>
   <script src="./glossary.js" defer></script>
+  <script src="./compliance-glossary.js" defer></script>
+  <script src="./basic-bank.js" defer></script>
   <script src="./all-questions.js" defer></script>
   <script src="./wheel-visual.js" defer></script>
   <script src="./case-trainer.js" defer></script>
@@ -22,7 +24,7 @@
   <div class="app-shell">
     <aside class="sidebar" aria-label="Навигация">
       <a class="brand" href="./index.html"><span class="brand-mark" aria-hidden="true">ИБ</span><span>Тренажёр<span class="brand-sub">Барабан тем</span></span></a>
-<details class="mode-menu" open><summary>Режимы <span>Барабан тем</span></summary><div class="mode-menu-content"><nav class="navigation primary-navigation" aria-label="Базовая подготовка"><a class="nav-item" href="./index.html">Случайный билет</a></nav><nav class="navigation" aria-label="Практика"><span class="nav-group-label">Практика</span><a class="nav-item" href="./scenarios.html">Ситуационные задачи</a><a class="nav-item" href="./ai-security.html">Защита ИИ</a><a class="nav-item" href="./senior.html">Сеньор</a></nav><nav class="navigation" aria-label="Испытания"><span class="nav-group-label">Испытания</span><a class="nav-item active" href="./topic-wheel.html" aria-current="page">Барабан тем</a><a class="nav-item" href="./all-questions.html">Все вопросы</a></nav></div></details>
+      <details class="mode-menu" open><summary>Режимы <span>Барабан тем</span></summary><div class="mode-menu-content"><nav class="navigation primary-navigation" aria-label="Базовая подготовка"><a class="nav-item" href="./index.html">Случайный билет</a></nav><nav class="navigation" aria-label="Практика"><span class="nav-group-label">Практика</span><a class="nav-item" href="./scenarios.html">Ситуационные задачи</a><a class="nav-item" href="./ai-security.html">Защита ИИ</a><a class="nav-item" href="./senior.html">Сеньор</a></nav><nav class="navigation" aria-label="Испытания"><span class="nav-group-label">Испытания</span><a class="nav-item active" href="./topic-wheel.html" aria-current="page">Барабан тем</a><a class="nav-item" href="./all-questions.html">Все вопросы</a></nav></div></details>
       <a class="support-link" href="./support.html">♡ Поддержать проект</a>
       <div class="session-stats">
         <span class="sidebar-label">Прогресс барабана</span>
@@ -41,8 +43,7 @@
   </div>
   <dialog id="term-dialog" class="term-dialog" aria-labelledby="term-title" aria-describedby="term-description">
     <div class="term-heading"><div><span class="eyebrow">Простыми словами</span><h2 id="term-title"></h2></div><button type="button" class="term-close" id="term-close" aria-label="Закрыть пояснение"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-    <p id="term-description"></p>
-    <div class="term-example"><strong>Например</strong><p id="term-example"></p></div>
+    <p id="term-description"></p><div class="term-example"><strong>Например</strong><p id="term-example"></p></div>
   </dialog>
   <dialog id="confirm-dialog" aria-labelledby="dialog-title" aria-describedby="dialog-message">
     <h2 id="dialog-title"></h2><p id="dialog-message"></p>
@@ -54,11 +55,8 @@
       const menu = document.querySelector('.mode-menu');
       const mobile = matchMedia('(max-width: 800px)');
       const syncMenu = () => { menu.open = !mobile.matches; };
-      syncMenu();
-      mobile.addEventListener('change', syncMenu);
-      menu.addEventListener('click', event => {
-        if (mobile.matches && event.target.closest('[data-page]')) menu.open = false;
-      });
+      syncMenu(); mobile.addEventListener('change', syncMenu);
+      menu.addEventListener('click', event => { if (mobile.matches && event.target.closest('[data-page]')) menu.open = false; });
     })();
   </script>
 </body>

@@ -11,7 +11,7 @@ const {chromium} = require('playwright');
   const mime = {'.html':'text/html','.js':'application/javascript','.json':'application/json','.css':'text/css'};
   const server = http.createServer((req,res) => {
     const name = new URL(req.url,'http://localhost').pathname.slice(1);
-    if (!name || path.basename(name) !== name) { res.writeHead(404);res.end();return; }
+    if (!name || name.split('/').some(part => !part || part === '.' || part === '..') || name.includes('\\')) { res.writeHead(404);res.end();return; }
     const file = path.join(assets,name);
     if (!fs.existsSync(file)) { res.writeHead(404);res.end();return; }
     res.writeHead(200,{
@@ -39,7 +39,10 @@ const {chromium} = require('playwright');
     await page.locator('[data-action="random"]').click();
     await page.locator('[data-option]').first().waitFor();
     const ids=await page.evaluate(()=>JSON.parse(localStorage.getItem('cs-bilets-ru.progress.v1')).session.ids);
-    const bank=new Map(JSON.parse(fs.readFileSync(path.join(assets,'questions.json'),'utf8')).questions.map(q=>[q.id,q]));
+    const read = name => JSON.parse(fs.readFileSync(path.join(assets, name), 'utf8'));
+    const manifest = read('data/compliance-ru/manifest.json');
+    const composed = require(path.join(assets, 'basic-bank.js')).merge(read('questions.json'), manifest, manifest.parts.map(name => read('data/compliance-ru/'+name)));
+    const bank=new Map(composed.questions.map(q=>[q.id,q]));
     const length=id=>bank.get(id).question.length+bank.get(id).options.reduce((sum,o)=>sum+o.text.length,0);
     const reviewIndex=ids.reduce((best,id,index)=>length(id)<length(ids[best])?index:best,0);
     await page.locator(`[data-jump="${reviewIndex}"]`).click();
@@ -59,6 +62,45 @@ const {chromium} = require('playwright');
     // Restoring a session can reorder JSON properties without changing data.
     assert.deepEqual(await progress(),saved,'Progress changed after reload');
     await page.locator('[aria-label="Разбор ответа"]').waitFor();
+    // Exercise the new topic through real UI using only packaged local assets.
+    await page.locator('[data-action="leave"]').click();
+    await page.locator('.mode-menu > summary').click();
+    await page.locator('[data-page="topics"]').click();
+    await page.locator(`[data-topic="${composed.topics.indexOf('Комплаенс РФ')}"]`).click();
+    await page.locator('#dialog-ok').click();
+    await page.locator('[data-option]').first().waitFor();
+    let complianceSaved = await progress();
+    assert.equal(complianceSaved.session.ids.length, 120);
+    assert(complianceSaved.session.ids.every(id => bank.get(id).topic === 'Комплаенс РФ'));
+    const glossaryIndex = complianceSaved.session.ids.findIndex(id => /ИСПДн|ПДн/.test(bank.get(id).question));
+    await page.locator(`[data-jump="${glossaryIndex}"]`).click();
+    assert.equal(await page.locator('.answer-sources').count(), 0);
+    const beforeHelp = await progress();
+    await page.locator('.question-title [data-compliance-term]').first().click();
+    await page.locator('#term-dialog[open]').waitFor();
+    await page.keyboard.press('1');
+    await page.keyboard.press('Enter');
+    assert.deepEqual(await progress(), beforeHelp, 'Glossary must not answer or score');
+    // Enter activates the focused Close button; it must not confirm an answer.
+    await page.locator('#term-dialog').waitFor({state:'hidden'});
+    await page.locator('.question-title [data-compliance-term]').first().click();
+    await page.locator('#term-close').click();
+    await page.locator('[data-option]').first().click({position:{x:16,y:16}});
+    await page.locator('[data-action="check"]').click();
+    await page.locator('.answer-sources').waitFor();
+    complianceSaved = await progress();
+    await page.reload();
+    await page.locator('.answer-sources').waitFor();
+    assert.deepEqual(await progress(), complianceSaved);
+    await page.screenshot({path:path.join(out,'05-compliance-topic.png')});
+    await page.goto(base+'/compliance-materials.html');
+    await page.locator('#rpc15').waitFor();
+    assert.equal(await page.locator('[id^="rpc"]').count(), 15);
+    assert.equal(await page.locator('#rpc01 > details[open]').count(), 0);
+    await page.locator('#rpc01 > summary').click();
+    await page.locator('#rpc01 > details > summary').click();
+    await page.locator('#rpc01 > details[open]').waitFor();
+    await page.screenshot({path:path.join(out,'06-compliance-practice.png')});
     await page.goto(base+'/topic-wheel.html');
     await page.locator('[data-wheel-disc]').waitFor();
     await page.locator('.topic-wheel').evaluate(node=>node.scrollIntoView({block:'start',behavior:'instant'}));
@@ -74,7 +116,7 @@ const {chromium} = require('playwright');
     }
     if(await page.evaluate(()=>document.documentElement.scrollWidth > innerWidth)) throw Error('Horizontal overflow');
     if(errors.length)throw Error(errors.join('\n'));
-    fs.writeFileSync(path.join(out,'browser-review.txt'),'PASS: six packaged screens load under Android CSP; collapsed mobile menu; no Play payment menu; 20-question attempt checks and resumes; no JS errors or horizontal overflow. Screenshots are Chromium renders of packaged WebView assets, not native Android installation tests.\n');
+    fs.writeFileSync(path.join(out,'browser-review.txt'),'PASS: seven packaged screens and multipart compliance bank load under Android CSP; collapsed mobile menu; no Play payment menu; 20-question attempt and 120-question compliance topic check and resume; glossary keeps answers unchanged; 15 local practice cases render with collapsed solutions; no JS errors or horizontal overflow. Screenshots are Chromium renders of packaged WebView assets, not native Android installation tests.\n');
     console.log(fs.readFileSync(path.join(out,'browser-review.txt'),'utf8'));
   } finally {
     if (browser)await browser.close();
