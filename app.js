@@ -136,7 +136,7 @@
     const interview=q.interviewSourceIds?.length;
     const legal=q.legal;
     if(!level && !certs.length && !interview && !legal)return '';
-    return `<div class="question-context">${q.compliance ? `<span class="level-tag">${esc(q.compliance.moduleTitle)}</span>${q.compliance.basisType==='practice' ? '<span class="level-tag">Рекомендуемая практика</span>' : ''}` : ''}${legal ? `<span class="level-tag legal-tag">${legalJurisdictions[legal.jurisdiction]}</span><span class="legal-reviewed">Нормы проверены: <time datetime="${esc(legal.reviewedAt)}">${dateLabel(legal.reviewedAt)}</time></span>` : ''}${level ? `<span class="level-tag">${esc(level)}</span>` : ''}${interview ? '<span class="level-tag">Собеседование</span>' : ''}${certs.length ? `<span>По тематике: ${certs.map(esc).join(' · ')}</span>` : ''}</div>`;
+    return `<div class="question-context">${q.compliance?.basisType==='practice' ? '<span class="level-tag">Рекомендуемая практика</span>' : ''}${legal ? `<span class="level-tag legal-tag">${legalJurisdictions[legal.jurisdiction]}</span><span class="legal-reviewed">Нормы проверены: <time datetime="${esc(legal.reviewedAt)}">${dateLabel(legal.reviewedAt)}</time></span>` : ''}${level ? `<span class="level-tag">${esc(level)}</span>` : ''}${interview ? '<span class="level-tag">Собеседование</span>' : ''}${certs.length ? `<span>По тематике: ${certs.map(esc).join(' · ')}</span>` : ''}</div>`;
   }
   function sourcesMarkup(q) {
     const allSources=(q.sourceIds || []).map(id=>sourceIndex.get(id)).filter(Boolean);

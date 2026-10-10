@@ -106,6 +106,7 @@ const {chromium} = require('playwright');
     assert.deepEqual(await complianceProgress(), complianceSaved);
     assert.deepEqual(await progress(), basicBeforeCompliance, 'Compliance must preserve basic progress');
     if(await page.evaluate(()=>document.documentElement.scrollWidth > innerWidth)) throw Error('Compliance question overflow');
+    await page.locator('.question-panel').evaluate(node=>node.scrollIntoView({block:'start',behavior:'instant'}));
     await page.screenshot({path:path.join(out,'05-compliance-topic.png')});
     await page.locator('[data-action="leave"]').click();
     await page.locator('.mode-menu > summary').click();
