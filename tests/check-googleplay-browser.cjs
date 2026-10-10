@@ -38,6 +38,12 @@ const {chromium} = require('playwright');
     await page.locator('[data-size="20"]').click();
     await page.locator('[data-action="random"]').click();
     await page.locator('[data-option]').first().waitFor();
+    const ids=await page.evaluate(()=>JSON.parse(localStorage.getItem('cs-bilets-ru.progress.v1')).session.ids);
+    const bank=new Map(JSON.parse(fs.readFileSync(path.join(assets,'questions.json'),'utf8')).questions.map(q=>[q.id,q]));
+    const length=id=>bank.get(id).question.length+bank.get(id).options.reduce((sum,o)=>sum+o.text.length,0);
+    const reviewIndex=ids.reduce((best,id,index)=>length(id)<length(ids[best])?index:best,0);
+    await page.locator(`[data-jump="${reviewIndex}"]`).click();
+    await page.locator('.question-panel').evaluate(node=>node.scrollIntoView({block:'start',behavior:'instant'}));
     await page.screenshot({path:path.join(out,'02-question.png')});
     // The middle of an option can be a glossary button; tap its plain edge.
     await page.locator('[data-option]').first().click({position:{x:16,y:16}});
@@ -55,9 +61,11 @@ const {chromium} = require('playwright');
     await page.locator('[aria-label="Разбор ответа"]').waitFor();
     await page.goto(base+'/topic-wheel.html');
     await page.locator('[data-wheel-disc]').waitFor();
+    await page.locator('.topic-wheel').evaluate(node=>node.scrollIntoView({block:'start',behavior:'instant'}));
     await page.screenshot({path:path.join(out,'03-topic-wheel.png')});
     await page.goto(base+'/ai-security.html');
     await page.locator('[data-start="mixed"]').waitFor();
+    await page.locator('[data-start="mixed"]').evaluate(node=>node.closest('.ticket-card').scrollIntoView({block:'start',behavior:'instant'}));
     await page.screenshot({path:path.join(out,'04-ai-scenarios.png')});
     for (const name of ['senior.html','scenarios.html','all-questions.html']) {
       await page.goto(base+'/'+name);
