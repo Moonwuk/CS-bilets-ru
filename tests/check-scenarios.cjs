@@ -75,12 +75,11 @@ const pagesWorkflow = read('.github/workflows/deploy-pages.yml');
 const copy = pagesWorkflow.match(/cp index\.html[\s\S]+?_site\//)?.[0] || '';
 assert(['scenarios.html','scenarios-questions.json','all-questions.html','all-questions.js'].every(name => copy.includes(name)));
 for (const name of ['.github/workflows/deploy-pages.yml', '.github/workflows/android.yml']) assert(read(name).includes('node tests/check-scenarios.cjs') && read(name).includes('node tests/check-all-questions.cjs'));
-const assetLists = [...read('android/build.py').matchAll(/for name in (\[[^\n]+\]):/g)].map(m => JSON.parse(m[1]));
-assert.equal(assetLists.length, 2);
-assert(assetLists[0].includes('all-questions.html') && assetLists[0].includes('all-questions.js'));
-assert(assetLists[1].includes('all-questions.html'));
-assert(assetLists[0].includes('scenarios.html') && assetLists[0].includes('scenarios-questions.json'), 'APK must package the new files');
-assert(assetLists[1].includes('scenarios.html'), 'APK must inject its adapter into the new page');
+const builder = read('android/build.py');
+const assets = JSON.parse(builder.match(/SITE_FILES = (\[[\s\S]+?\n\])/)?.[1] || '[]');
+assert(assets.includes('all-questions.html') && assets.includes('all-questions.js'));
+assert(assets.includes('scenarios.html') && assets.includes('scenarios-questions.json'), 'Android must package the scenario files');
+assert(builder.includes('assets.glob("*.html")') && builder.includes('android-adapter.js'), 'Android must inject its adapter into every packaged page');
 const android = read('android/src/ru/moongametechnology/infosec/tickets/MainActivity.java');
 const allowlist = android.match(/ASSETS = new HashSet<>\(Arrays\.asList\(([\s\S]+?)\)\);/)?.[1] || '';
 assert(allowlist.includes('"all-questions.html"') && allowlist.includes('"all-questions.js"'));
@@ -93,10 +92,10 @@ assert(wheelPage.indexOf('src="./all-questions.js"') < wheelPage.indexOf('src=".
 assert(wheelPage.indexOf('src="./wheel-visual.js"') < wheelPage.indexOf('src="./case-trainer.js"'));
 for (const name of ['topic-wheel.html', 'wheel-visual.js', 'wheel-visual.css']) {
   assert(copy.includes(name), `Pages must ship ${name}`);
-  assert(assetLists[0].includes(name), `APK must ship ${name}`);
+  assert(assets.includes(name), `Android must ship ${name}`);
   assert(allowlist.includes(`"${name}"`), `Native asset allowlist must admit ${name}`);
 }
-assert(assetLists[1].includes('topic-wheel.html'), 'APK must inject its adapter into the wheel page');
+assert(assets.includes('topic-wheel.html'), 'Android must include the wheel page in adapter processing');
 assert(android.includes('"/assets/topic-wheel.html".equals(uri.getPath())'));
 for (const name of ['.github/workflows/deploy-pages.yml', '.github/workflows/android.yml']) {
   assert(read(name).includes('node tests/check-topic-wheel.cjs'));

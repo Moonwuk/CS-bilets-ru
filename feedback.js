@@ -1,7 +1,7 @@
 'use strict';
 (() => {
   const ISSUE_URL = 'https://github.com/Moonwuk/CS-bilets-ru/issues/new';
-  const APP_VERSION = '1.0.0';
+  const APP_VERSION = '1.1.0';
   let bankLabel = '', bankVersion = '', questions = new Map(), current = null, previousFocus;
   // Drafts stay in memory only; answering a question never sends a report.
   const drafts = new Map();
