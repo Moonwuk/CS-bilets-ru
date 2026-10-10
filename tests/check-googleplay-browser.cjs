@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
+const assert = require('node:assert/strict');
 const {chromium} = require('playwright');
 (async () => {
   const assets = path.resolve('android/build/work-googleplay/assets/site');
@@ -42,10 +43,16 @@ const {chromium} = require('playwright');
     await page.locator('[data-option]').first().click({position:{x:16,y:16}});
     await page.locator('[data-action="check"]').click();
     await page.locator('[aria-label="Разбор ответа"]').waitFor();
-    const saved=await page.evaluate(()=>JSON.stringify(Object.entries(localStorage)));
+    const progress=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('cs-bilets-ru.progress.v1')));
+    const saved=await progress();
+    assert.equal(saved.session.ids.length,20);
+    assert.equal(saved.session.recorded.length,1);
+    assert.equal(saved.total,1);
     await page.reload();
     await page.locator('[data-option]').first().waitFor();
-    if (saved !== await page.evaluate(()=>JSON.stringify(Object.entries(localStorage)))) throw Error('Progress changed after reload');
+    // Restoring a session can reorder JSON properties without changing data.
+    assert.deepEqual(await progress(),saved,'Progress changed after reload');
+    await page.locator('[aria-label="Разбор ответа"]').waitFor();
     await page.goto(base+'/topic-wheel.html');
     await page.locator('[data-wheel-disc]').waitFor();
     await page.screenshot({path:path.join(out,'03-topic-wheel.png')});
