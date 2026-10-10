@@ -217,10 +217,10 @@ nodes.get('#confirm-dialog').open = true;
 main.dispatch('click', { target: launcher });
 assert(!help.isOpen(), 'Do not open help over a confirmation dialog');
 
-for (const page of ['index.html', 'senior.html', 'ai-security.html', 'scenarios.html', 'all-questions.html', 'topic-wheel.html']) {
+for (const page of ['index.html', 'compliance.html', 'senior.html', 'ai-security.html', 'scenarios.html', 'all-questions.html', 'topic-wheel.html']) {
   const html = fs.readFileSync(path.join(root, page), 'utf8');
   assert(html.includes('src="./glossary.js" defer'));
   assert(html.includes('id="term-dialog"') && html.includes('aria-describedby="term-description"'));
 }
 assert(fs.readFileSync(path.join(root, '.github/workflows/deploy-pages.yml'), 'utf8').includes('style.css glossary.js app.js'), 'Pages must include the shared dictionary');
-console.log(`PASS: ${context.entries.size} plain-language definitions, all aliases, 100 tools + 140 imported + 100 research + 60 OSI protocol questions with clickable concept coverage and valid sources, phrase priority, word boundaries, safe markup, dialog dismissal/focus and six-page publication.`);
+console.log(`PASS: ${context.entries.size} plain-language definitions, all aliases, 100 tools + 140 imported + 100 research + 60 OSI protocol questions with clickable concept coverage and valid sources, phrase priority, word boundaries, safe markup, dialog dismissal/focus and seven-page publication.`);

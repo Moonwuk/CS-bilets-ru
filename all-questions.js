@@ -52,7 +52,7 @@
             const locators = legal?.references.filter(ref => ref.sourceId === sourceId) || [];
             return locators.length ? locators : [{ sourceId }];
           });
-          questions.push({ ...question, kind: 'basic', originalBank: id, track: id, title: question.topic,
+          questions.push({ ...question, kind: 'basic', originalBank: id, track: question.compliance ? 'compliance' : id, title: question.compliance?.moduleTitle || question.topic,
             sourceIds, interviewSourceIds, ...(legal ? { legal } : {}), references,
             documentSource: references.length ? undefined : bank.source });
         } else {
@@ -64,16 +64,18 @@
     const dates = banks.map(bank => bank.reviewedAt || bank.updatedAt).sort();
     const result = {
       schemaVersion: 1, id: 'all-questions', title: 'Все вопросы', reviewedAt: dates[dates.length - 1],
-      description: `Базовые вопросы (${banks[0].questions.length}), защита ИИ (${banks[1].questions.length}) и ситуационные задачи (${banks[2].questions.length}) в одном перемешанном билете. Первая ошибка завершает попытку. Раздел «Сеньор» проходится отдельно.`,
+      description: `Базовые вопросы (${banks[0].questions.filter(q=>!q.compliance).length}), комплаенс РФ (${banks[0].questions.filter(q=>q.compliance).length}), защита ИИ (${banks[1].questions.length}) и ситуационные задачи (${banks[2].questions.length}) в одном перемешанном билете. Первая ошибка завершает попытку. Раздел «Сеньор» проходится отдельно.`,
       methodology: 'Подборка загружается из исходных банков без копирования вопросов. Ответ подтверждается кнопкой «Ответить». Чтобы пройти билет, нужно ответить верно на все вопросы подряд. В разборе сохраняются исходные пояснения и источники; даты правовых норм и первоисточников указаны отдельно. Прогресс общей подборки не меняет результаты отдельных банков.',
-      tracks: FILES.map(file => ({ id: file.id, title: file.title })), sources, questions
+      tracks: [{id:'basic',title:'Базовые вопросы'}, {id:'compliance',title:'Комплаенс РФ'}, ...FILES.slice(1).map(file => ({ id: file.id, title: file.title }))], sources, questions
     };
     if (includeTopics) {
       result.topicGroups = banks.flatMap((bank, index) => {
         const origin = FILES[index].id;
-        return origin === 'basic'
-          ? bank.topics.map(title => ({ id: `basic:${encodeURIComponent(title)}`, title, bankId: origin, questionIds: bank.questions.filter(question => question.topic === title).map(question => question.id) }))
-          : bank.tracks.map(track => ({ id: `${origin}:${track.id}`, title: track.title, bankId: origin, questionIds: bank.questions.filter(question => question.track === track.id).map(question => question.id) }));
+        if (origin !== 'basic') return bank.tracks.map(track => ({ id: `${origin}:${track.id}`, title: track.title, bankId: origin, questionIds: bank.questions.filter(question => question.track === track.id).map(question => question.id) }));
+        const basicQuestions = bank.questions.filter(question => !question.compliance);
+        const basicGroups = bank.topics.filter(title => basicQuestions.some(question => question.topic === title)).map(title => ({ id: `basic:${encodeURIComponent(title)}`, title, bankId: origin, questionIds: basicQuestions.filter(question => question.topic === title).map(question => question.id) }));
+        const complianceGroups = (bank.compliance?.modules || []).map(module => ({ id:`compliance:${module.id}`, title:module.name, bankId:'compliance', questionIds:bank.questions.filter(question => question.compliance?.module === module.id).map(question => question.id) }));
+        return [...basicGroups, ...complianceGroups];
       });
     }
     return result;

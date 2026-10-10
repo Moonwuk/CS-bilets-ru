@@ -10,9 +10,9 @@ const files = ['questions.json', 'ai-security-questions.json', 'scenarios-questi
 const banks = Object.fromEntries(files.map(file => [`./${file}`, JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'))]));
 banks['./questions.json'] = require('./compliance-fixtures.cjs').composed();
 const totalQuestions = Object.values(banks).reduce((sum, bank) => sum + bank.questions.length, 0);
-const totalTopics = banks['./questions.json'].topics.length + 7;
+const totalTopics = 66;
 const wheelKey = 'cs-bilets-ru.topic-wheel.v1';
-const oldValues = [['cs-bilets-ru.progress.v1', 'keep basic'], ['cs-bilets-ru.all-questions.v1', 'keep first-error'], ...Object.values(keys).map(key => [key, `keep ${key}`])];
+const oldValues = [['cs-bilets-ru.progress.v1', 'keep basic'], ['cs-bilets-ru.compliance.v1', 'keep compliance'], ['cs-bilets-ru.all-questions.v1', 'keep first-error'], ...Object.values(keys).map(key => [key, `keep ${key}`])];
 const state = run => run.a.get().progress;
 const htmlEsc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const textOnly = markup => markup.replace(/<[^>]*>/g, '');
@@ -63,13 +63,17 @@ function deferredView() {
   let run = await boot({ storage });
   const groups = run.a.get().dataset.topicGroups;
   assert.equal(groups.length, totalTopics);
-  assert.deepEqual(['basic', 'ai-security', 'scenarios'].map(id => groups.filter(group => group.bankId === id).length), [banks['./questions.json'].topics.length, 4, 3]);
+  assert.deepEqual(['basic', 'compliance', 'ai-security', 'scenarios'].map(id => groups.filter(group => group.bankId === id).length), [44, 15, 4, 3]);
   const assigned = groups.flatMap(group => group.questionIds);
   assert.equal(assigned.length, totalQuestions); assert.equal(new Set(assigned).size, totalQuestions);
   assert.deepEqual([...assigned].sort(), Object.values(banks).flatMap(bank => bank.questions.map(q => q.id)).sort());
   assert(!run.fetched.some(url => url.includes('senior')));
   for (const group of groups) {
     if (group.bankId === 'basic') { assert(banks['./questions.json'].topics.includes(group.title)); assert.equal(group.id, `basic:${encodeURIComponent(group.title)}`); }
+    else if (group.bankId === 'compliance') {
+      const module=banks['./questions.json'].compliance.modules.find(module => `compliance:${module.id}` === group.id);
+      assert(module); assert.equal(group.title,module.name); assert.equal(group.questionIds.length,12);
+    }
     else assert.equal(group.title, banks[`./${group.bankId}-questions.json`].tracks.find(track => `${group.bankId}:${track.id}` === group.id).title);
   }
   assert(!run.html().includes('Первая ошибка завершает'));

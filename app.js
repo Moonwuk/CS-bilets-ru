@@ -18,8 +18,13 @@
   const letters = ['А','Б','В','Г'];
   const TICKET_SIZE = 50;
   let randomSize = 50;
-  const storageKey = 'cs-bilets-ru.progress.v1';
-  let dataset, bank, tickets, sourceIndex, session = null, sessionOpen = false, page = 'tickets', mode = 'practice';
+  const isCompliance = document.body.dataset.bank === 'compliance';
+  const basicStorageKey = 'cs-bilets-ru.progress.v1';
+  const complianceStorageKey = 'cs-bilets-ru.compliance.v1';
+  const storageKey = isCompliance ? complianceStorageKey : basicStorageKey;
+  const homePage = isCompliance ? 'topics' : 'tickets';
+  let migrationBlocked = false;
+  let dataset, bank, tickets, sourceIndex, session = null, sessionOpen = false, page = homePage, mode = 'practice';
   let storageAvailable = true, bankSignature = '', bankUpdateNotice = '';
   let total = 0, correctTotal = 0;
   const errors = new Set();
@@ -34,9 +39,10 @@
   }
   function saveProgress() {
     if(!dataset)return;
+    if(migrationBlocked){storageAvailable=false;updateStorageStatus();return;}
     try {
       window.localStorage.setItem(storageKey,JSON.stringify({
-        version:1,randomSize,bankSignature,total,correctTotal,page,mode,errors:[...errors],ticketResults:[...ticketResults],sessionOpen,
+        version:1,sectionSplit:1,randomSize,bankSignature,total,correctTotal,page,mode,errors:[...errors],ticketResults:[...ticketResults],sessionOpen,
         session:session ? {...session,answers:[...session.answers],orders:[...session.orders],recorded:[...session.recorded]} : null
       }));
       storageAvailable=true;
@@ -44,6 +50,28 @@
       storageAvailable=false;
     }
     updateStorageStatus();
+  }
+  function migrateComplianceErrors(data) {
+    // Copy old compliance mistakes before the basic section filters them out.
+    // Aggregate counters cannot be attributed to a section retroactively.
+    try {
+      const raw=window.localStorage.getItem(basicStorageKey);
+      if(!raw)return;
+      let saved;
+      try { saved=JSON.parse(raw); } catch (_) { return; }
+      if(!saved || saved.version!==1 || saved.sectionSplit===1)return;
+      const ids=new Set(data.questions.filter(q=>q.compliance).map(q=>q.id));
+      const mistakes=Array.isArray(saved.errors) ? saved.errors.filter(id=>ids.has(id)) : [];
+      if(mistakes.length){
+        const targetRaw=window.localStorage.getItem(complianceStorageKey);
+        let target;
+        try { target=JSON.parse(targetRaw); } catch (_) { target=null; }
+        if(!target || target.version!==1)target={version:1,total:0,correctTotal:0,page:'topics',mode:'practice',errors:[]};
+        target.errors=[...new Set([...(Array.isArray(target.errors)?target.errors:[]),...mistakes])];
+        window.localStorage.setItem(complianceStorageKey,JSON.stringify(target));
+      }
+      window.localStorage.setItem(basicStorageKey,JSON.stringify({...saved,sectionSplit:1}));
+    } catch (_) { migrationBlocked=true;storageAvailable=false; }
   }
   function getBankSignature(data) {
     // Answers depend on the question content; numbered results also depend on the ticket layout.
@@ -91,7 +119,7 @@
   }
   async function resetProgress() {
     if(!dataset || !await confirmAction('Сбросить прогресс?','Результаты билетов, ошибки и незавершённый билет будут удалены с этого устройства.','Сбросить','Отмена'))return;
-    total=0;correctTotal=0;errors.clear();ticketResults.clear();session=null;sessionOpen=false;page='tickets';mode='practice';bankUpdateNotice='';
+    total=0;correctTotal=0;errors.clear();ticketResults.clear();session=null;sessionOpen=false;page=homePage;mode='practice';bankUpdateNotice='';
     saveProgress();renderHome();focusMain();announce('Прогресс сброшен.');
   }
   const esc = str => String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -120,6 +148,7 @@
     return `<div class="answer-sources">${legalSources.length ? `<span class="feedback-label">Правовые источники</span>${links(legalSources)}` : ''}${sources.length ? `<span class="feedback-label">Для разбора темы</span>${links(sources)}` : ''}${interviews.length ? `<span class="feedback-label">Тема из открытой подборки собеседований</span>${links(interviews)}` : ''}</div>`;
   }
   function bankNotes() {
+    if(isCompliance)return `<details class="bank-notes"><summary>О вопросах и источниках</summary><p>${questionCount(dataset.questions.length)} по ${dataset.topics.length} темам комплаенса РФ. Дата сверки: ${dateLabel(dataset.updatedAt)}. В каждом вопросе указаны условия; нормы и источники раскрываются в разборе. Рекомендуемые практики помечены отдельно от применения обязательных требований.</p><p>Статистика этого раздела ведётся отдельно. <a href="./compliance-materials.html">Практические кейсы и источники</a> помогают проверить рассуждение на более длинных ситуациях.</p></details>`;
     const added=dataset.questions.filter(q=>q.origin==='authored').length;
     if(!added)return '';
     const guides=dataset.certificationGuides || [];
@@ -156,15 +185,16 @@
   function renderHome() {
     setNav();
     const headings = {tickets:['Случайный билет','Выберите 20 или 50 вопросов. Каждый раз — новая подборка из базового банка.'],topics:['Темы базового банка','Отработайте отдельно то, что пока даётся сложнее. Защита ИИ и ситуационные задачи доступны в отдельных разделах.'],mistakes:['Мои ошибки','Повторяйте вопросы, пока не ответите правильно.']};
+    if(isCompliance){headings.tickets=['Смешанный билет','Выберите 20 или 50 вопросов из всех тем комплаенса РФ.'];headings.topics=['Комплаенс РФ','Выберите тему и разберите её целиком. В каждой — 12 вопросов: условия применения, практические ситуации и объяснения.'];headings.mistakes=['Ошибки в комплаенсе','Повторяйте сложные вопросы этого раздела.'];}
     const [title,description]=headings[page];
     let body='';
     if(page==='tickets') {
-      const combinedQuestionsCard=`<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">До первой ошибки</span></div><h3>Все вопросы</h3><p>Один билет на все вопросы базового банка, ИИ и ситуаций. Первая ошибка завершает попытку. Сеньор — отдельно.</p><a class="button primary" href="./all-questions.html">Открыть билет</a></article>`;
-      const topicWheelCard=`<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">До последней темы</span></div><h3>Барабан тем</h3><p>Темы базового банка, защиты ИИ и ситуационных задач. Крутите барабан и решайте выпавшую тему целиком. Без ошибок — тема исчезает, с ошибками — возвращается. Прогресс сохраняется.</p><a class="button primary" href="./topic-wheel.html">К барабану</a></article>`;
-      const allQuestionsCard=`<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">Новый каждый раз</span></div><h3>Весь базовый банк</h3><p>${questionCount(dataset.questions.length)} · без повторов</p><button class="button secondary" data-action="all">Начать</button></article>`;
+      const combinedQuestionsCard=`<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">До первой ошибки</span></div><h3>Все вопросы</h3><p>Один билет на все вопросы базового банка, комплаенса, ИИ и ситуаций. Первая ошибка завершает попытку. Сеньор — отдельно.</p><a class="button primary" href="./all-questions.html">Открыть билет</a></article>`;
+      const topicWheelCard=`<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">До последней темы</span></div><h3>Барабан тем</h3><p>Темы базового банка, комплаенса, защиты ИИ и ситуационных задач. Крутите барабан и решайте выпавшую тему целиком. Без ошибок — тема исчезает, с ошибками — возвращается. Прогресс сохраняется.</p><a class="button primary" href="./topic-wheel.html">К барабану</a></article>`;
+      const allQuestionsCard=`<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shuffle')}</span><span class="ticket-status">Новый каждый раз</span></div><h3>${isCompliance ? 'Весь комплаенс' : 'Весь базовый банк'}</h3><p>${questionCount(dataset.questions.length)} · без повторов</p><button class="button secondary" data-action="all">Начать</button></article>`;
       const toolQuestions=dataset.questions.filter(q=>q.collection==='security-tools');
-      const toolsCard=toolQuestions.length ? `<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shield')}</span><span class="ticket-status">Новый каждый раз</span></div><h3>Инструменты ИБ</h3><p>${questionCount(toolQuestions.length)} · назначение и ограничения</p><button class="button primary" data-action="tools">Начать</button></article>` : '';
-      body=`<section class="random-setup" aria-label="Случайный билет"><span class="eyebrow">Количество вопросов</span><div class="size-options" role="group" aria-label="Количество вопросов">${[20,50].map(size=>`<button class="size-choice" data-size="${size}" aria-pressed="${randomSize===size}"><strong>${size}</strong><span>${size===20?'Короткая тренировка':'Полный билет'}</span></button>`).join('')}</div><p>${questionCount(randomSize)} из всех тем базового банка · без повторов в билете</p><button class="button primary" data-action="random">Начать ${mode==='exam'?'экзамен':'тренировку'}</button></section><details class="extra-practice"><summary>Другие способы подготовки <span>Подборки и испытания</span></summary><div class="tickets-grid">${allQuestionsCard}${toolsCard}${topicWheelCard}${combinedQuestionsCard}</div></details>`;
+      const toolsCard=!isCompliance && toolQuestions.length ? `<article class="ticket-card quick-card"><div class="ticket-head"><span class="ticket-no">${icon('shield')}</span><span class="ticket-status">Новый каждый раз</span></div><h3>Инструменты ИБ</h3><p>${questionCount(toolQuestions.length)} · назначение и ограничения</p><button class="button primary" data-action="tools">Начать</button></article>` : '';
+      body=`<section class="random-setup" aria-label="Случайный билет"><span class="eyebrow">Количество вопросов</span><div class="size-options" role="group" aria-label="Количество вопросов">${[20,50].map(size=>`<button class="size-choice" data-size="${size}" aria-pressed="${randomSize===size}"><strong>${size}</strong><span>${size===20?'Короткая тренировка':'Полный билет'}</span></button>`).join('')}</div><p>${questionCount(randomSize)} из всех тем ${isCompliance ? 'комплаенса РФ' : 'базового банка'} · без повторов в билете</p><button class="button primary" data-action="random">Начать ${mode==='exam'?'экзамен':'тренировку'}</button></section><details class="extra-practice"><summary>Другие способы подготовки <span>Подборки и испытания</span></summary><div class="tickets-grid">${allQuestionsCard}${isCompliance ? '' : toolsCard+topicWheelCard+combinedQuestionsCard}</div></details>`;
     } else if(page==='topics') {
       body=`<div class="topic-grid">${dataset.topics.map((topic,i)=>`<button class="topic-card" data-topic="${i}"><span class="topic-left"><span class="topic-icon">${icon(i===0?'shield':'document')}</span><span><span class="topic-name">${esc(topic)}</span><span class="topic-count">${questionCount(dataset.questions.filter(q=>q.topic===topic).length)}</span></span></span></button>`).join('')}</div>`;
     } else if(!errors.size) {
@@ -172,7 +202,8 @@
     } else {
       body=`<div class="mode-bar"><span class="mode-hint">${questionCount(errors.size)} для повторения</span><button class="button primary" data-action="errors">Повторить ошибки</button></div><div class="error-list">${[...errors].map(id=>{const q=bank.get(id);return `<div class="error-item">${icon('mistakes')}<div><span class="error-topic">${esc(q.topic)}</span><p>${termsMarkup(q.question)}</p></div><button class="button secondary" data-single="${id}">Повторить</button></div>`;}).join('')}</div>`;
     }
-    if(page==='topics')body+=`<section class="bank-notes"><h2>Комплаенс РФ</h2><p>120 учебных вопросов по применимости требований, персональным данным, защите систем, КИИ и аудиту. GDPR остаётся отдельно.</p><a class="button secondary" href="./compliance-materials.html">15 практических кейсов и источники</a><p>Разборы кейсов предназначены для самостоятельной оценки и не входят в статистику тестов.</p></section>`;
+    if(isCompliance && page==='topics')body+=`<section class="bank-notes"><h2>Практикум</h2><p>15 развёрнутых кейсов для самостоятельного разбора.</p><a class="button secondary" href="./compliance-materials.html">Открыть кейсы и источники</a></section>`;
+    if(!isCompliance && page!=='mistakes')body=`<section class="resume-card compliance-entry" aria-label="Комплаенс РФ"><div><strong>Комплаенс РФ</strong><p>${dataset.compliance?.questionCount || 0} вопросов · ${dataset.compliance?.modules?.length || 0} отдельных тем · свой прогресс</p></div><a class="button primary" href="./compliance.html">Открыть темы</a></section>`+body;
     const updateNotice=bankUpdateNotice ? `<p class="bank-update-notice" role="status">${esc(bankUpdateNotice)}</p>` : '';
     const resume=session && !session.finished ? `<section class="resume-card" aria-label="Незавершённый билет"><div><strong>${esc(session.title)}</strong><p>${session.mode==='exam'?'Экзамен':'Тренировка'} · вопрос ${session.index+1} из ${session.ids.length}</p></div><button class="button primary" data-action="resume">Продолжить билет</button></section>` : '';
     main.innerHTML=`<div class="page-heading"><div><span class="eyebrow">Учимся на практике</span><h1>${title}</h1><p>${description}</p></div>${modeToggle()}</div><div class="mode-bar"><span class="mode-hint">${modeHint()}</span></div>${updateNotice}${resume}${body}${page==='mistakes'?'':bankNotes()}`;
@@ -185,7 +216,7 @@
     main.querySelectorAll('[data-topic]').forEach(el=>el.addEventListener('click',()=>{const topic=dataset.topics[Number(el.dataset.topic)];requestStartSession(dataset.questions.filter(q=>q.topic===topic).map(q=>q.id),topic);}));
     main.querySelectorAll('[data-single]').forEach(el=>el.addEventListener('click',()=>requestStartSession([el.dataset.single],'Повторение ошибки')));
     main.querySelectorAll('[data-action="random"]').forEach(el=>el.addEventListener('click',()=>requestStartSession(shuffled(dataset.questions.map(q=>q.id)).slice(0,randomSize),'Случайный билет')));
-    main.querySelectorAll('[data-action="all"]').forEach(el=>el.addEventListener('click',()=>requestStartSession([...bank.keys()],'Весь базовый банк')));
+    main.querySelectorAll('[data-action="all"]').forEach(el=>el.addEventListener('click',()=>requestStartSession([...bank.keys()],isCompliance ? 'Весь комплаенс' : 'Весь базовый банк')));
     main.querySelectorAll('[data-action="tools"]').forEach(el=>el.addEventListener('click',()=>requestStartSession(dataset.questions.filter(q=>q.collection==='security-tools').map(q=>q.id),'Инструменты ИБ')));
     main.querySelectorAll('[data-action="errors"]').forEach(el=>el.addEventListener('click',()=>requestStartSession([...errors],'Работа над ошибками')));
     main.querySelectorAll('[data-action="resume"]').forEach(el=>el.addEventListener('click',()=>{sessionOpen=true;saveProgress();renderQuiz();focusMain();}));
@@ -253,7 +284,7 @@
     }
     main.querySelectorAll('[data-option]').forEach(el=>el.addEventListener('click',()=>selectAnswer(Number(el.dataset.option))));
     main.querySelectorAll('[data-jump]').forEach(el=>el.addEventListener('click',()=>jump(Number(el.dataset.jump))));
-    main.querySelector('[data-action="leave"]').addEventListener('click',()=>navigate('tickets'));
+    main.querySelector('[data-action="leave"]').addEventListener('click',()=>navigate(homePage));
     main.querySelector('[data-action="previous"]').addEventListener('click',()=>jump(session.index-1));
     main.querySelectorAll('[data-action="next"]').forEach(el=>el.addEventListener('click',()=>jump(session.index+1)));
     main.querySelectorAll('[data-action="finish"]').forEach(el=>el.addEventListener('click',requestFinish));
@@ -322,7 +353,7 @@
     }).join('');
     main.innerHTML=`<div class="page-heading"><div><span class="eyebrow">${session.mode==='exam'?'Результат экзамена':'Результат тренировки'}</span><h1>${esc(session.title)}</h1></div></div><section class="result-card"><div class="result-score">${correct}<span> / ${session.ids.length}</span></div><div class="result-copy"><h2>${title}</h2><p>${wrong.length ? `${errorCount(wrong.length)}${skipped?`, из них ${skipped} без ответа`:''}. Они добавлены в «Мои ошибки».`:'Все ответы верные. Можно перейти к следующему билету.'}</p><div class="result-actions">${wrong.length?'<button class="button primary" data-result="errors">Повторить ошибки</button>':''}<button class="button ${wrong.length?'secondary':'primary'}" data-result="retry">Решить снова</button><button class="button secondary" data-result="home">К подготовке</button></div></div></section><div class="section-heading"><h2>Разбор всех вопросов</h2><span>Откройте вопрос</span></div><div class="result-review">${review}</div>`;
     main.querySelector('[data-result="retry"]').addEventListener('click',()=>startSession([...session.ids],session.title,session.ticket));
-    main.querySelector('[data-result="home"]').addEventListener('click',()=>navigate('tickets'));
+    main.querySelector('[data-result="home"]').addEventListener('click',()=>navigate(homePage));
     const repeat=main.querySelector('[data-result="errors"]');if(repeat)repeat.addEventListener('click',()=>{mode='practice';startSession(wrong,'Работа над ошибками');});
   }
   async function navigate(destination) {
@@ -331,7 +362,7 @@
     sessionOpen=false;page=destination;saveProgress();renderHome();focusMain();
   }
   document.querySelectorAll('[data-page]').forEach(el=>el.addEventListener('click',()=>navigate(el.dataset.page)));
-  $('#brand').addEventListener('click',event=>{event.preventDefault();navigate('tickets');});
+  $('#brand').addEventListener('click',event=>{event.preventDefault();navigate(homePage);});
   $('#reset-progress').addEventListener('click',resetProgress);
   document.addEventListener('keydown',event=>{
     if(!session || !sessionOpen || session.finished || $('#confirm-dialog').open || window.TrainerTerms.isOpen() || window.TrainerFeedback?.isOpen() || event.ctrlKey || event.metaKey || event.altKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName))return;
@@ -346,7 +377,9 @@
   });
   async function load() {
     try {
-      const data=await window.TrainerBasicBank.load();
+      const complete=await window.TrainerBasicBank.load();
+      migrateComplianceErrors(complete);
+      const data=window.TrainerBasicBank.selectSection(complete,isCompliance ? 'compliance' : 'basic');
       if(!Array.isArray(data.questions) || !data.questions.length || !Array.isArray(data.topics))throw new Error('Invalid question bank');
       const sources=data.sources || [];
       if(!Array.isArray(sources) || new Set(sources.map(s=>s.id)).size!==sources.length)throw new Error('Invalid sources');
@@ -368,7 +401,7 @@
         if(q.origin==='authored' && (!q.sourceIds?.length || !q.difficulty))throw new Error('Incomplete authored question');
       }
       if(new Set(data.questions.map(q=>q.id)).size!==data.questions.length)throw new Error('Duplicate question IDs');
-      window.TrainerFeedback?.setBank('Базовые билеты', data.updatedAt, data.questions);
+      window.TrainerFeedback?.setBank(isCompliance ? 'Комплаенс РФ' : 'Базовые билеты', data.updatedAt, data.questions);
       dataset=data;bank=new Map(data.questions.map(q=>[q.id,q]));
       // Spread each topic across tickets, respecting the size of the final ticket.
       const groups=data.topics.map(topic=>data.questions.filter(q=>q.topic===topic));
@@ -405,7 +438,7 @@
   }
   window.trainerNativeBack = () => {
     if (!sessionOpen) return false;
-    navigate('tickets');
+    navigate(homePage);
     return true;
   };
   load();
