@@ -1,4 +1,4 @@
-ИБ: ТРЕНАЖЁР БИЛЕТОВ — РЕЛИЗ 1.1.0
+ИБ: ТРЕНАЖЁР БИЛЕТОВ — РЕЛИЗ 1.1.1
 Карточка обновлена: 10 октября 2026 года
 
 Название: ИБ: тренажёр билетов
@@ -60,10 +60,10 @@ Email не указан: используйте свой действующий 
 Полное удаление локальных данных — через настройки Android; в интерфейсе сброс доступен отдельно для каждого банка.
 
 ТЕХНИЧЕСКИЕ ДАННЫЕ
-APK: infosec-tickets-1.1.0.apk
+APK: infosec-tickets-1.1.1.apk
 applicationId: ru.moongametechnology.infosec.tickets
-versionName: 1.1.0
-versionCode: 2
+versionName: 1.1.1
+versionCode: 3
 Android: 8.0+ (minSdk 26), targetSdk 36
 Android System WebView: 100+
 Google Play Services: не требуются
