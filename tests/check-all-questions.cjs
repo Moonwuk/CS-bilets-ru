@@ -9,6 +9,7 @@ const baseKey = 'cs-bilets-ru.progress.v1';
 const copy = value => JSON.parse(JSON.stringify(value));
 const files = ['questions.json', 'ai-security-questions.json', 'scenarios-questions.json'];
 const banks = Object.fromEntries(files.map(file => [`./${file}`, JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'))]));
+banks['./questions.json'] = require('./compliance-fixtures.cjs').composed();
 const originals = banks['./questions.json'].questions.concat(banks['./ai-security-questions.json'].questions, banks['./scenarios-questions.json'].questions);
 const expectedIds = originals.map(question => question.id).sort();
 const count = originals.length;
@@ -36,7 +37,7 @@ function assertTerminalLocked(run) {
 }
 
 (async () => {
-  assert.equal(count, 916);
+  assert.equal(count, 1031);
   assert.equal(tinyCount, 24);
   const html = fs.readFileSync(path.join(root, 'all-questions.html'), 'utf8');
   assert(html.includes('data-bank="all-questions"'));
@@ -55,7 +56,7 @@ function assertTerminalLocked(run) {
   assert(run.html().includes('data-start="all"'));
   for (const attribute of ['data-mode=', 'data-track=', 'data-start="mixed"', 'data-start="mistakes"']) assert(!run.html().includes(attribute));
   assert(run.html().includes(`Начать все ${count} вопросов`));
-  for (const [track, expected] of Object.entries({ basic: 840, 'ai-security': 40, scenarios: 36 })) assert.equal(run.a.get().dataset.questions.filter(q => q.track === track).length, expected);
+  for (const [track, expected] of Object.entries({ basic: 955, 'ai-security': 40, scenarios: 36 })) assert.equal(run.a.get().dataset.questions.filter(q => q.track === track).length, expected);
 
   // No duplicated content or invented case material in the aggregate adapter.
   for (const original of originals) {
@@ -79,7 +80,7 @@ function assertTerminalLocked(run) {
       if (original.basis) assert.deepEqual(plain(adapted.basis), original.basis);
     }
   }
-  assert.deepEqual(banks, Object.fromEntries(files.map(file => [`./${file}`, JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'))])));
+  assert.deepEqual(banks, { ...Object.fromEntries(files.map(file => [`./${file}`, JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'))])), './questions.json': require('./compliance-fixtures.cjs').composed() });
 
   // Confirming every actual question advances sequentially; only the final correct answer is success.
   run.click('[data-start="all"]');

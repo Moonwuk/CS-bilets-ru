@@ -1,0 +1,10 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const read = filename => JSON.parse(fs.readFileSync(path.join(root, filename), 'utf8'));
+const base = read('questions.json');
+const manifest = read('data/compliance-ru/manifest.json');
+const parts = manifest.parts.map(filename => read(`data/compliance-ru/${filename}`));
+const composed = () => require('../basic-bank.js').merge(base, manifest, parts);
+module.exports = { base, manifest, parts, composed, read };

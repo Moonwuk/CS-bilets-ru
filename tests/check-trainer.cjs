@@ -1,443 +1,384 @@
 'use strict';
 const fs=require('node:fs');
-const path=require('node:path');
 const vm=require('node:vm');
 const assert=require('node:assert/strict');
-const root=path.resolve(__dirname,'..');
-const data=JSON.parse(fs.readFileSync(path.join(root,'questions.json'),'utf8'));
 const key='cs-bilets-ru.progress.v1';
-
-class Node {
-  constructor(){this.innerHTML='';this.textContent='';this.style={};this.dataset={};this.open=false;this.isConnected=true;this.listeners=new Map();this.classList={toggle(){}};}
+const fixtureRoot=require('node:path').resolve(__dirname,'..');
+const realBank=require('./compliance-fixtures.cjs').composed();
+const source=fs.readFileSync('app.js','utf8');
+const plain=value=>JSON.parse(JSON.stringify(value));
+const clone=value=>structuredClone(value);
+const correctIndex=(data,id)=>data.questions.find(q=>q.id===id).options.findIndex(o=>o.correct);
+const wrongIndex=(data,id)=>data.questions.find(q=>q.id===id).options.findIndex(o=>!o.correct);
+const specialText='Keep  two  spaces,\r\nthen\ta tab and </script><img src=x onerror=alert(1)> & "quotes" intact.';
+const fixture={source:'fixture.docx',topics:['Fixture'],questions:Array.from({length:4},(_,i)=>({
+  id:`f${i}`,topic:'Fixture',question:`Question ${i}?`,
+  options:[0,1,2,3].map(j=>({text:`Option ${j}`,correct:j===0,explanation:i===0&&j===0?specialText:`Explanation ${i}.${j}`}))
+}))};
+class Element {
+  constructor(selector){this.selector=selector;this._html='';this.textContent='';this.style={};this.dataset={};this.open=false;this.disabled=false;this.attributes={};this.listeners=new Map();this.children=new Map();this.focused=false;}
+  set innerHTML(value){this._html=value;this.children.clear();}
+  get innerHTML(){return this._html;}
   addEventListener(name,fn){if(!this.listeners.has(name))this.listeners.set(name,new Set());this.listeners.get(name).add(fn);}
   removeEventListener(name,fn){this.listeners.get(name)?.delete(fn);}
-  dispatch(name,extra={}){const event={target:this,preventDefault(){this.defaultPrevented=true;},stopPropagation(){this.propagationStopped=true;},...extra};for(const fn of this.listeners.get(name)||[])fn(event);return event;}
-  setAttribute(){} removeAttribute(){} focus(){this.focused=true;}
-  closest(selector){return selector==='[data-term]' && this.dataset.term ? this : null;}
-  contains(element){return [...this.children.values()].includes(element);}
-  get innerHTML(){return this._html;}
-  set innerHTML(value){this._html=value;this.children=new Map();}
-  querySelector(selector){if(!this.children.has(selector))this.children.set(selector,new Node());return this.children.get(selector);}
-  querySelectorAll(selector){
-    const match=selector.match(/^\[(data-[a-z-]+)(?:="([^"]*)")?\]$/);
-    if(!match)return [];
-    const [,attribute,value]=match;
-    return [...this.innerHTML.matchAll(new RegExp(`${attribute}="([^"]*)"`,'g'))].filter(([,v])=>value===undefined || v===value).map(([,v])=>{
-      const node=this.querySelector(`[${attribute}="${v}"]`);
-      node.dataset[attribute.slice(5).replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=v;
-      return node;
-    });
-  }
-  showModal(){this.open=true;} close(){this.open=false;this.dispatch('close');}
+  dispatch(name,event={}){const actual={target:this,preventDefault(){this.prevented=true;},...event};for(const fn of [...(this.listeners.get(name)||[])])fn(actual);return actual;}
+  querySelector(selector){if(!this.children.has(selector))this.children.set(selector,new Element(selector));return this.children.get(selector);}
+  querySelectorAll(){return [];}
+  focus(){this.focused=true;}
+  showModal(){assert(!this.open,'Dialog was already open');this.open=true;}
+  close(){this.open=false;}
+  setAttribute(name,value){this.attributes[name]=value;}
+  removeAttribute(name){delete this.attributes[name];}
+  matches(selector){return selector==='.option-pick'&&this.selector.startsWith('[data-option');}
 }
-
-async function runtime(storage=new Map(),options={}) {
+function runtime(data,{storage=new Map(),storageBlocked=false}={}){
   const nodes=new Map();
-  const loadErrors=[];
-  const listeners=new Map();
-  const document={querySelector:s=>{if(!nodes.has(s))nodes.set(s,new Node());return nodes.get(s);},querySelectorAll:()=>[],addEventListener(name,fn){if(!listeners.has(name))listeners.set(name,[]);listeners.get(name).push(fn);},body:new Node()};
-  const localStorage={
-    getItem(k){if(options.blocked)throw new Error('Storage denied');return storage.get(k)??null;},
-    setItem(k,value){if(options.blocked)throw new Error('Storage denied');storage.set(k,value);}
+  const get=selector=>{if(!nodes.has(selector))nodes.set(selector,new Element(selector));return nodes.get(selector);};
+  const documentListeners=new Map();
+  const context={
+    console:{error(){}},
+    document:{body:{tagName:'BODY'},querySelector:get,querySelectorAll(){return [];},addEventListener(name,fn){documentListeners.set(name,fn);}},
+    window:{scrollTo(){},TrainerTerms:{markup:value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),isOpen:()=>false},localStorage:{getItem(k){if(storageBlocked)throw Error('denied');return storage.get(k)||null;},setItem(k,v){if(storageBlocked)throw Error('denied');storage.set(k,v);}}},
+    fetch:async()=>({ok:true,json:async()=>data}),Set,Map,URL,Math
   };
-  const logger={...console,error(...args){loadErrors.push(args);if(!options.expectLoadFailure)console.error(...args);}};
-  const randomMath=options.random ? Object.assign(Object.create(Math),{random:options.random}) : Math;
-  const ctx={document,window:{localStorage,scrollTo(){},addEventListener(){}},fetch:async()=>({ok:true,json:async()=>options.data||data}),console:logger,AbortController,Math:randomMath,Map,Set,Promise,URL};
-  vm.createContext(ctx);
-  vm.runInContext(fs.readFileSync(path.join(root,'glossary.js'),'utf8'),ctx);
-  const source=fs.readFileSync(path.join(root,'app.js'),'utf8').replace('const TICKET_SIZE = 50;',`const TICKET_SIZE = ${options.ticketSize||50};`).replace('  load();\n})();',`  globalThis.qa={startSession,requestStartSession,selectAnswer,checkAnswer,jump,finishSession,isCorrect,navigate,resetProgress,setMode:m=>{mode=m;},get:()=>({session,sessionOpen,tickets,bank,errors,ticketResults,total,correctTotal,page,mode,storageAvailable})};\n  load();\n})();`);
-  vm.runInContext(source,ctx);
-  await new Promise(resolve=>setImmediate(resolve));
-  if(options.expectLoadFailure){
-    assert(!ctx.qa.get().bank,`${options.expectLoadFailure} must be rejected`);
-    assert.equal(loadErrors.length,1);
-    assert(nodes.get('#main').innerHTML.includes('Не удалось загрузить вопросы'));
-  } else assert(ctx.qa.get().bank,'The bank must load successfully');
-  return {a:ctx.qa,nodes,storage,key(key){const event={key,target:document.body,preventDefault(){}};for(const fn of listeners.get('keydown')||[])fn(event);}};
+  // Mode tests use composed fixtures; the actual loader and failure paths are tested separately.
+  context.window.TrainerBasicBank={load:async()=>data};
+  const exposed=`  window.__test={load,getBankSignature,startSession,selectAnswer,checkAnswer,jump,finishSession,requestFinish,requestStartSession,navigate,resetProgress,saveProgress,restoreProgress,recordAnswer,isCorrect,renderHome,renderQuiz,renderResult,setMode:value=>mode=value,getState:()=>({dataset,total,correctTotal,page,mode,randomSize,errors:[...errors],ticketResults:[...ticketResults],tickets,bankSignature,bankUpdateNotice,storageAvailable,sessionOpen,session:session?{...session,answers:[...session.answers],orders:[...session.orders],recorded:[...session.recorded]}:null})};\n})();`;
+  const instrumented=source.replace(/  load\(\);\n\}\)\(\);\s*$/,exposed);
+  assert.notEqual(instrumented,source,'Could not expose trainer test interface');
+  vm.createContext(context);vm.runInContext(instrumented,context);
+  return {a:context.window.__test,nodes,storage,getHtml:()=>get('#main').innerHTML,getState:()=>plain(context.window.__test.getState()),documentListeners,context};
 }
-
-function choose(a,correct) {
-  const {session,bank}=a.get();
-  const id=session.ids[session.index];
-  const oi=bank.get(id).options.findIndex(o=>o.correct===correct);
-  a.selectAnswer(oi);
-  return {id,oi};
+async function main(){
+  assert.equal(realBank.questions.length,955);
+  assert.equal(new Set(realBank.questions.map(q=>q.id)).size,955);
+  assert.equal(realBank.topics.length,45);
+  assert(!/onclick=|\.onchange=/.test(fs.readFileSync('index.html','utf8')));
+  for(const selector of ['main','reset-progress','storage-status','sidebar-storage-status','confirm-dialog','dialog-cancel','dialog-ok'])assert(fs.readFileSync('index.html','utf8').includes(`id="${selector}"`));
+  assert(fs.readFileSync('style.css','utf8').includes('white-space:pre-wrap'),'Question/answer whitespace must remain visible');
+  const full=runtime(realBank);await full.a.load();
+  let state=full.getState();
+  const expectedTicketLengths=Array.from({length:Math.ceil(realBank.questions.length/50)},(_,i)=>Math.min(50,realBank.questions.length-i*50));
+  assert.deepEqual(state.tickets.map(t=>t.length),expectedTicketLengths);
+  assert.equal(state.tickets.flat().length,realBank.questions.length);
+  assert.equal(new Set(state.tickets.flat()).size,realBank.questions.length);
+  assert.deepEqual([...state.tickets.flat()].sort(),realBank.questions.map(q=>q.id).sort());
+  assert.equal(full.nodes.get('#ticket-count').textContent,expectedTicketLengths.length);
+  assert.equal(full.nodes.get('#topic-count').textContent,realBank.topics.length);
+  assert.equal(full.nodes.get('#dataset-info').textContent,`${realBank.questions.length} вопросов · ${realBank.topics.length} тем`);
+  // A deliberately smaller valid bank checks that labels are derived from data.
+  const smallerTopics=clone(realBank);
+  smallerTopics.topics=smallerTopics.topics.slice(0,24);
+  smallerTopics.questions=smallerTopics.questions.filter(q=>smallerTopics.topics.includes(q.topic));
+  const smallerHeader=runtime(smallerTopics);await smallerHeader.a.load();
+  assert.equal(smallerHeader.nodes.get('#topic-count').textContent,24);
+  assert(smallerHeader.nodes.get('#dataset-info').textContent.endsWith(' · 24 темы'));
+  for(const topic of realBank.topics){
+    const sizes=state.tickets.map(t=>t.filter(id=>realBank.questions.find(q=>q.id===id).topic===topic).length);
+    const fullSizes=sizes.filter((_,i)=>state.tickets[i].length===50);
+    assert(Math.max(...fullSizes)-Math.min(...fullSizes)<=1,`Uneven distribution: ${topic}`);
+  }
+  assert.equal(full.getState().dataset.questions[0].options.length,4);
+  assert(full.getHtml().includes('data-action="random"'));
+  assert(full.getHtml().includes('data-size="20"')&&full.getHtml().includes('data-size="50"'));
+  assert(!full.getHtml().includes('data-ticket='));
+  assert(full.getHtml().includes('data-action="all"'));
+  assert(full.getHtml().includes('Весь базовый банк'));
+  assert(full.getHtml().includes('href="./all-questions.html"'));
+  assert(full.getHtml().includes('Сеньор — отдельно'));
+  assert(full.getHtml().includes(`>${realBank.questions.length} вопросов · без повторов<`));
+  assert.equal(realBank.questions.filter(q=>q.origin==='document').length,88);
+  assert.equal(realBank.questions.filter(q=>q.origin==='authored').length,realBank.questions.length-88);
+  assert(full.getHtml().includes('В исходных вопросах уточнены найденные неточности.'));
+  assert(full.getHtml().includes('50 вопросов'));
+  assert(full.getHtml().includes('О вопросах и источниках'));
+  assert(full.getHtml().includes('не официальный экзамен'));
+  assert(full.getHtml().includes('Нормы проверены по состоянию на 02.10.2026, 10.10.2026'));
+  assert(!full.getHtml().includes('режимов права ЕС'));
+  full.a.startSession([...full.getState().tickets[1]],'Билет 2',1);
+  state=full.getState();
+  assert.equal(state.session.ids.length,50);
+  assert.equal(new Set(state.session.ids).size,50);
+  assert.deepEqual([...state.session.ids].sort(),[...state.tickets[1]].sort());
+  assert(state.session.orders.every(([,order])=>new Set(order).size===4&&order.every(n=>[0,1,2,3].includes(n))));
+  assert.equal(full.getState().randomSize,50);
+  assert(full.getHtml().includes('Вопрос 1 / 50'));
+  assert(!full.getHtml().includes('quiz-map long-session'));
+  full.a.startSession(realBank.questions.map(q=>q.id),'Весь базовый банк');
+  const firstAll=full.getState().session;
+  assert.equal(firstAll.ids.length,realBank.questions.length);
+  assert.equal(new Set(firstAll.ids).size,realBank.questions.length);
+  assert.deepEqual([...firstAll.ids].sort(),realBank.questions.map(q=>q.id).sort());
+  assert(full.getHtml().includes('quiz-map long-session'));
+  assert(full.getHtml().includes(`Вопрос 1 / ${realBank.questions.length}`));
+  assert.equal((full.getHtml().match(/data-jump="/g)||[]).length,realBank.questions.length);
+  for(let i=0;i<5;i++){
+    full.a.startSession(realBank.questions.map(q=>q.id),'Весь базовый банк');
+    const nextAll=full.getState().session;
+    assert.notDeepEqual(nextAll.ids,firstAll.ids);
+    assert.notDeepEqual(nextAll.orders,firstAll.orders);
+  }
+  const allActive=full.getState().session;
+  full.a.selectAnswer(correctIndex(realBank,allActive.ids[0]));full.a.checkAnswer();full.a.jump(137);
+  const allSnapshot=full.getState().session;
+  const resumedAll=runtime(realBank,{storage:full.storage});await resumedAll.a.load();
+  assert.deepEqual(resumedAll.getState().session,allSnapshot);
+  assert.equal(resumedAll.getState().session.ids.length,realBank.questions.length);
+  assert.equal(resumedAll.getState().session.index,137);
+  assert(resumedAll.getHtml().includes(`Вопрос 138 / ${realBank.questions.length}`));
+  assert(fs.readFileSync('style.css','utf8').includes('.quiz-map.long-session .question-grid{max-height:260px;overflow-y:auto'));
+  assert(fs.readFileSync('style.css','utf8').includes('.quiz-map.long-session .question-grid{max-height:148px}'));
+  assert(realBank.questions.filter(q=>q.origin==='authored').every(q=>q.difficulty&&q.sourceIds?.length&&q.options.length===4&&q.options.filter(o=>o.correct).length===1&&q.options.every(o=>o.explanation)));
+  const sources=new Map(realBank.sources.map(s=>[s.id,s]));
+  assert.equal(sources.size,realBank.sources.length);
+  for(const q of realBank.questions)for(const id of q.sourceIds||[])assert(sources.has(id),`${q.id}: missing source ${id}`);
+  assert.equal(realBank.questions.filter(q=>q.topic==='Модель OSI').length,41);
+  const interviewQuestions=realBank.questions.filter(q=>q.interviewSourceIds?.length);
+  assert(interviewQuestions.length>=50);
+  for(const q of interviewQuestions)for(const id of q.interviewSourceIds)assert.equal(sources.get(id)?.kind,'interview');
+  assert.equal(realBank.interviewCollections.length,9);
+  assert(new Set(interviewQuestions.map(q=>q.topic)).size>=8);
+  const legalQuestions=realBank.questions.filter(q=>q.legal);
+  assert.equal(legalQuestions.length,217);
+  assert.equal(legalQuestions.filter(q=>q.legal.jurisdiction==='EU').length,25);
+  const newLegal=realBank.questions.filter(q=>/^q4\d\d$/.test(q.id)||q.id==='q500');
+  assert.equal(newLegal.length,100);
+  assert.equal(newLegal.filter(q=>q.legal.jurisdiction==='RU').length,75);
+  assert.equal(newLegal.filter(q=>q.legal.jurisdiction==='EU').length,25);
+  for(const q of newLegal){
+    assert(['RU','EU'].includes(q.legal.jurisdiction));
+    assert.equal(q.legal.reviewedAt,['q416','q425','q449'].includes(q.id)?'2026-10-10':'2026-10-02');
+    assert(q.legal.references.length>0);
+    for(const ref of q.legal.references){assert.equal(sources.get(ref.sourceId)?.kind,'legal');assert(q.sourceIds.includes(ref.sourceId));assert(ref.locator.trim().length>4);}
+    assert(q.options.every(o=>o.explanation.trim().length>=25));
+  }
+  const pd=newLegal.filter(q=>Number(q.id.slice(1))>=401&&Number(q.id.slice(1))<=430);
+  assert.equal(pd.length,30);
+  assert(pd.every(q=>q.legal.jurisdiction==='RU'&&q.topic===(['q416','q425'].includes(q.id)?'Комплаенс РФ':'Персональные данные РФ')));
+  assert(newLegal.filter(q=>Number(q.id.slice(1))>=431&&Number(q.id.slice(1))<=455).every(q=>q.topic===(q.id==='q449'?'Комплаенс РФ':'Правовые основы ИБ РФ')));
+  assert(newLegal.filter(q=>Number(q.id.slice(1))>=456&&Number(q.id.slice(1))<=475).every(q=>q.topic==='КИИ и ответственность в ИБ'));
+  assert(newLegal.filter(q=>Number(q.id.slice(1))>=476).every(q=>q.topic==='GDPR и защита данных в ЕС'));
+  assert(fs.existsSync('docs/legal-bank-review.md'));
+  assert(fs.readFileSync('README.md','utf8').includes('docs/legal-bank-review.md'));
+  const byId=new Map(realBank.questions.map(q=>[q.id,q]));
+  const rightText=id=>byId.get(id).options.find(o=>o.correct).text;
+  const description=id=>[byId.get(id).question,...byId.get(id).options.map(o=>o.explanation)].join(' ');
+  assert(/24/.test(rightText('q430'))&&/72/.test(rightText('q430')));
+  assert(/10/.test(rightText('q425'))&&/5/.test(rightText('q425')));
+  assert(/самостоятельно/.test(rightText('q435')));
+  assert(/псевдоним/.test(description('q479'))&&!/прекратилось/.test(rightText('q479')));
+  assert(/только дата. не гарантирует соблюдение/i.test(description('q483')));
+  assert(/вредонос/.test(description('q471'))&&/заведом/.test(description('q471')));
+  assert(!/миллион|сто тысяч/.test(description('q472')));
+  assert(/уничтож|блокир|модифик|копир/.test(rightText('q473')));
+  assert.equal(rightText('q051'),'Защита информации в ГИС и иных информационных системах госорганов, ГУП и государственных учреждений');
+  assert(/не каждая/.test(byId.get('q058').options.find(o=>o.correct).explanation.toLowerCase()));
+  assert(byId.get('q146').question.includes('без HTTPS-инспекции'));
+  assert(byId.get('q316').question.includes('TTL'));
+  assert(byId.get('q327').question.includes('checksum offload'));
+  assert(byId.get('q354').question.includes('Content-Length'));
+  assert(byId.get('q357').options.find(o=>o.correct).text.includes('не даёт скрипту прочитать'));
+  assert(byId.get('q310').question.includes('коммутатор'));
+  const tools=realBank.questions.filter(q=>q.collection==='security-tools');
+  assert.equal(tools.length,100);
+  assert.equal(new Set(tools.map(q=>q.id)).size,100);
+  assert(new Set(tools.map(q=>q.topic)).size>=11);
+  for(const q of tools){
+    assert(q.origin==='authored'&&q.difficulty&&q.sourceIds?.length&&q.conceptIds?.length);
+    assert(q.options.every(o=>o.text&&typeof o.correct==='boolean'&&o.explanation.length>20));
+    assert.equal(q.options.filter(o=>o.correct).length,1);
+    // Reused q566 retains technical sources and additionally has the legal references of its module.
+    const expectedKinds=q.compliance?['technical','legal']:['technical'];
+    for(const sourceId of q.sourceIds)assert(expectedKinds.includes(sources.get(sourceId)?.kind));
+    assert(q.sourceIds.some(sourceId=>sources.get(sourceId)?.kind==='technical'));
+  }
+  const conceptsContext={window:{},document:{querySelector:()=>null}};
+  const conceptsSource=fs.readFileSync('glossary.js','utf8').replace('  const termsById = new Map(terms.map(term => [term.id, term]));','  window.__terms = terms;\n  const termsById = new Map(terms.map(term => [term.id, term]));');
+  vm.createContext(conceptsContext);vm.runInContext(conceptsSource,conceptsContext);
+  const termIds=new Set(conceptsContext.window.__terms.map(term=>term.id));
+  assert(termIds.size>=200);
+  for(const q of tools)for(const concept of q.conceptIds)assert(termIds.has(concept),`${q.id}: no glossary entry for ${concept}`);
+  for(const file of ['senior-questions.json','ai-security-questions.json','scenarios-questions.json']){
+    const caseBank=JSON.parse(fs.readFileSync(file,'utf8'));
+    for(const q of caseBank.questions)for(const concept of q.conceptIds||[])assert(termIds.has(concept));
+  }
+  assert(fs.existsSync('docs/tools-bank-review.md'));
+  assert(fs.readFileSync('README.md','utf8').includes('docs/tools-bank-review.md'));
+  const toolRun=runtime(realBank);await toolRun.a.load();
+  assert(toolRun.getHtml().includes('data-action="tools"'));
+  assert(toolRun.getHtml().includes('100 вопросов · назначение и ограничения'));
+  toolRun.a.startSession(tools.map(q=>q.id),'Инструменты ИБ');
+  const firstTools=toolRun.getState().session;
+  assert.equal(firstTools.ids.length,100);
+  assert.deepEqual([...firstTools.ids].sort(),tools.map(q=>q.id).sort());
+  assert(toolRun.getHtml().includes('quiz-map long-session'));
+  toolRun.a.startSession(tools.map(q=>q.id),'Инструменты ИБ');
+  assert.notDeepEqual(toolRun.getState().session.ids,firstTools.ids);
+  assert.notDeepEqual(toolRun.getState().session.orders,firstTools.orders);
+  const secondTools=toolRun.getState().session;
+  toolRun.a.selectAnswer(wrongIndex(realBank,secondTools.ids[0]));toolRun.a.checkAnswer();toolRun.a.jump(1);
+  const toolsResume=runtime(realBank,{storage:toolRun.storage});await toolsResume.a.load();
+  assert.deepEqual(toolsResume.getState().session,toolRun.getState().session);
+  assert(toolsResume.getState().errors.includes(secondTools.ids[0]));
+  const sourceRun=runtime(realBank);await sourceRun.a.load();
+  sourceRun.a.startSession(['q089'],'Свойства безопасности');
+  assert(sourceRun.getHtml().includes('Базовый'));
+  assert(!sourceRun.getHtml().includes('csrc.nist.gov/glossary/term/confidentiality'));
+  sourceRun.a.selectAnswer(correctIndex(realBank,'q089'));sourceRun.a.checkAnswer();
+  assert(sourceRun.getHtml().includes('https://csrc.nist.gov/glossary/term/confidentiality'));
+  assert(sourceRun.getHtml().includes('target="_blank" rel="noopener noreferrer"'));
+  const interviewRun=runtime(realBank);await interviewRun.a.load();
+  interviewRun.a.startSession(['q354'],'Собеседование');
+  assert(interviewRun.getHtml().includes('<span class="level-tag">Собеседование</span>'));
+  assert(!interviewRun.getHtml().includes('https://tib3rius.com/interview-questions.html'));
+  interviewRun.a.selectAnswer(correctIndex(realBank,'q354'));interviewRun.a.checkAnswer();
+  assert(interviewRun.getHtml().includes('https://tib3rius.com/interview-questions.html'));
+  assert(interviewRun.getHtml().includes('Тема из открытой подборки собеседований'));
+  const legalRun=runtime(realBank);await legalRun.a.load();
+  legalRun.a.setMode('exam');legalRun.a.startSession(['q483'],'Правовой вопрос');
+  assert(legalRun.getHtml().includes('ЕС · GDPR'));
+  assert(legalRun.getHtml().includes('<time datetime="2026-10-02">02.10.2026</time>'));
+  assert(!legalRun.getHtml().includes('Article 5'));
+  const legalSource=sources.get(byId.get('q483').sourceIds[0]);
+  assert(!legalRun.getHtml().includes(legalSource.url));
+  legalRun.a.selectAnswer(correctIndex(realBank,'q483'));
+  assert(!legalRun.getHtml().includes('Правовые источники'));
+  legalRun.a.finishSession();
+  assert(legalRun.getHtml().includes('Правовые источники'));
+  assert(legalRun.getHtml().includes(legalSource.url));
+  assert(legalRun.getHtml().includes('ст. 5(1)(c)'));
+  const scopedLegal=runtime(realBank);await scopedLegal.a.load();
+  scopedLegal.a.setMode('practice');scopedLegal.a.startSession(['q430'],'Уведомление Роскомнадзора');
+  assert(scopedLegal.getHtml().includes('РФ')&&!scopedLegal.getHtml().includes('ст. 21 ч. 3.1'));
+  scopedLegal.a.selectAnswer(correctIndex(realBank,'q430'));scopedLegal.a.checkAnswer();
+  assert(scopedLegal.getHtml().includes('ст. 21 ч. 3.1'));
+  const invalidLegalBank=clone(realBank);delete invalidLegalBank.questions.find(q=>q.id==='q483').legal;
+  const invalidLegal=runtime(invalidLegalBank);await invalidLegal.a.load();
+  assert(invalidLegal.getHtml().includes('Не удалось загрузить вопросы'));
+  for(const mutate of [q=>q.legal.jurisdiction='WORLD',q=>q.legal.reviewedAt='2026-02-30',q=>q.legal.references=[],q=>q.legal.references[0].locator=' ',q=>q.legal.references[0].sourceId='missing-law']){
+    const invalid=clone(realBank);mutate(invalid.questions.find(q=>q.id==='q483'));
+    const checked=runtime(invalid);await checked.a.load();assert(checked.getHtml().includes('Не удалось загрузить вопросы'));
+  }
+  // Exact option indexes, whitespace, escaping and idempotent scoring.
+  let run=runtime(fixture);await run.a.load();run.a.startSession(['f0'],'One');
+  run.a.selectAnswer(0);run.a.checkAnswer();state=run.getState();
+  assert.equal(state.total,1);assert.equal(state.correctTotal,1);assert.deepEqual(state.errors,[]);
+  assert.deepEqual(state.session.answers,[['f0',0]]);assert.deepEqual(state.session.recorded,['f0']);
+  const html=run.getHtml();
+  assert(html.includes('Keep  two  spaces,\r\nthen\ta tab'));
+  assert(html.includes('&lt;/script&gt;&lt;img src=x onerror=alert(1)&gt; &amp; &quot;quotes&quot;'));
+  assert(!html.includes('<img src=x onerror=alert(1)>'));
+  run.a.checkAnswer();run.a.selectAnswer(1);run.a.checkAnswer();assert.equal(run.getState().total,1);
+  assert.equal(run.getState().session.answers[0][1],0);
+  run.a.finishSession();run.a.finishSession();assert.equal(run.getState().total,1);
+  assert.equal(run.getState().session.finished,true);
+  assert(run.getHtml().includes('Разбор всех вопросов'));
+  assert(run.getHtml().includes('Keep  two  spaces,\r\nthen\ta tab'));
+  run=runtime(fixture);await run.a.load();run.a.startSession(['f0','f1','f2','f3'],'Four');
+  let ids=run.getState().session.ids;
+  run.a.selectAnswer(wrongIndex(fixture,ids[0]));run.a.checkAnswer();
+  run.a.jump(1);run.a.selectAnswer(correctIndex(fixture,ids[1]));run.a.checkAnswer();
+  run.a.jump(2);run.a.selectAnswer(correctIndex(fixture,ids[2]));run.a.finishSession();state=run.getState();
+  assert.equal(state.total,4);assert.equal(state.correctTotal,1);
+  assert.deepEqual([...state.errors].sort(),[ids[0],ids[2],ids[3]].sort());
+  assert(!state.session.answers.some(([id])=>id===ids[2]));assert(run.getHtml().includes('из них 2 без ответа'));
+  const originalErrors=[...state.errors];run.a.startSession(originalErrors,'Работа над ошибками');ids=run.getState().session.ids;
+  run.a.selectAnswer(correctIndex(fixture,ids[0]));run.a.checkAnswer();
+  assert(!run.getState().errors.includes(ids[0]));assert.equal(run.getState().total,5);assert.equal(run.getState().correctTotal,2);
+  assert(originalErrors.filter(id=>id!==ids[0]).every(id=>run.getState().errors.includes(id)));
+  const persisted=run.storage;const before=run.getState();
+  const fresh=runtime(fixture,{storage:persisted});await fresh.a.load();const after=fresh.getState();
+  for(const property of ['total','correctTotal','errors','sessionOpen','page','mode','session'])assert.deepEqual(after[property],before[property]);
+  fresh.a.checkAnswer();assert.equal(fresh.getState().total,5);
+  fresh.a.jump(1);fresh.a.selectAnswer(correctIndex(fixture,fresh.getState().session.ids[1]));fresh.a.checkAnswer();assert.equal(fresh.getState().total,6);
+  await fresh.a.navigate('topics');assert.equal(fresh.getState().sessionOpen,false);assert(fresh.getHtml().includes('Продолжить билет'));
+  const paused=runtime(fixture,{storage:persisted});await paused.a.load();
+  assert.equal(paused.getState().sessionOpen,false);assert.equal(paused.getState().page,'topics');
+  assert(paused.getHtml().includes('Продолжить билет'));assert(!paused.getHtml().includes('question-panel'));
+  // Exam choices remain editable; answers and sources stay hidden until finish.
+  run=runtime(fixture);await run.a.load();run.a.setMode('exam');run.a.startSession(['f0','f1','f2'],'Экзамен');ids=run.getState().session.ids;
+  const question=fixture.questions.find(q=>q.id===ids[0]);
+  run.a.selectAnswer(1);run.a.selectAnswer(0);run.a.checkAnswer();
+  assert.equal(run.getState().total,0);assert.equal(run.getState().session.answers[0][1],0);
+  assert(!run.getHtml().includes('class="feedback'));assert(!run.getHtml().includes('option correct'));assert(!run.getHtml().includes('option wrong'));
+  assert(!run.getHtml().includes(question.options[0].explanation));
+  const resumedExam=runtime(fixture,{storage:run.storage});await resumedExam.a.load();
+  assert.equal(resumedExam.getState().total,0);assert.equal(resumedExam.getState().session.mode,'exam');assert(!resumedExam.getHtml().includes('class="feedback'));
+  resumedExam.a.jump(1);resumedExam.a.selectAnswer(1);resumedExam.a.finishSession();state=resumedExam.getState();
+  assert.equal(state.total,3);assert.equal(state.correctTotal,1);assert.equal(state.errors.length,2);assert.equal(state.session.recorded.length,3);
+  assert(resumedExam.getHtml().includes('Разбор всех вопросов'));assert(resumedExam.getHtml().includes('Почему ваш ответ неверен:'));
+  const examBeforeFinish=runtime(fixture,{storage:run.storage});await examBeforeFinish.a.load();
+  assert.equal(examBeforeFinish.getState().total,3);assert.equal(examBeforeFinish.getState().session.finished,true);
+  assert(examBeforeFinish.getHtml().includes('Разбор всех вопросов'));examBeforeFinish.a.finishSession();assert.equal(examBeforeFinish.getState().total,3);
+  const sourceExam=runtime(realBank);await sourceExam.a.load();sourceExam.a.setMode('exam');sourceExam.a.startSession(['q089'],'Exam source');sourceExam.a.selectAnswer(0);
+  assert(!sourceExam.getHtml().includes('https://csrc.nist.gov/glossary/term/confidentiality'));
+  sourceExam.a.finishSession();assert(sourceExam.getHtml().includes('https://csrc.nist.gov/glossary/term/confidentiality'));
+  // Confirmation dialogs preserve unfinished attempts and support cancellation.
+  run=runtime(fixture);await run.a.load();run.a.startSession(['f0','f1'],'Old');
+  const cancelNew=run.a.requestStartSession(['f2'],'New');assert(run.nodes.get('#confirm-dialog').open);assert.equal(run.getState().session.title,'Old');
+  run.nodes.get('#dialog-cancel').dispatch('click');await cancelNew;assert.equal(run.getState().session.title,'Old');assert(!run.nodes.get('#confirm-dialog').open);
+  const acceptNew=run.a.requestStartSession(['f2'],'New');run.nodes.get('#dialog-ok').dispatch('click');await acceptNew;assert.equal(run.getState().session.title,'New');
+  const cancelFinish=run.a.requestFinish();assert(run.nodes.get('#confirm-dialog').open);run.nodes.get('#confirm-dialog').dispatch('cancel');await cancelFinish;assert(!run.getState().session.finished);
+  const acceptFinish=run.a.requestFinish();run.nodes.get('#dialog-ok').dispatch('click');await acceptFinish;
+  assert(run.getState().session.finished);assert.equal(run.getState().total,1);assert.equal(run.getState().errors.length,1);
+  const cancelReset=run.a.resetProgress();run.nodes.get('#dialog-cancel').dispatch('click');await cancelReset;assert.equal(run.getState().total,1);
+  const acceptReset=run.a.resetProgress();run.nodes.get('#dialog-ok').dispatch('click');await acceptReset;
+  state=run.getState();assert.equal(state.total,0);assert.equal(state.correctTotal,0);assert.equal(state.session,null);assert.deepEqual(state.errors,[]);
+  assert.equal(JSON.parse(run.storage.get(key)).session,null);
+  run=runtime(fixture);await run.a.load();run.a.setMode('exam');run.a.startSession([...run.getState().tickets[0]],'Билет 1',0);ids=run.getState().session.ids;
+  for(let i=0;i<ids.length;i++){run.a.jump(i);run.a.selectAnswer(i<3?0:1);}
+  run.a.finishSession();assert.deepEqual(run.getState().ticketResults,[[0,{correct:3,length:4}]]);
+  const restoredScore=runtime(fixture,{storage:run.storage});await restoredScore.a.load();assert.deepEqual(restoredScore.getState().ticketResults,[[0,{correct:3,length:4}]]);
+  // Content updates retain counters and known mistake IDs, but invalidate old answer indices.
+  run=runtime(fixture);await run.a.load();run.a.startSession([...run.getState().tickets[0]],'Old bank',0);run.a.selectAnswer(1);run.a.checkAnswer();
+  const changed=clone(fixture);changed.questions[0].question+=' Revised.';
+  const updated=runtime(changed,{storage:run.storage});await updated.a.load();state=updated.getState();
+  assert.equal(state.total,1);assert.equal(state.correctTotal,0);assert.equal(state.errors.length,1);assert.equal(state.session,null);assert.deepEqual(state.ticketResults,[]);
+  assert(state.bankUpdateNotice.includes('Банк вопросов обновлён'));assert(updated.getHtml().includes('Общая статистика и список ошибок сохранены'));
+  const removed=clone(fixture);removed.questions=removed.questions.filter(q=>q.id!==state.errors[0]);
+  const removedRun=runtime(removed,{storage:run.storage});await removedRun.a.load();assert.deepEqual(removedRun.getState().errors,[]);
+  const currentSig=full.getState().bankSignature;
+  const oldLayoutContent=JSON.stringify(realBank.questions.map(q=>[q.id,q.topic,q.question,q.options.map(o=>[o.text,o.correct])]));
+  let oldHash=2166136261;for(let i=0;i<oldLayoutContent.length;i++)oldHash=Math.imul(oldHash^oldLayoutContent.charCodeAt(i),16777619);
+  assert.notEqual(currentSig,(oldHash>>>0).toString(16));
+  const legacy={version:1,bankSignature:(oldHash>>>0).toString(16),total:25,correctTotal:20,page:'tickets',mode:'practice',errors:['q012'],ticketResults:[[0,{correct:18,length:20}]],sessionOpen:false,session:null};
+  const legacyStore=new Map([[key,JSON.stringify(legacy)]]);const legacyRun=runtime(realBank,{storage:legacyStore});await legacyRun.a.load();state=legacyRun.getState();
+  assert.equal(state.total,25);assert.equal(state.correctTotal,20);assert.deepEqual(state.errors,['q012']);assert.deepEqual(state.ticketResults,[]);assert.equal(state.session,null);assert(state.bankUpdateNotice);
+  const bank500=clone(realBank);bank500.questions=bank500.questions.filter(q=>Number(q.id.slice(1))<=500);bank500.topics=bank500.topics.filter(topic=>bank500.questions.some(q=>q.topic===topic));assert.equal(bank500.questions.length,500);
+  const old500Store=new Map();const old500=runtime(bank500,{storage:old500Store});await old500.a.load();
+  old500.a.startSession(['q012','q401','q483'],'Старые 500 вопросов');const old500Id=old500.getState().session.ids[0];old500.a.selectAnswer(wrongIndex(bank500,old500Id));old500.a.checkAnswer();
+  const old500Snapshot=old500.getState();const expanded=runtime(realBank,{storage:old500Store});await expanded.a.load();
+  assert.equal(expanded.getState().total,old500Snapshot.total);assert.equal(expanded.getState().correctTotal,old500Snapshot.correctTotal);assert.deepEqual(expanded.getState().errors,old500Snapshot.errors);
+  assert.equal(expanded.getState().session,null);assert.equal(expanded.getState().tickets.length,Math.ceil(realBank.questions.length/50));assert(expanded.getState().bankUpdateNotice.includes('Банк вопросов обновлён'));assert.deepEqual([...old500Store.keys()],[key]);
+  const previous840=JSON.parse(fs.readFileSync(require('node:path').join(fixtureRoot,'questions.json'),'utf8'));
+  const complianceMigrationStore=new Map();const beforeCompliance=runtime(previous840,{storage:complianceMigrationStore});await beforeCompliance.a.load();
+  beforeCompliance.a.startSession(['q416','q566','q012'],'До темы комплаенса');const migrationId=beforeCompliance.getState().session.ids[0];beforeCompliance.a.selectAnswer(wrongIndex(previous840,migrationId));beforeCompliance.a.checkAnswer();
+  const migrationSnapshot=beforeCompliance.getState();const afterCompliance=runtime(realBank,{storage:complianceMigrationStore});await afterCompliance.a.load();
+  assert.equal(afterCompliance.getState().total,migrationSnapshot.total);assert.deepEqual(afterCompliance.getState().errors,migrationSnapshot.errors);assert.equal(afterCompliance.getState().session,null);assert(afterCompliance.getState().bankUpdateNotice.includes('Банк вопросов обновлён'));
+  // Broken storage and malformed saved state do not prevent a fresh attempt.
+  const broken=runtime(fixture,{storage:new Map([[key,'{not json']])});await broken.a.load();assert.equal(broken.getState().total,0);assert.equal(broken.getState().session,null);
+  const denied=runtime(fixture,{storageBlocked:true});await denied.a.load();assert.equal(denied.getState().storageAvailable,false);assert(denied.nodes.get('#storage-status').textContent.includes('не разрешает сохранение'));
+  denied.a.startSession(['f0'],'Private mode');denied.a.selectAnswer(0);denied.a.checkAnswer();assert.equal(denied.getState().total,1);assert.equal(denied.getState().correctTotal,1);assert(denied.nodes.get('#sidebar-storage-status').textContent.includes('недоступно'));
+  run=runtime(fixture);await run.a.load();run.a.startSession(['f0','f1'],'Stored');
+  let tampered=JSON.parse(run.storage.get(key));tampered.session.orders[0][1]=[0,1,1,3];
+  const invalidOrder=runtime(fixture,{storage:new Map([[key,JSON.stringify(tampered)]])});await invalidOrder.a.load();assert.equal(invalidOrder.getState().session,null);
+  tampered=JSON.parse(run.storage.get(key));tampered.session.ids[0]='unknown';
+  const invalidId=runtime(fixture,{storage:new Map([[key,JSON.stringify(tampered)]])});await invalidId.a.load();assert.equal(invalidId.getState().session,null);
+  for(const [savedSize,expectedSize] of [[400,50],[20,20],[undefined,50]]){
+    tampered=JSON.parse(run.storage.get(key));if(savedSize===undefined)delete tampered.randomSize;else tampered.randomSize=savedSize;
+    const sized=runtime(fixture,{storage:new Map([[key,JSON.stringify(tampered)]])});await sized.a.load();assert.equal(sized.getState().randomSize,expectedSize);
+  }
+  const duplicate=clone(fixture);duplicate.questions[1].id=duplicate.questions[0].id;const duplicateRun=runtime(duplicate);await duplicateRun.a.load();assert(duplicateRun.getHtml().includes('Не удалось загрузить вопросы'));
+  const badAnswer=clone(fixture);badAnswer.questions[0].options[1].correct=true;const badRun=runtime(badAnswer);await badRun.a.load();assert(badRun.getHtml().includes('Не удалось загрузить вопросы'));
+  const badSource=clone(fixture);badSource.sources=[{id:'unsafe',title:'Bad',url:'javascript:alert(1)'}];const badSourceRun=runtime(badSource);await badSourceRun.a.load();assert(badSourceRun.getHtml().includes('Не удалось загрузить вопросы'));
+  const wrongInterview=clone(realBank);wrongInterview.questions.find(q=>q.id==='q354').interviewSourceIds=['rfc9112'];const badInterviewRun=runtime(wrongInterview);await badInterviewRun.a.load();assert(badInterviewRun.getHtml().includes('Не удалось загрузить вопросы'));
+  const missingSource=clone(fixture);missingSource.questions[0].sourceIds=['missing'];const missingSourceRun=runtime(missingSource);await missingSourceRun.a.load();assert(missingSourceRun.getHtml().includes('Не удалось загрузить вопросы'));
+  run=runtime(fixture);await run.a.load();run.a.startSession(['f0'],'Keyboard');
+  const keydown=run.documentListeners.get('keydown');const event=(key,target)=>({key,target,ctrlKey:false,metaKey:false,altKey:false,preventDefault(){this.prevented=true;}});
+  const body={tagName:'BODY'};const input={tagName:'INPUT'};keydown(event('1',input));assert.equal(run.getState().session.answers.length,0);
+  const order=run.getState().session.orders[0][1];keydown(event('2',body));assert.equal(run.getState().session.answers[0][1],order[1]);
+  const button={tagName:'BUTTON',matches:()=>false};keydown(event('Enter',button));assert.equal(run.getState().total,0);
+  await run.a.navigate('topics');const pausedAnswer=run.getState().session.answers[0][1];keydown(event('3',body));assert.equal(run.getState().session.answers[0][1],pausedAnswer);
+  console.log('Trainer checks passed: composed 955-question base, 120 compliance questions, 45 topics, legal/source metadata, original collections, shuffle, scoring, hidden exam sources, dialogs, exact text, keyboard, validation and 500/840-bank migrations.');
 }
-
-(async()=>{
-  // Click help in the real screenshot question without touching its attempt or score.
-  const glossaryRun=await runtime();
-  glossaryRun.a.startSession(['q358'],'Справка');
-  const glossaryMain=glossaryRun.nodes.get('#main');
-  assert.equal((glossaryMain.innerHTML.match(/class="option-pick"/g)||[]).length,4);
-  assert([...glossaryMain.innerHTML.matchAll(/<button[^>]*data-option[^>]*>([\s\S]*?)<\/button>/g)].every(([,content])=>!/<button|<input|<a\b/.test(content)), 'Answer buttons must have no interactive descendants');
-  let launcher=glossaryMain.querySelectorAll('[data-term="nonce"]')[0];
-  const beforeHelp=glossaryRun.storage.get(key);
-  const helpClick=glossaryMain.dispatch('click',{target:launcher});
-  assert(helpClick.defaultPrevented && helpClick.propagationStopped);
-  assert(glossaryRun.nodes.get('#term-dialog').open);
-  glossaryRun.key('1');glossaryRun.key('Enter');
-  assert.equal(glossaryRun.a.get().session.answers.size,0);
-  assert.equal(glossaryRun.storage.get(key),beforeHelp,'Reading help must not change the saved attempt');
-  glossaryRun.nodes.get('#term-dialog').dispatch('cancel');
-  assert(launcher.focused);
-  const right=glossaryRun.a.get().bank.get('q358').options.findIndex(o=>o.correct);
-  glossaryMain.querySelector(`[data-option="${right}"]`).dispatch('click');glossaryRun.a.checkAnswer();
-  launcher=glossaryMain.querySelectorAll('[data-term="nonce"]')[0];
-  const checkedHelp=glossaryRun.storage.get(key);
-  glossaryMain.dispatch('click',{target:launcher});
-  assert(glossaryRun.nodes.get('#term-dialog').open,'Vocabulary remains usable after checking');
-  glossaryRun.key('2');assert.equal(glossaryRun.storage.get(key),checkedHelp);
-  assert.equal(glossaryRun.a.get().total,1);assert.equal(glossaryRun.a.get().correctTotal,1);
-  glossaryRun.nodes.get('#term-close').dispatch('click');
-  let {a,nodes}=await runtime();
-  let state=()=>a.get();
-  const all=state().tickets.flat();
-  assert.equal(all.length,840);assert.equal(new Set(all).size,840);
-  assert.deepEqual(Array.from(all).sort(),data.questions.map(q=>q.id).sort(),'Numbered tickets cover every question once');
-  assert.deepEqual(Array.from(state().tickets,t=>t.length),[...Array(16).fill(50),40]);
-  const legalCounts=Array.from(state().tickets,t=>t.filter(id=>state().bank.get(id).legal).length);
-  assert.equal(legalCounts.reduce((a,b)=>a+b,0),100);assert(legalCounts.every(n=>n===5||n===6),'Legal questions remain evenly distributed');
-  assert.equal(Number(nodes.get('#ticket-count').textContent),17);
-  assert.equal(Number(nodes.get('#topic-count').textContent),44);
-  assert(nodes.get('#dataset-info').textContent.includes('840 вопросов · 44 тем'));
-  assert.equal(nodes.get('#main').querySelectorAll('[data-ticket]').length,0);
-  assert(fs.readFileSync(path.join(root,'index.html'),'utf8').includes('840 вопросов'));
-  for(const topic of data.topics){
-    const counts=Array.from(state().tickets,ticket=>ticket.filter(id=>state().bank.get(id).topic===topic).length);
-    // Equal-capacity legacy tickets stay balanced; the final 40-question ticket can fill earlier.
-    const fullCounts=counts.filter((_,i)=>state().tickets[i].length===50);
-    assert(Math.max(...fullCounts)-Math.min(...fullCounts)<=1,`${topic} must be spread evenly across full tickets`);
-    assert(counts.at(-1)<=Math.max(...fullCounts)+1,`${topic} must respect the smaller final ticket`);
-    if(topic==='Модель OSI'){assert.equal(counts.reduce((a,b)=>a+b,0),41);assert(counts.every(n=>n===2||n===3));}
-  }
-  const legalTopics=new Map([['Персональные данные РФ',30],['Правовые основы ИБ РФ',25],['КИИ и ответственность в ИБ',20],['GDPR и защита данных в ЕС',25]]);
-  assert.equal(data.questions.filter(q=>q.legal).length,100);
-  for(const [topic,count] of legalTopics){
-    const questions=data.questions.filter(q=>q.topic===topic);
-    assert.equal(questions.length,count);
-    assert(questions.every(q=>q.legal?.jurisdiction===(topic.startsWith('GDPR')?'EU':'RU') && q.legal.reviewedAt==='2026-10-02'));
-  }
-  assert(nodes.get('#main').innerHTML.includes('Для изучения правовых норм: 100 вопросов'));
-  assert(nodes.get('#main').innerHTML.includes('Нормы проверены по состоянию на 02.10.2026'));
-  assert(nodes.get('#main').innerHTML.includes('Применимость нормы зависит от юрисдикции и условий вопроса'));
-  assert(nodes.get('#main').innerHTML.includes('50 вопросов из всех тем'));
-  nodes.get('#main').querySelector('[data-action="random"]').dispatch('click');
-  assert.equal(state().session.ids.length,50);assert.equal(new Set(state().session.ids).size,50);
-  a.jump(49);assert.equal(state().session.index,49);assert(nodes.get('#main').innerHTML.includes('Вопрос 50 / 50'));
-  a.jump(50);assert.equal(state().session.index,49,'Navigation must stop at question 50');
-  // Random size is persisted and a fresh 20-question session has unique IDs.
-  const shortRun=await runtime();
-  shortRun.nodes.get('#main').querySelector('[data-size="20"]').dispatch('click');
-  shortRun.nodes.get('#main').querySelector('[data-action="random"]').dispatch('click');
-  assert.equal(shortRun.a.get().session.ids.length,20);
-  assert.equal(new Set(shortRun.a.get().session.ids).size,20);
-  assert.equal(JSON.parse(shortRun.storage.get(key)).randomSize,20);
-  const resumedShort=await runtime(shortRun.storage);
-  assert.equal(resumedShort.a.get().session.ids.length,20);
-  await resumedShort.a.navigate('tickets');
-  assert(resumedShort.nodes.get('#main').innerHTML.includes('data-size="20" aria-pressed="true"'));
-  // The global collection is a separate page; the internal control still starts only the basic bank.
-  const allStorage=new Map();
-  let randomValue=0;
-  let full=await runtime(allStorage,{random:()=>randomValue});
-  const fullState=()=>full.a.get();
-  assert.equal(full.nodes.get('#main').querySelectorAll('[data-action="all"]').length,1);
-  assert(full.nodes.get('#main').innerHTML.includes('<h3>Весь базовый банк</h3><p>840 вопросов · без повторов</p>'));
-  assert.match(full.nodes.get('#main').innerHTML, /<h3>Все вопросы<\/h3>[\s\S]*?href="\.\/all-questions\.html"/, 'The full-ticket entry must open the global mode');
-  for(const file of ['index.html','senior.html','ai-security.html','scenarios.html','all-questions.html']) {
-    const html=fs.readFileSync(path.join(root,file),'utf8');
-    assert.equal((html.match(/href="\.\/all-questions\.html"/g)||[]).length,1,`${file} must expose the global collection in navigation`);
-    const activeGlobal=/<a class="nav-item active" href="\.\/all-questions\.html" aria-current="page">Все вопросы<\/a>/.test(html);
-    assert.equal(activeGlobal,file==='all-questions.html',`${file} must identify the current bank correctly`);
-  }
-  const combinedPage=fs.readFileSync(path.join(root,'all-questions.html'),'utf8');
-  assert(combinedPage.includes('data-bank="all-questions"'));
-  assert(combinedPage.indexOf('src="./all-questions.js" defer')<combinedPage.indexOf('src="./case-trainer.js" defer'),'The aggregate loader must run before the trainer');
-  assert(combinedPage.includes('src="./all-questions.js" defer'),'The global page must load its aggregate bank loader');
-  full.nodes.get('#main').querySelector('[data-action="all"]').dispatch('click');
-  assert.equal(fullState().session.title,'Весь базовый банк');
-  const firstOrder=Array.from(fullState().session.ids);
-  const firstAnswers=Array.from(fullState().session.orders.get(firstOrder[0]));
-  assert.equal(firstOrder.length,840);assert.equal(new Set(firstOrder).size,840);
-  assert.deepEqual([...firstOrder].sort(),data.questions.map(q=>q.id).sort(),'Whole-bank mode must include every question exactly once');
-  assert.equal(fullState().session.ticket,null,'Whole-bank results must not overwrite numbered tickets');
-  assert(full.nodes.get('#main').innerHTML.includes('class="quiz-map long-session"'));
-  const checkedFull=choose(full.a,true);full.a.checkAnswer();
-  full.a.jump(250);const pendingFull=choose(full.a,false);
-  randomValue=.75;
-  full=await runtime(allStorage,{random:()=>randomValue});
-  assert.equal(fullState().session.index,250);
-  assert.equal(fullState().total,1,'Resuming 840 questions must not score again');
-  assert.deepEqual(Array.from(fullState().session.ids),firstOrder,'Resume must retain the original question order');
-  assert.deepEqual(Array.from(fullState().session.orders.get(firstOrder[0])),firstAnswers);
-  assert(fullState().session.recorded.has(checkedFull.id));
-  assert.equal(fullState().session.answers.get(pendingFull.id),pendingFull.oi);
-  full.a.jump(839);assert(full.nodes.get('#main').innerHTML.includes('Вопрос 840 / 840'));
-  full.a.jump(840);assert.equal(fullState().session.index,839);
-  full.a.finishSession();assert.equal(fullState().total,840);assert.equal(fullState().correctTotal,1);
-  assert.equal(fullState().ticketResults.size,0);
-  full.nodes.get('#main').querySelector('[data-result="retry"]').dispatch('click');
-  assert.equal(fullState().session.ids.length,840);
-  assert.notDeepEqual(Array.from(fullState().session.ids),firstOrder,'Retry must create a fresh shuffled question order');
-  assert.notDeepEqual(Array.from(fullState().session.orders.get(firstOrder[0])),firstAnswers,'Retry must reshuffle answer options');
-  assert.equal(fullState().session.answers.size,0);assert.equal(fullState().session.recorded.size,0);
-  assert.equal(fullState().session.index,0);assert.equal(fullState().total,840);
-  const fullExam=await runtime();fullExam.a.setMode('exam');
-  fullExam.nodes.get('#main').querySelector('[data-action="all"]').dispatch('click');
-  assert.equal(fullExam.a.get().session.mode,'exam');assert.equal(fullExam.a.get().session.ids.length,840);
-  choose(fullExam.a,true);
-  assert.equal(fullExam.a.get().total,0);assert(!fullExam.nodes.get('#main').innerHTML.includes('class="feedback'));
-  assert(!fullExam.nodes.get('#main').innerHTML.includes('option correct'));
-  // The tools shortcut is an actual collection, with fresh attempts and preserved resumes.
-  const toolIds=data.questions.filter(q=>q.collection==='security-tools').map(q=>q.id).sort();
-  const toolStorage=new Map();let toolRandom=0;
-  let toolRun=await runtime(toolStorage,{random:()=>toolRandom});
-  assert.equal(toolRun.nodes.get('#main').querySelectorAll('[data-action="tools"]').length,1);
-  assert(toolRun.nodes.get('#main').innerHTML.includes('<h3>Инструменты ИБ</h3><p>100 вопросов'));
-  toolRun.nodes.get('#main').querySelector('[data-action="tools"]').dispatch('click');
-  const toolOrder=Array.from(toolRun.a.get().session.ids);
-  assert.equal(toolOrder.length,100);assert.deepEqual([...toolOrder].sort(),toolIds);
-  assert.equal(toolRun.a.get().session.ticket,null);
-  const toolAnswerOrder=Array.from(toolRun.a.get().session.orders.get(toolOrder[0]));
-  choose(toolRun.a,true);toolRun.a.checkAnswer();toolRun.a.jump(32);
-  const toolPending=choose(toolRun.a,false);
-  toolRandom=.73;toolRun=await runtime(toolStorage,{random:()=>toolRandom});
-  assert.equal(toolRun.a.get().session.index,32);assert.equal(toolRun.a.get().total,1);
-  assert.deepEqual(Array.from(toolRun.a.get().session.ids),toolOrder);
-  assert.deepEqual(Array.from(toolRun.a.get().session.orders.get(toolOrder[0])),toolAnswerOrder);
-  assert.equal(toolRun.a.get().session.answers.get(toolPending.id),toolPending.oi);
-  toolRun.a.finishSession();assert.equal(toolRun.a.get().total,100);
-  assert.equal(toolRun.a.get().ticketResults.size,0);
-  toolRun.nodes.get('#main').querySelector('[data-result="retry"]').dispatch('click');
-  assert.deepEqual(Array.from(toolRun.a.get().session.ids).sort(),toolIds);
-  assert.notDeepEqual(Array.from(toolRun.a.get().session.ids),toolOrder);
-  assert.notDeepEqual(Array.from(toolRun.a.get().session.orders.get(toolOrder[0])),toolAnswerOrder);
-  const toolExam=await runtime();
-  toolExam.nodes.get('#main').querySelector('[data-mode="exam"]').dispatch('click');
-  toolExam.nodes.get('#main').querySelector('[data-action="tools"]').dispatch('click');
-  assert.equal(toolExam.a.get().session.mode,'exam');assert.equal(toolExam.a.get().session.ids.length,100);
-  choose(toolExam.a,true);assert.equal(toolExam.a.get().total,0);
-  assert(!toolExam.nodes.get('#main').innerHTML.includes('class="feedback'));
-  assert(!toolExam.nodes.get('#main').innerHTML.includes('option correct'));
-  const ids=data.questions.slice(0,3).map(q=>q.id);
-  a.startSession(ids,'Practice');
-  const {id:wrongId}=choose(a,false);a.checkAnswer();
-  assert.equal(state().total,1);assert.equal(state().correctTotal,0);assert(state().errors.has(wrongId));
-  assert(nodes.get('#main').innerHTML.includes('Почему ваш ответ неверен'));
-  a.checkAnswer();assert.equal(state().total,1,'Checking twice must not double-count');
-  a.jump(1);choose(a,true);a.checkAnswer();a.finishSession();
-  assert.equal(state().total,3);assert.equal(state().correctTotal,1);assert.equal(state().errors.size,2,'A skipped question must be an error');
-  assert(nodes.get('#main').innerHTML.includes('Разбор всех вопросов'));
-  a.startSession([wrongId],'Repeat');choose(a,true);a.checkAnswer();a.finishSession();
-  assert(!state().errors.has(wrongId),'A successful retry removes the error');
-  const before=state().total;
-  a.setMode('exam');a.startSession(ids,'Exam');choose(a,false);
-  assert.equal(state().total,before,'Exam answers are not scored before finishing');
-  assert(!nodes.get('#main').innerHTML.includes('class="feedback'));
-  assert(!nodes.get('#main').innerHTML.includes('option correct'));
-  const {id:examId}=choose(a,true);a.finishSession();
-  assert(a.isCorrect(examId),'The exam must accept a changed answer');assert.equal(state().total,before+3);
-  const perfectBefore=state().correctTotal;
-  a.setMode('practice');a.startSession(state().tickets[0],'Perfect ticket',0);
-  for(let i=0;i<state().session.ids.length;i++){
-    a.jump(i);const {id}=choose(a,true);
-    assert.equal(new Set(state().session.orders.get(id)).size,4);a.checkAnswer();assert(a.isCorrect(id));
-  }
-  a.finishSession();assert.equal(state().correctTotal,perfectBefore+50);
-  assert(nodes.get('#main').innerHTML.includes('Билет пройден'));
-
-  // Interview and certification metadata are visible, while source links appear only after submission.
-  const interview=data.questions.find(q=>q.interviewSourceIds?.length);
-  assert(interview,'The bank must contain interview questions');
-  a.startSession([interview.id],'Interview practice');
-  assert(nodes.get('#main').innerHTML.includes('Собеседование'));
-  assert(!nodes.get('#main').innerHTML.includes('class="answer-sources"'));
-  choose(a,true);a.checkAnswer();
-  assert(nodes.get('#main').innerHTML.includes('class="answer-sources"'));
-  assert(nodes.get('#main').innerHTML.includes('Для разбора темы'));
-  assert(nodes.get('#main').innerHTML.includes('Тема из открытой подборки собеседований'));
-  const certQuestion=data.questions.find(q=>q.certifications?.length && q.difficulty);
-  a.startSession([certQuestion.id],'Certification practice');
-  assert(nodes.get('#main').innerHTML.includes('По тематике:'));
-  assert(nodes.get('#main').innerHTML.includes('class="level-tag"'));
-  a.setMode('exam');a.startSession([interview.id],'Interview exam');choose(a,true);
-  assert(!nodes.get('#main').innerHTML.includes('class="answer-sources"'));
-  a.finishSession();assert(nodes.get('#main').innerHTML.includes('class="answer-sources"'));
-
-  // Jurisdiction and review date are visible; distinctive citation text must never leak into an unchecked question.
-  for(const [jurisdiction,label] of [['RU','РФ'],['EU','ЕС · GDPR']]){
-    const legalData=JSON.parse(JSON.stringify(data));
-    const q=legalData.questions.filter(q=>q.legal?.jurisdiction===jurisdiction).sort((a,b)=>b.legal.references.length-a.legal.references.length)[0];
-    q.legal.references.forEach((ref,i)=>{
-      ref.locator=`QA legal locator ${jurisdiction} ${i}`;
-      legalData.sources.find(source=>source.id===ref.sourceId).title=`QA legal source ${jurisdiction} ${i}`;
-    });
-    const legalStorage=new Map();
-    ({a,nodes}=await runtime(legalStorage,{data:legalData}));
-    const checkLegalMarkup=visible=>{
-      const markup=nodes.get('#main').innerHTML;
-      assert(markup.includes(`class="level-tag legal-tag">${label}</span>`));
-      assert(markup.includes('<time datetime="2026-10-02">02.10.2026</time>'));
-      assert.equal(markup.includes('class="answer-sources"'),visible);
-      assert.equal(markup.includes('Правовые источники'),visible);
-      assert.equal(markup.includes('class="legal-locator"'),visible);
-      if(q.sourceIds.every(id=>legalData.sources.find(source=>source.id===id).kind==='legal'))assert(!markup.includes('Для разбора темы'));
-      for(const ref of q.legal.references){
-        const source=legalData.sources.find(source=>source.id===ref.sourceId);
-        assert.equal(markup.includes(`href="${source.url.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}"`),visible);
-        assert.equal(markup.includes(source.title),visible);
-        assert.equal(markup.includes(ref.locator),visible);
-      }
-    };
-    a.startSession([q.id],'Legal practice');checkLegalMarkup(false);
-    choose(a,true);checkLegalMarkup(false);a.checkAnswer();checkLegalMarkup(true);a.finishSession();
-    a.setMode('exam');a.startSession([q.id],'Legal exam');choose(a,true);a.checkAnswer();checkLegalMarkup(false);
-    ({a,nodes}=await runtime(legalStorage,{data:legalData}));
-    assert.equal(state().total,1,'Resuming a legal exam does not score an unchecked answer');checkLegalMarkup(false);
-    a.finishSession();checkLegalMarkup(true);assert.equal(state().total,2);
-  }
-
-  // New topic buttons and the last numbered ticket use the dynamic bank, with the same existing controls.
-  await a.navigate('tickets');a.startSession(a.get().tickets[11],'Сохранённый билет',11);
-  assert.equal(state().session.ticket,11);assert.equal(state().session.ids.length,50);
-  await a.navigate('topics');assert.equal(nodes.get('#main').querySelectorAll('[data-topic]').length,44);
-  nodes.get('#main').querySelector('[data-mode="practice"]').dispatch('click');
-  nodes.get('#main').querySelector(`[data-topic="${data.topics.indexOf('Персональные данные РФ')}"]`).dispatch('click');
-  nodes.get('#dialog-ok').dispatch('click');await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(state().session.mode,'practice');assert.equal(state().session.ids.length,30);
-  assert(state().session.ids.every(id=>state().bank.get(id).topic==='Персональные данные РФ'));
-
-  // Reject malformed legal context and references before making the bank available.
-  const ordinarySource=data.sources.find(source=>source.kind!=='legal');
-  for(const [reason,mutate] of [
-    ['missing legal context',q=>{q.legal=null;}],
-    ['unknown jurisdiction',q=>{q.legal.jurisdiction='US';}],
-    ['non-ISO review date',q=>{q.legal.reviewedAt='02.10.2026';}],
-    ['impossible review date',q=>{q.legal.reviewedAt='2026-02-30';}],
-    ['empty legal references',q=>{q.legal.references=[];}],
-    ['unknown legal source',q=>{q.legal.references[0].sourceId='law-missing';}],
-    ['reference absent from sourceIds',q=>{q.sourceIds=q.sourceIds.filter(id=>id!==q.legal.references[0].sourceId);q.sourceIds.push(ordinarySource.id);}],
-    ['non-legal source',q=>{q.legal.references[0].sourceId=ordinarySource.id;q.sourceIds.push(ordinarySource.id);}],
-    ['empty legal locator',q=>{q.legal.references[0].locator='  ';}]
-  ]){
-    const invalidData=JSON.parse(JSON.stringify(data));mutate(invalidData.questions.find(q=>q.legal));
-    await runtime(new Map(),{data:invalidData,expectLoadFailure:reason});
-  }
-
-  // Simulate closing and reopening the page with the same browser storage.
-  const storage=new Map();
-  ({a,nodes}=await runtime(storage));state=()=>a.get();
-  a.startSession(state().tickets[0],'Saved practice',0);
-  const checked=choose(a,false);a.checkAnswer();
-  const order=Array.from(state().session.orders.get(checked.id));
-  a.jump(1);const unchecked=choose(a,true);
-  ({a,nodes}=await runtime(storage));
-  assert.equal(state().session.index,1);assert.equal(state().total,1);
-  assert.equal(state().session.answers.get(unchecked.id),unchecked.oi);
-  assert(state().session.recorded.has(checked.id));assert(state().errors.has(checked.id));
-  assert.deepEqual(Array.from(state().session.orders.get(checked.id)),order,'Answer order must survive reload');
-  assert(!state().session.recorded.has(unchecked.id),'An unchecked choice stays unchecked');
-  a.jump(0);choose(a,true);a.checkAnswer();
-  assert.equal(state().total,1,'Previously checked answers remain locked after reload');
-  assert.equal(state().session.answers.get(checked.id),checked.oi);
-  await a.navigate('topics');
-  assert(!state().sessionOpen);assert(nodes.get('#main').innerHTML.includes('Продолжить билет'));
-  ({a,nodes}=await runtime(storage));
-  assert.equal(state().page,'topics');assert(!state().sessionOpen);
-  assert(nodes.get('#main').innerHTML.includes('Продолжить билет'),'Paused ticket stays available');
-
-  // Replacing a paused ticket requires the user's explicit choice in the UI.
-  const oldTitle=state().session.title;
-  let pending=a.requestStartSession(ids,'Replacement');nodes.get('#dialog-cancel').dispatch('click');await pending;
-  assert.equal(state().session.title,oldTitle);
-  pending=a.requestStartSession(ids,'Replacement');nodes.get('#dialog-ok').dispatch('click');await pending;
-  assert.equal(state().session.title,'Replacement');assert.equal(state().total,1);
-
-  // Completed results and mistake correction persist without scoring again.
-  a.startSession(state().tickets[1],'Saved result',1);choose(a,true);a.checkAnswer();a.finishSession();
-  const completedTotal=state().total;
-  ({a,nodes}=await runtime(storage));
-  assert(state().session.finished);assert.equal(state().total,completedTotal);
-  assert.equal(state().ticketResults.get(1).correct,1);assert(nodes.get('#main').innerHTML.includes('Разбор всех вопросов'));
-  const mistake=[...state().errors][0];a.startSession([mistake],'Fix saved error');choose(a,true);a.checkAnswer();a.finishSession();
-  ({a,nodes}=await runtime(storage));assert(!state().errors.has(mistake));
-
-  // An exam resumes without leaking correctness or submitting choices.
-  const examStorage=new Map();
-  ({a,nodes}=await runtime(examStorage));a.setMode('exam');a.startSession(ids,'Saved exam');
-  const first=choose(a,false);a.jump(1);choose(a,true);
-  ({a,nodes}=await runtime(examStorage));
-  assert.equal(state().session.mode,'exam');assert.equal(state().session.index,1);assert.equal(state().total,0);
-  assert.equal(state().session.answers.get(first.id),first.oi);
-  assert(!nodes.get('#main').innerHTML.includes('class="feedback'));assert(!nodes.get('#main').innerHTML.includes('option correct'));
-  a.jump(0);choose(a,true);a.finishSession();assert.equal(state().correctTotal,2);
-  ({a,nodes}=await runtime(examStorage));assert.equal(state().total,3,'Reopening a finished exam must not resubmit');
-
-  // Reset cancellation preserves progress; confirmation persists an empty state.
-  pending=a.resetProgress();nodes.get('#dialog-cancel').dispatch('click');await pending;assert.equal(state().total,3);
-  pending=a.resetProgress();nodes.get('#dialog-ok').dispatch('click');await pending;
-  ({a,nodes}=await runtime(examStorage));
-  assert.equal(state().total,0);assert.equal(state().errors.size,0);assert.equal(state().ticketResults.size,0);assert.equal(state().session,null);
-
-  // Bad or stale data must not prevent use of the trainer.
-  for(const saved of ['{broken',JSON.stringify({version:1,total:10,correctTotal:99,session:{ids:['missing']}})]){
-    ({a,nodes}=await runtime(new Map([[key,saved]])));assert.equal(state().total,0);assert.equal(state().session,null);
-  }
-  ({a,nodes}=await runtime(new Map(),{blocked:true}));
-  a.startSession(ids,'Storage unavailable');choose(a,true);a.checkAnswer();
-  assert.equal(state().correctTotal,1);assert(!state().storageAvailable);assert(nodes.get('#storage-status').textContent.includes('не разрешает'));
-  const beforeUpdate=JSON.parse(storage.get(key));
-  const changedData=JSON.parse(JSON.stringify(data));changedData.questions[0].question+=' (updated)';
-  ({a,nodes}=await runtime(storage,{data:changedData}));
-  assert.equal(state().session,null,'A changed bank must not restore potentially stale answers');assert.equal(state().ticketResults.size,0);
-  assert.equal(state().total,beforeUpdate.total,'Aggregate history remains available after a bank update');
-  assert.equal(state().correctTotal,beforeUpdate.correctTotal);
-  assert.deepEqual([...state().errors].sort(),beforeUpdate.errors.sort());
-  assert(nodes.get('#main').innerHTML.includes('Банк вопросов обновлён'));
-  ({a,nodes}=await runtime(storage,{data:changedData}));
-  assert(!nodes.get('#main').innerHTML.includes('Банк вопросов обновлён'),'The update notice is not repeated on later visits');
-
-  // Version 1 storage from the original 88-question trainer retains history, never its 20-question session.
-  const legacyIds=['q001','q006','q011','q016','q023','q028','q033','q038','q043','q048','q056','q064','q070','q079','q002','q007','q012','q017','q024','q029'];
-  const legacy={version:1,bankSignature:'f103401f',total:31,correctTotal:22,page:'topics',mode:'exam',errors:['q001','removed-question'],ticketResults:[[0,{correct:20,length:20}]],sessionOpen:true,
-    session:{title:'Билет 1',ticket:0,mode:'practice',ids:legacyIds,index:1,finished:false,answers:[['q001',0]],orders:legacyIds.map(id=>[id,[0,1,2,3]]),recorded:['q001']}};
-  const legacyStorage=new Map([[key,JSON.stringify(legacy)]]);
-  ({a,nodes}=await runtime(legacyStorage));
-  assert.equal(state().total,31);assert.equal(state().correctTotal,22);
-  assert.deepEqual([...state().errors],['q001']);assert.equal(state().session,null);assert.equal(state().ticketResults.size,0);
-  assert.equal(state().page,'topics');assert.equal(state().mode,'exam');
-  assert(!nodes.get('#main').innerHTML.includes('Продолжить билет'));
-  assert(nodes.get('#main').innerHTML.includes('Банк вопросов обновлён'));
-  a.startSession(state().tickets[0],'New ticket',0);assert.equal(state().session.ids.length,50);
-  choose(a,true);a.finishSession();
-  assert.equal(state().total,81);assert.equal(state().correctTotal,23,'Only the new ticket is scored');
-  assert.equal(state().ticketResults.get(0).length,50);
-
-  // Bank growth from 400/500 questions and a layout-only change from 20 to 50 retain aggregates and mistake IDs.
-  const previousData={...data,questions:data.questions.filter(q=>Number(q.id.slice(1))<=400)};
-  previousData.topics=data.topics.filter(topic=>previousData.questions.some(q=>q.topic===topic));
-  assert.equal(previousData.questions.length,400);assert.equal(previousData.topics.length,22);
-  const previous500={...data,questions:data.questions.filter(q=>Number(q.id.slice(1))<=500)};
-  previous500.topics=data.topics.filter(topic=>previous500.questions.some(q=>q.topic===topic));
-  assert.equal(previous500.questions.length,500);assert.equal(previous500.topics.length,26);
-  const previous600={...data,questions:data.questions.filter(q=>Number(q.id.slice(1))<=600)};
-  previous600.topics=data.topics.filter(topic=>previous600.questions.some(q=>q.topic===topic));
-  assert.equal(previous600.questions.length,600);assert.equal(previous600.topics.length,36);
-  const previous740={...data,questions:data.questions.filter(q=>Number(q.id.slice(1))<=740)};
-  previous740.topics=data.topics.filter(topic=>previous740.questions.some(q=>q.topic===topic));
-  assert.equal(previous740.questions.length,740);assert.equal(previous740.topics.length,40);
-  for(const [priorData,ticketSize] of [[previous740,50],[previous600,50],[previous500,50],[previousData,50],[previousData,20],[data,20]]){
-    const migrationStorage=new Map();
-    ({a,nodes}=await runtime(migrationStorage,{data:priorData,ticketSize}));
-    a.startSession(state().tickets[0],'Old completed ticket',0);choose(a,true);a.checkAnswer();a.finishSession();
-    a.startSession(state().tickets[1],'Old pending ticket',1);choose(a,false);
-    const beforeMigration=JSON.parse(migrationStorage.get(key));
-    ({a,nodes}=await runtime(migrationStorage));
-    assert.equal(state().session,null);assert.equal(state().ticketResults.size,0);
-    assert.equal(state().total,ticketSize);assert.equal(state().correctTotal,1);
-    assert.deepEqual([...state().errors].sort(),beforeMigration.errors.sort(),'Mistake IDs survive bank and ticket-layout changes');
-    assert(nodes.get('#main').innerHTML.includes('Банк вопросов обновлён'));
-  }
-  console.log('PASS: 840 questions, legacy ticket capacity 16 × 50 + 40, 44 balanced topics, OSI 2–3 per ticket, dynamic controls, tools collection shuffle/resume/exam, random ticket, validated legal metadata, legal sources only after checking/completion, training, exam secrecy, scoring, mistakes, reload/resume, answer order, completed results, reset, corrupt/unavailable storage, migrations from 88/400/500/600/740 questions and 20/50-question tickets.');
-})().catch(error=>{console.error(error);process.exitCode=1;});
+main().catch(error=>{console.error(error);process.exitCode=1;});
