@@ -41,7 +41,7 @@ public final class MainActivity extends Activity {
         "style.css", "case-trainer.css", "feedback.css", "app.js", "case-trainer.js", "all-questions.js", "wheel-visual.js", "wheel-visual.css",
         "feedback.js", "glossary.js", "android-adapter.js",
         "questions.json", "senior-questions.json", "ai-security-questions.json", "scenarios-questions.json",
-        "basic-bank.js", "compliance-glossary.js", "compliance-materials.html", "compliance-materials.js",
+        "basic-bank.js", "compliance.html", "compliance-glossary.js", "compliance-materials.html", "compliance-materials.js",
         "data/compliance-ru/manifest.json", "data/compliance-ru/practice.json",
         "data/compliance-ru/m01.json", "data/compliance-ru/m02.json", "data/compliance-ru/m03.json",
         "data/compliance-ru/m04.json", "data/compliance-ru/m05.json", "data/compliance-ru/m06.json",
@@ -117,6 +117,7 @@ public final class MainActivity extends Activity {
             || "/assets/scenarios.html".equals(uri.getPath())
             || "/assets/all-questions.html".equals(uri.getPath())
             || "/assets/topic-wheel.html".equals(uri.getPath())
+            || "/assets/compliance.html".equals(uri.getPath())
             || "/assets/compliance-materials.html".equals(uri.getPath())
             || "/assets/ai-security.html".equals(uri.getPath()));
     }

@@ -17,8 +17,8 @@ const current = run => run.a.get().progress;
 const boot = options => runtime({ id: 'all-questions', banks, ...options });
 const textOnly = markup => markup.replace(/<[^>]*>/g, '');
 const tiny = copy(banks);
-const legalOriginal = banks['./questions.json'].questions.find(q => q.legal);
-tiny['./questions.json'].questions = [banks['./questions.json'].questions[0], banks['./questions.json'].questions.find(q => q.id === 'q005'), legalOriginal];
+const legalOriginal = banks['./questions.json'].questions.find(q => q.legal && !q.compliance);
+tiny['./questions.json'].questions = [banks['./questions.json'].questions[0], banks['./questions.json'].questions.find(q => q.id === 'q005'), legalOriginal, ...banks['./questions.json'].questions.filter(q => q.compliance).slice(0,3)];
 for (const file of ['ai-security-questions.json', 'scenarios-questions.json']) {
   const bank = tiny[`./${file}`];
   bank.questions = bank.tracks.flatMap(track => bank.questions.filter(q => q.track === track.id).slice(0, 3));
@@ -26,7 +26,7 @@ for (const file of ['ai-security-questions.json', 'scenarios-questions.json']) {
 const tinyCount = Object.values(tiny).reduce((sum, bank) => sum + bank.questions.length, 0);
 const small = options => boot({ banks: tiny, ...options });
 const confirm = (run, correct) => { choose(run, correct); run.click('[data-action="check"]'); };
-const oldValues = [[baseKey, 'untouched main'], ...Object.values(keys).map(key => [key, `untouched ${key}`])];
+const oldValues = [[baseKey, 'untouched main'], ['cs-bilets-ru.compliance.v1', 'untouched compliance'], ...Object.values(keys).map(key => [key, `untouched ${key}`])];
 function assertOtherBanks(storage) { for (const [key, value] of oldValues) assert.equal(storage.get(key), value); }
 function assertTerminalLocked(run) {
   const before = plain(current(run));
@@ -37,8 +37,8 @@ function assertTerminalLocked(run) {
 }
 
 (async () => {
-  assert.equal(count, 1091);
-  assert.equal(tinyCount, 24);
+  assert.equal(count, 1151);
+  assert.equal(tinyCount, 27);
   const html = fs.readFileSync(path.join(root, 'all-questions.html'), 'utf8');
   assert(html.includes('data-bank="all-questions"'));
   assert(html.indexOf('src="./all-questions.js"') < html.indexOf('src="./case-trainer.js"'));
@@ -56,7 +56,7 @@ function assertTerminalLocked(run) {
   assert(run.html().includes('data-start="all"'));
   for (const attribute of ['data-mode=', 'data-track=', 'data-start="mixed"', 'data-start="mistakes"']) assert(!run.html().includes(attribute));
   assert(run.html().includes(`Начать все ${count} вопросов`));
-  for (const [track, expected] of Object.entries({ basic: 1015, 'ai-security': 40, scenarios: 36 })) assert.equal(run.a.get().dataset.questions.filter(q => q.track === track).length, expected);
+  for (const [track, expected] of Object.entries({ basic: 895, compliance: 180, 'ai-security': 40, scenarios: 36 })) assert.equal(run.a.get().dataset.questions.filter(q => q.track === track).length, expected);
 
   // No duplicated content or invented case material in the aggregate adapter.
   for (const original of originals) {

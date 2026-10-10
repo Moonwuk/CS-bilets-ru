@@ -5,8 +5,8 @@
     senior: { file: './senior-questions.json', key: 'cs-bilets-ru.senior.v1', prefix: 's', trackCount: 4, label: 'Сеньор' },
     'ai-security': { file: './ai-security-questions.json', key: 'cs-bilets-ru.ai-security.v1', prefix: 'ai', trackCount: 4, label: 'Защита ИИ' },
     scenarios: { file: './scenarios-questions.json', key: 'cs-bilets-ru.scenarios.v1', prefix: 'sc', trackCount: 3, label: 'Ситуационные задачи' },
-    'all-questions': { key: 'cs-bilets-ru.all-questions.v1', prefix: '(?:q|ai|sc)', trackCount: 3, label: 'Все вопросы' },
-    'topic-wheel': { key: 'cs-bilets-ru.topic-wheel.v1', prefix: '(?:q|ai|sc)', trackCount: 3, label: 'Барабан тем' }
+    'all-questions': { key: 'cs-bilets-ru.all-questions.v1', prefix: '(?:q|ai|sc)', trackCount: 4, label: 'Все вопросы' },
+    'topic-wheel': { key: 'cs-bilets-ru.topic-wheel.v1', prefix: '(?:q|ai|sc)', trackCount: 4, label: 'Барабан тем' }
   };
   const bankId = document.body.dataset.bank;
   const config = Object.prototype.hasOwnProperty.call(CONFIGS, bankId) ? CONFIGS[bankId] : null;
@@ -75,7 +75,7 @@
       trackIds.add(track.id);
     }
     if (bankId === 'scenarios') require(['mitre', 'owasp', 'cve'].every(id => trackIds.has(id)), 'Не заданы направления MITRE, OWASP и CVE.');
-    if (combined) require(['basic', 'ai-security', 'scenarios'].every(id => trackIds.has(id)), 'Не заданы разделы общей подборки.');
+    if (combined) require(['basic', 'compliance', 'ai-security', 'scenarios'].every(id => trackIds.has(id)), 'Не заданы разделы общей подборки.');
     require(Array.isArray(data.sources) && data.sources.length > 0, 'В банке отсутствуют источники.');
     const sourceIds = new Set();
     const sourceById = new Map();
@@ -92,8 +92,11 @@
       questionIds.add(question.id);
       require(trackIds.has(question.track) && nonempty(question.title) && nonempty(question.question), 'Не заполнен сценарий или его направление.');
       if (combined) {
-        const prefixes = { basic: 'q', 'ai-security': 'ai', scenarios: 'sc' };
-        require(question.originalBank === question.track && question.id.startsWith(prefixes[question.track]) && question.kind === (question.track === 'basic' ? 'basic' : 'case'), 'Неверный раздел или вид вопроса общей подборки.');
+        const prefixes = { basic: 'q', compliance: 'q', 'ai-security': 'ai', scenarios: 'sc' };
+        const originalBank = question.track === 'compliance' ? 'basic' : question.track;
+        require(question.originalBank === originalBank && question.id.startsWith(prefixes[question.track]) && question.kind === (originalBank === 'basic' ? 'basic' : 'case'), 'Неверный раздел или вид вопроса общей подборки.');
+        if (question.track === 'compliance') require(isObject(question.compliance) && /^M\d{2}$/.test(question.compliance.module) && nonempty(question.compliance.moduleTitle), 'Не указана тема комплаенса.');
+        if (question.track === 'basic') require(!question.compliance, 'Комплаенс должен находиться в своём разделе.');
       }
       if (bankId === 'scenarios' || (combined && question.originalBank === 'scenarios')) {
         require(isObject(question.basis) && question.basis.family === (combined ? question.originalTrack : question.track) && stringList(question.basis.identifiers) && new Set(question.basis.identifiers).size === question.basis.identifiers.length, 'Не заполнена основа ситуационной задачи.');
@@ -409,14 +412,15 @@
     const ids = new Set(), assigned = new Set();
     const byId = new Map(data.questions.map(question => [question.id, question]));
     for (const group of data.topicGroups) {
-      require(isObject(group) && nonempty(group.id) && !ids.has(group.id) && nonempty(group.title) && ['basic', 'ai-security', 'scenarios'].includes(group.bankId), 'Некорректная тема барабана.');
+      require(isObject(group) && nonempty(group.id) && !ids.has(group.id) && nonempty(group.title) && ['basic', 'compliance', 'ai-security', 'scenarios'].includes(group.bankId), 'Некорректная тема барабана.');
       require(group.id.startsWith(`${group.bankId}:`) && stringList(group.questionIds) && new Set(group.questionIds).size === group.questionIds.length, 'Некорректный состав темы.');
       ids.add(group.id);
       for (const id of group.questionIds) {
         const question = byId.get(id);
-        require(question && !assigned.has(id) && question.originalBank === group.bankId, 'Вопрос повторяется или находится не в своей теме.');
-        const expected = group.bankId === 'basic' ? `basic:${encodeURIComponent(question.topic)}` : `${group.bankId}:${question.originalTrack}`;
-        require(group.id === expected && (group.bankId !== 'basic' || group.title === question.topic), 'Нарушена связь вопроса с исходной темой.');
+        require(question && !assigned.has(id) && question.track === group.bankId, 'Вопрос повторяется или находится не в своей теме.');
+        const expected = group.bankId === 'basic' ? `basic:${encodeURIComponent(question.topic)}` : group.bankId === 'compliance' ? `compliance:${question.compliance.module}` : `${group.bankId}:${question.originalTrack}`;
+        const titleMatches = group.bankId === 'basic' ? group.title === question.topic : group.bankId === 'compliance' ? group.title === question.compliance.moduleTitle : true;
+        require(group.id === expected && titleMatches, 'Нарушена связь вопроса с исходной темой.');
         assigned.add(id);
       }
     }

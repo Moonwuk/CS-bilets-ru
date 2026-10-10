@@ -50,7 +50,7 @@ jobs:
         run: |
           mkdir -p _site
           cp -R data _site/
-          cp basic-bank.js compliance-glossary.js compliance-materials.html compliance-materials.js _site/
+          cp basic-bank.js compliance.html compliance-glossary.js compliance-materials.html compliance-materials.js _site/
           cp index.html style.css glossary.js app.js questions.json .nojekyll \
             senior.html ai-security.html scenarios.html all-questions.html all-questions.js case-trainer.js case-trainer.css \
             topic-wheel.html wheel-visual.js wheel-visual.css \

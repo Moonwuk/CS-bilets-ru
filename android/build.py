@@ -20,7 +20,7 @@ SITE_FILES = [
     "case-trainer.js", "all-questions.js", "wheel-visual.js", "wheel-visual.css",
     "feedback.js", "glossary.js", "questions.json", "senior-questions.json",
     "ai-security-questions.json", "scenarios-questions.json",
-    "basic-bank.js", "compliance-glossary.js", "compliance-materials.html",
+    "basic-bank.js", "compliance.html", "compliance-glossary.js", "compliance-materials.html",
     "compliance-materials.js", "data"
 ]
 

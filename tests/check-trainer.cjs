@@ -5,7 +5,10 @@ const vm=require('node:vm');
 const assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
 const { base, composed }=require('./compliance-fixtures.cjs');
-const data=composed();
+const complete=composed();
+const {selectSection}=require('../basic-bank.js');
+const data=selectSection(complete,'basic');
+const complianceKey='cs-bilets-ru.compliance.v1';
 const count=data.questions.length;
 const key='cs-bilets-ru.progress.v1';
 
@@ -38,14 +41,15 @@ async function runtime(storage=new Map(),options={}) {
   const loadErrors=[];
   const listeners=new Map();
   const document={querySelector:s=>{if(!nodes.has(s))nodes.set(s,new Node());return nodes.get(s);},querySelectorAll:()=>[],addEventListener(name,fn){if(!listeners.has(name))listeners.set(name,[]);listeners.get(name).push(fn);},body:new Node()};
+  document.body.dataset.bank=options.section||'';
   const localStorage={
     getItem(k){if(options.blocked)throw new Error('Storage denied');return storage.get(k)??null;},
-    setItem(k,value){if(options.blocked)throw new Error('Storage denied');storage.set(k,value);}
+    setItem(k,value){if(options.blocked || k===options.blockedWriteKey)throw new Error('Storage denied');storage.set(k,value);}
   };
   const logger={...console,error(...args){loadErrors.push(args);if(!options.expectLoadFailure)console.error(...args);}};
   const randomMath=options.random ? Object.assign(Object.create(Math),{random:options.random}) : Math;
-  const ctx={document,window:{localStorage,scrollTo(){},addEventListener(){}},fetch:async()=>({ok:true,json:async()=>options.data||data}),console:logger,AbortController,Math:randomMath,Map,Set,Promise,URL};
-  ctx.window.TrainerBasicBank={load:async()=>options.data||data};
+  const ctx={document,window:{localStorage,scrollTo(){},addEventListener(){}},fetch:async()=>({ok:true,json:async()=>options.data||complete}),console:logger,AbortController,Math:randomMath,Map,Set,Promise,URL};
+  ctx.window.TrainerBasicBank={load:async()=>options.data||complete,selectSection:options.legacyView ? value=>value : selectSection};
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(root,'glossary.js'),'utf8'),ctx);
   vm.runInContext(fs.readFileSync(path.join(root,'compliance-glossary.js'),'utf8'),ctx);
@@ -101,7 +105,7 @@ function choose(a,correct) {
   assert.deepEqual(Array.from(all).sort(),data.questions.map(q=>q.id).sort(),'Numbered tickets cover every question once');
   assert.deepEqual(Array.from(state().tickets,t=>t.length),Array.from({length:Math.ceil(count/50)},(_,i)=>Math.min(50,count-i*50)));
   const legalCounts=Array.from(state().tickets,t=>t.filter(id=>state().bank.get(id).legal).length);
-  assert.equal(legalCounts.reduce((a,b)=>a+b,0),217);
+  assert.equal(legalCounts.reduce((a,b)=>a+b,0),97);
   assert.equal(Number(nodes.get('#ticket-count').textContent),Math.ceil(count/50));
   assert.equal(Number(nodes.get('#topic-count').textContent),data.topics.length);
   assert(nodes.get('#dataset-info').textContent.includes(`${count} вопросов · ${data.topics.length} тем`));
@@ -116,13 +120,13 @@ function choose(a,correct) {
     if(topic==='Модель OSI')assert.equal(counts.reduce((a,b)=>a+b,0),data.questions.filter(q=>q.topic===topic).length);
   }
   const legalTopics=new Map([['Персональные данные РФ',28],['Правовые основы ИБ РФ',24],['КИИ и ответственность в ИБ',20],['GDPR и защита данных в ЕС',25]]);
-  assert.equal(data.questions.filter(q=>q.legal).length,217);
+  assert.equal(data.questions.filter(q=>q.legal).length,97);
   for(const [topic,count] of legalTopics){
     const questions=data.questions.filter(q=>q.topic===topic);
     assert.equal(questions.length,count);
     assert(questions.every(q=>q.legal?.jurisdiction===(topic.startsWith('GDPR')?'EU':'RU') && q.legal.reviewedAt==='2026-10-02'));
   }
-  assert(nodes.get('#main').innerHTML.includes('Для изучения правовых норм: 217 вопросов'));
+  assert(nodes.get('#main').innerHTML.includes('Для изучения правовых норм: 97 вопросов'));
   assert(nodes.get('#main').innerHTML.includes('Нормы проверены по состоянию на 02.10.2026'));
   assert(nodes.get('#main').innerHTML.includes('Применимость нормы зависит от юрисдикции и условий вопроса'));
   assert(nodes.get('#main').innerHTML.includes('50 вопросов из всех тем'));
@@ -198,10 +202,10 @@ function choose(a,correct) {
   const toolStorage=new Map();let toolRandom=0;
   let toolRun=await runtime(toolStorage,{random:()=>toolRandom});
   assert.equal(toolRun.nodes.get('#main').querySelectorAll('[data-action="tools"]').length,1);
-  assert(toolRun.nodes.get('#main').innerHTML.includes('<h3>Инструменты ИБ</h3><p>100 вопросов'));
+  assert(toolRun.nodes.get('#main').innerHTML.includes('<h3>Инструменты ИБ</h3><p>99 вопросов'));
   toolRun.nodes.get('#main').querySelector('[data-action="tools"]').dispatch('click');
   const toolOrder=Array.from(toolRun.a.get().session.ids);
-  assert.equal(toolOrder.length,100);assert.deepEqual([...toolOrder].sort(),toolIds);
+  assert.equal(toolOrder.length,99);assert.deepEqual([...toolOrder].sort(),toolIds);
   assert.equal(toolRun.a.get().session.ticket,null);
   const toolAnswerOrder=Array.from(toolRun.a.get().session.orders.get(toolOrder[0]));
   choose(toolRun.a,true);toolRun.a.checkAnswer();toolRun.a.jump(32);
@@ -211,7 +215,7 @@ function choose(a,correct) {
   assert.deepEqual(Array.from(toolRun.a.get().session.ids),toolOrder);
   assert.deepEqual(Array.from(toolRun.a.get().session.orders.get(toolOrder[0])),toolAnswerOrder);
   assert.equal(toolRun.a.get().session.answers.get(toolPending.id),toolPending.oi);
-  toolRun.a.finishSession();assert.equal(toolRun.a.get().total,100);
+  toolRun.a.finishSession();assert.equal(toolRun.a.get().total,99);
   assert.equal(toolRun.a.get().ticketResults.size,0);
   toolRun.nodes.get('#main').querySelector('[data-result="retry"]').dispatch('click');
   assert.deepEqual(Array.from(toolRun.a.get().session.ids).sort(),toolIds);
@@ -220,7 +224,7 @@ function choose(a,correct) {
   const toolExam=await runtime();
   toolExam.nodes.get('#main').querySelector('[data-mode="exam"]').dispatch('click');
   toolExam.nodes.get('#main').querySelector('[data-action="tools"]').dispatch('click');
-  assert.equal(toolExam.a.get().session.mode,'exam');assert.equal(toolExam.a.get().session.ids.length,100);
+  assert.equal(toolExam.a.get().session.mode,'exam');assert.equal(toolExam.a.get().session.ids.length,99);
   choose(toolExam.a,true);assert.equal(toolExam.a.get().total,0);
   assert(!toolExam.nodes.get('#main').innerHTML.includes('class="feedback'));
   assert(!toolExam.nodes.get('#main').innerHTML.includes('option correct'));
@@ -431,21 +435,101 @@ function choose(a,correct) {
   const previous840={...base,questions:base.questions.filter(q=>Number(q.id.slice(1))<=840)};
   previous840.topics=base.topics.filter(topic=>previous840.questions.some(q=>q.topic===topic));
   const previousComposed=require('../basic-bank.js').merge(previous840,require('./compliance-fixtures.cjs').manifest,require('./compliance-fixtures.cjs').parts);
+  previousComposed.questions=previousComposed.questions.filter(q=>Number(q.id.slice(1))<=10120);
   assert.equal(previousComposed.questions.length,955);
   const previous740={...base,questions:base.questions.filter(q=>Number(q.id.slice(1))<=740)};
   previous740.topics=base.topics.filter(topic=>previous740.questions.some(q=>q.topic===topic));
   assert.equal(previous740.questions.length,740);assert.equal(previous740.topics.length,40);
   for(const [priorData,ticketSize] of [[previousComposed,50],[previous840,50],[base,50],[previous740,50],[previous600,50],[previous500,50],[previousData,50],[previousData,20],[data,20]]){
     const migrationStorage=new Map();
-    ({a,nodes}=await runtime(migrationStorage,{data:priorData,ticketSize}));
+    ({a,nodes}=await runtime(migrationStorage,{data:priorData,ticketSize,legacyView:true}));
     a.startSession(state().tickets[0],'Old completed ticket',0);choose(a,true);a.checkAnswer();a.finishSession();
     a.startSession(state().tickets[1],'Old pending ticket',1);choose(a,false);
     const beforeMigration=JSON.parse(migrationStorage.get(key));
+    delete beforeMigration.sectionSplit;
+    migrationStorage.set(key,JSON.stringify(beforeMigration));
     ({a,nodes}=await runtime(migrationStorage));
     assert.equal(state().session,null);assert.equal(state().ticketResults.size,0);
     assert.equal(state().total,ticketSize);assert.equal(state().correctTotal,1);
-    assert.deepEqual([...state().errors].sort(),beforeMigration.errors.sort(),'Mistake IDs survive bank and ticket-layout changes');
+    assert.deepEqual([...state().errors].sort(),beforeMigration.errors.filter(id=>state().bank.has(id)).sort(),'Basic mistake IDs survive bank and ticket-layout changes');
     assert(nodes.get('#main').innerHTML.includes('Банк вопросов обновлён'));
   }
-  console.log(`PASS: ${count} composed questions, ${data.topics.length} balanced topics, full bank, shuffle/resume/exam, glossary, legal metadata/secrecy, scoring, mistakes, storage and migrations including the previous base bank.`);
+  // Compliance is a separate entry point with its own topics, attempts, counters and reset.
+  const separateStorage=new Map([[key,JSON.stringify({version:1,sectionSplit:1,total:17,correctTotal:9,errors:['q001']})]]);
+  const basicBefore=separateStorage.get(key);
+  let compliance=await runtime(separateStorage,{section:'compliance'});
+  assert.equal(compliance.a.get().page,'topics');
+  assert.equal(compliance.a.get().bank.size,180);
+  assert.equal(compliance.nodes.get('#main').querySelectorAll('[data-topic]').length,15);
+  assert.equal(compliance.nodes.get('#topic-count').textContent,15);
+  assert.equal(compliance.nodes.get('#main').querySelectorAll('[data-action="tools"]').length,0);
+  compliance.nodes.get('#main').querySelector('[data-topic="1"]').dispatch('click');
+  assert.equal(compliance.a.get().session.ids.length,12);
+  assert(compliance.a.get().session.ids.every(id=>compliance.a.get().bank.get(id).compliance.module==='M02'));
+  const compWrong=choose(compliance.a,false).id;compliance.a.checkAnswer();
+  const compSaved=JSON.parse(separateStorage.get(complianceKey));
+  compliance=await runtime(separateStorage,{section:'compliance'});
+  assert.equal(compliance.a.get().total,1);assert(compliance.a.get().errors.has(compWrong));
+  assert.deepEqual([...compliance.a.get().session.ids],compSaved.session.ids);
+  assert.equal(separateStorage.get(key),basicBefore,'Compliance must not overwrite basic progress');
+  let resetting=compliance.a.resetProgress();compliance.nodes.get('#dialog-ok').dispatch('click');await resetting;
+  assert.equal(compliance.a.get().page,'topics');assert.equal(compliance.a.get().total,0);
+  assert.equal(separateStorage.get(key),basicBefore);
+  await compliance.a.navigate('tickets');
+  for(const size of [20,50]){
+    compliance.nodes.get('#main').querySelector(`[data-size="${size}"]`).dispatch('click');
+    compliance.nodes.get('#main').querySelector('[data-action="random"]').dispatch('click');
+    assert.equal(compliance.a.get().session.ids.length,size);
+    assert.equal(new Set(compliance.a.get().session.ids).size,size);
+    assert(compliance.a.get().session.ids.every(id=>complete.questions.find(q=>q.id===id).compliance));
+    resetting=compliance.a.resetProgress();compliance.nodes.get('#dialog-ok').dispatch('click');await resetting;
+    await compliance.a.navigate('tickets');
+  }
+  compliance.nodes.get('#main').querySelector('[data-mode="exam"]').dispatch('click');
+  compliance.nodes.get('#main').querySelector('[data-action="all"]').dispatch('click');
+  assert.equal(compliance.a.get().session.ids.length,180);
+  choose(compliance.a,true);
+  assert.equal(compliance.a.get().total,0);
+  assert(!compliance.nodes.get('#main').innerHTML.includes('class="feedback'));
+  assert(!compliance.nodes.get('#main').innerHTML.includes('option correct'));
+  assert.equal(separateStorage.get(key),basicBefore);
+
+  // Migrate old compliance mistakes exactly once, including reused IDs; do not guess old per-section totals.
+  const oldMistakes=['q001','q566','q10001','missing'];
+  const legacySplit={version:1,bankSignature:'old-composed',total:42,correctTotal:20,errors:oldMistakes};
+  const splitStorage=new Map([[key,JSON.stringify(legacySplit)]]);
+  const splitBasic=await runtime(splitStorage);
+  assert.deepEqual([...splitBasic.a.get().errors],['q001']);
+  assert.equal(splitBasic.a.get().total,42);
+  let splitCompliance=await runtime(splitStorage,{section:'compliance'});
+  assert.deepEqual([...splitCompliance.a.get().errors].sort(),['q10001','q566']);
+  assert.equal(splitCompliance.a.get().total,0);
+  splitCompliance.a.startSession(['q566'],'Исправить перенесённую ошибку');
+  choose(splitCompliance.a,true);splitCompliance.a.checkAnswer();
+  const corrected=splitStorage.get(complianceKey);
+  await runtime(splitStorage);
+  splitCompliance=await runtime(splitStorage,{section:'compliance'});
+  assert(!splitCompliance.a.get().errors.has('q566'),'A fixed migrated mistake must not be imported again');
+  assert.equal(splitCompliance.a.get().total,1);
+  assert.deepEqual(JSON.parse(splitStorage.get(complianceKey)),JSON.parse(corrected));
+
+  // Visiting compliance first merges mistakes into an existing valid attempt without resetting it.
+  const mergeStorage=new Map(splitStorage);
+  mergeStorage.set(key,JSON.stringify({...legacySplit,errors:['q001','q10002']}));
+  const beforeCompMerge=JSON.parse(mergeStorage.get(complianceKey));
+  const mergedComp=await runtime(mergeStorage,{section:'compliance'});
+  assert(mergedComp.a.get().errors.has('q10002'));
+  assert.equal(mergedComp.a.get().total,beforeCompMerge.total);
+  assert.deepEqual([...mergedComp.a.get().session.ids],beforeCompMerge.session.ids);
+
+  // A failed target write must never discard the original mistakes or falsely mark migration complete.
+  const blockedSplit=new Map([[key,JSON.stringify(legacySplit)]]);
+  const blockedOriginal=blockedSplit.get(key);
+  const failedSplit=await runtime(blockedSplit,{blockedWriteKey:complianceKey});
+  failedSplit.a.startSession(['q001'],'Временная тренировка');choose(failedSplit.a,true);failedSplit.a.checkAnswer();
+  assert.equal(failedSplit.a.get().storageAvailable,false);
+  assert.equal(blockedSplit.get(key),blockedOriginal);
+  await runtime(blockedSplit);
+  assert.deepEqual(JSON.parse(blockedSplit.get(complianceKey)).errors.sort(),['q10001','q566']);
+  console.log(`PASS: ${count} basic questions, ${data.topics.length} balanced topics, full bank, shuffle/resume/exam, glossary, legal metadata/secrecy, scoring, mistakes, storage and migrations including the previous base bank.`);
 })().catch(error=>{console.error(error);process.exitCode=1;});
