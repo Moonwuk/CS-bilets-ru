@@ -591,7 +591,7 @@ async function main() {
       actual.a.startSession(bank.questions.map(question => question.id), 'Весь реальный банк', 'interview');
       assert.equal(actual.a.get().progress.session.ids.length, expected);
       assert.equal(new Set(actual.a.get().progress.session.ids).size, expected);
-      for (let index = 0; index < expected; index++) { actual.a.jump(index); choose(actual, true); }
+      for (let index = 0; index < expected; index++) { actual.a.jump(index); assertQuestionHeading(actual, actual.a.get().questions.get(actual.a.get().progress.session.ids[index])); choose(actual, true); }
       actual.a.finishSession();
       assert.equal(actual.a.get().progress.total, expected);
       assert.equal(actual.a.get().progress.correctTotal, expected);
@@ -602,5 +602,17 @@ async function main() {
   }
   console.log(`Case trainer checks passed: separate storage, 3/3/2/2 and 4/3/3 mixed sets, basis visibility and feedback integration, full-bank shuffle, practice/interview visibility, notes and XSS, resume/scoring, confirmations, migrations, validation, keyboard and responsive markup${process.argv.includes('--fixtures-only') ? ' (fixtures only; published banks not checked)' : `, plus published banks: ${checkedBanks.join(', ')}`}.`);
 }
-module.exports = { runtime, fixture, choose, assertHidden, keys, plain, htmlEsc };
+function assertQuestionHeading(run, question) {
+  const markup = run.html();
+  const headings = [...markup.matchAll(/<h1\b[^>]*\bid="case-title"[^>]*>([\s\S]*?)<\/h1>/g)];
+  assert.equal(headings.length, 1, 'The question card needs one accessible heading');
+  const expected = htmlEsc(question.kind === 'basic' ? question.question : question.title);
+  assert.equal(headings[0][1].replace(/<[^>]*>/g, ''), expected, 'Basic cards show the question; scenarios retain their meaningful titles');
+  if (question.kind === 'basic') {
+    const prompt = markup.split('<fieldset')[0].replace(/<[^>]*>/g, '');
+    assert.equal(prompt.split(expected).length - 1, 1, 'The basic question must not be repeated below its heading');
+  }
+}
+
+module.exports = { runtime, fixture, choose, assertHidden, assertQuestionHeading, keys, plain, htmlEsc };
 if (require.main === module) main().catch(error => { console.error(error); process.exitCode = 1; });

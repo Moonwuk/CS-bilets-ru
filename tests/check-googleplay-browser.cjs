@@ -157,6 +157,16 @@ const {chromium} = require('playwright');
     await page.locator('[data-wheel-disc]').waitFor();
     await page.locator('.topic-wheel').evaluate(node=>node.scrollIntoView({block:'start',behavior:'instant'}));
     await page.screenshot({path:path.join(out,'03-topic-wheel.png')});
+    // Draw a basic topic deterministically and keep its actual prompt as the only card heading.
+    await page.evaluate(()=>{Math.random=()=>0;});
+    await page.locator('[data-action="spin"]').click();
+    await page.locator('#case-title').waitFor();
+    const wheelQuestion = bank.get((await progress('cs-bilets-ru.topic-wheel.v1')).session.ids[0]);
+    assert(wheelQuestion && !wheelQuestion.compliance);
+    assert.equal(await page.locator('#case-title').innerText(), wheelQuestion.question);
+    assert.equal(await page.locator('.question-panel .case-prompt').count(), 1);
+    await page.locator('.question-panel').evaluate(node=>node.scrollIntoView({block:'start',behavior:'instant'}));
+    await page.screenshot({path:path.join(out,'09-wheel-question.png')});
     await page.goto(base+'/ai-security.html');
     await page.locator('[data-start="mixed"]').waitFor();
     await page.locator('[data-start="mixed"]').evaluate(node=>node.closest('.ticket-card').scrollIntoView({block:'start',behavior:'instant'}));
@@ -166,9 +176,16 @@ const {chromium} = require('playwright');
       await page.locator('[data-start]').first().waitFor();
       if ((await page.locator('#main').innerText()).includes('Не удалось')) throw Error('Failed page '+name);
     }
+    await page.evaluate(()=>{Math.random=()=>0;});
+    await page.locator('[data-start="all"]').click();
+    await page.locator('#case-title').waitFor();
+    const challengeQuestion = bank.get((await progress('cs-bilets-ru.all-questions.v1')).session.ids[0]);
+    assert(challengeQuestion);
+    assert.equal(await page.locator('#case-title').innerText(), challengeQuestion.question);
+    assert.equal(await page.locator('.question-panel .case-prompt').count(), 1);
     if(await page.evaluate(()=>document.documentElement.scrollWidth > innerWidth)) throw Error('Horizontal overflow');
     if(errors.length)throw Error(errors.join('\n'));
-    fs.writeFileSync(path.join(out,'browser-review.txt'),'PASS: eight packaged screens and multipart compliance bank load under Android CSP; collapsed mobile menu; no Play payment menu; 20-question basic attempt; separate compliance button, 15 topics, 12-question topic check/resume, complete 180-question attempt including 60 new questions; basic progress stays intact; 101-question OSI topic includes all 60 new protocol questions and blue QUIC help; glossary keeps answers unchanged; 15 local practice cases render with collapsed solutions; no JS errors or horizontal overflow. Screenshots are Chromium renders of packaged WebView assets, not native Android installation tests.\n');
+    fs.writeFileSync(path.join(out,'browser-review.txt'),'PASS: nine packaged screenshots and multipart compliance bank load under Android CSP; collapsed mobile menu; no Play payment menu; 20-question basic attempt; separate compliance button, 15 topics, 12-question topic check/resume, complete 180-question attempt including 60 new questions; basic progress stays intact; 101-question OSI topic includes all 60 new protocol questions and blue QUIC help; glossary keeps answers unchanged; 15 local practice cases render with collapsed solutions; basic-question headings do not repeat topic names in the wheel or all-questions; no JS errors or horizontal overflow. Screenshots are Chromium renders of packaged WebView assets, not native Android installation tests.\n');
     console.log(fs.readFileSync(path.join(out,'browser-review.txt'),'utf8'));
   } finally {
     if (browser)await browser.close();
