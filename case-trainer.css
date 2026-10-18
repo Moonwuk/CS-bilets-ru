@@ -19,6 +19,7 @@
 .case-progress-label{color:var(--muted);font-size:.875rem;margin-bottom:.75rem}
 .case-title{font-size:1.45rem;line-height:1.35;letter-spacing:-.02em;margin-bottom:1rem;overflow-wrap:anywhere}
 .case-prompt{white-space:pre-line;overflow-wrap:anywhere;font-size:1.025rem;line-height:1.8}
+h1.case-prompt{font-weight:400}
 .case-context{display:grid;gap:1rem;margin:1.2rem 0}
 .case-context section{padding:.9rem 1rem;background:#f6f8fc;border-left:3px solid #b8cbed;border-radius:0 8px 8px 0;min-width:0}
 .case-context h3,.case-foundations h3{font-size:.9375rem;font-weight:700}

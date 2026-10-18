@@ -2,7 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
-const { runtime, choose, plain, htmlEsc, keys } = require('./check-case-trainer.cjs');
+const { runtime, choose, plain, htmlEsc, keys, assertQuestionHeading } = require('./check-case-trainer.cjs');
 const root = path.resolve(__dirname, '..');
 const allKey = 'cs-bilets-ru.all-questions.v1';
 const baseKey = 'cs-bilets-ru.progress.v1';
@@ -103,6 +103,7 @@ function assertTerminalLocked(run) {
     assert.equal(session.finished, false);
     assert(!run.html().includes('data-jump=') && !run.html().includes('data-action="next"'));
     const id = session.ids[index];
+    assertQuestionHeading(run, run.a.get().questions.get(id));
     if (['ai001', 'sc001', legalOriginal.id, 'q358'].includes(id)) {
       const original = originals.find(q => q.id === id);
       const text = textOnly(run.html());

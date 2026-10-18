@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
-const { runtime, choose, plain, keys } = require('./check-case-trainer.cjs');
+const { runtime, choose, plain, keys, assertQuestionHeading } = require('./check-case-trainer.cjs');
 const root = path.resolve(__dirname, '..');
 const copy = value => JSON.parse(JSON.stringify(value));
 const files = ['questions.json', 'ai-security-questions.json', 'scenarios-questions.json'];
@@ -190,6 +190,7 @@ function deferredView() {
       assert.equal(state(run).clearedTopics.size, before);
       const id = state(run).session.ids[index];
       const question = run.a.get().questions.get(id);
+      assertQuestionHeading(run, question);
       if (privacyIds.has(id)) {
         const text = textOnly(run.html());
         for (const fact of [...(question.evidence || []), ...(question.constraints || [])]) assert(text.includes(htmlEsc(fact)));
