@@ -96,6 +96,11 @@ def main():
     shutil.copy2(ANDROID / "android-adapter.js", assets / "android-adapter.js")
     for file in assets.glob("*.html"):
         page = file.read_text()
+        # Feedback identifies the exact packaged release without a second version constant.
+        if page.count('<html lang="ru">') != 1:
+            raise SystemExit("Review the HTML version marker: " + file.name)
+        page = page.replace('<html lang="ru">',
+            '<html lang="ru" data-app-version="' + VERSION["versionName"] + '">', 1)
         # Android's CSP permits external scripts only. The native adapter
         # supplies the shared menu behavior instead of these inline scripts.
         for inline in re.findall(r"<script>([\s\S]*?)</script>", page):

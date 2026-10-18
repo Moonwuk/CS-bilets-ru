@@ -43,6 +43,7 @@
   let notice = '';
   let confirmation = null;
   let loading = false;
+  let savedProgress = null;
 
   function emptyProgress() {
     return { total: 0, correctTotal: 0, completed: 0, errors: new Set(), mode: wheel ? 'topic' : aggregate ? 'challenge' : 'practice', view: 'home', session: null, ...(wheel ? { clearedTopics: new Set(), selectedTopicId: null, pendingSpin: false } : {}) };
@@ -199,6 +200,7 @@
     let saved;
     try {
       const text = window.localStorage.getItem(config.key);
+      savedProgress = text;
       if (!text) return;
       try { saved = JSON.parse(text); } catch (_) {
         notice = 'Сохранение этого банка повреждено. Начата новая запись прогресса.';
@@ -221,7 +223,7 @@
     progress.mode = validMode(saved.mode) ? saved.mode : wheel ? 'topic' : aggregate ? 'challenge' : 'practice';
     if (saved.signature !== signature) {
       if (wheel) { notice = 'Вопросы барабана обновились. Круг и текущая тема начаты заново; общие счётчики сохранены.'; return; }
-      notice = 'Банк обновился. Общие счётчики и известные ошибки сохранены. Предыдущая попытка и её заметки сброшены, чтобы не сопоставлять ответы с изменившимися сценариями.';
+      notice = 'Банк обновился. Общие счётчики и известные ошибки сохранены. Предыдущая попытка сброшена, чтобы не сопоставлять ответы с изменившимися сценариями.';
       return;
     }
     if (wheel && !restoreWheelRound(saved)) {
@@ -245,15 +247,35 @@
     progress.view = saved.view === 'session' && progress.session ? 'session' : 'home';
   }
 
+  function refreshProgress() {
+    if (!dataset) return true;
+    try {
+      if (window.localStorage.getItem(config.key) === savedProgress) return true;
+    } catch (_) { storageAvailable = false; return true; }
+    // An older tab must not write its snapshot over another tab's newer attempt.
+    closeConfirmation(false);
+    wheelBusy = false;
+    notice = 'Прогресс обновлён в другой вкладке. Показана последняя сохранённая попытка.';
+    restoreProgress();
+    if (wheel && progress.pendingSpin) { progress.pendingSpin = false; progress.view = 'session'; }
+    render();
+    return false;
+  }
+
   function saveProgress() {
-    if (!dataset) return;
+    if (!dataset || !refreshProgress()) return;
     const session = progress.session;
     const value = {
       version: 1, bankId, signature, ...(aggregate ? { challengeVersion: CHALLENGE_VERSION } : {}), ...(wheel ? { wheelVersion: WHEEL_VERSION, clearedTopicIds: [...progress.clearedTopics], selectedTopicId: progress.selectedTopicId, pendingSpin: progress.pendingSpin } : {}), total: progress.total, correctTotal: progress.correctTotal,
       completed: progress.completed, errors: [...progress.errors], mode: progress.mode, view: progress.view,
       session: session ? { ...session, checked: [...session.checked] } : null
     };
-    try { window.localStorage.setItem(config.key, JSON.stringify(value)); storageAvailable = true; }
+    try {
+      const text = JSON.stringify(value);
+      if (text !== savedProgress) window.localStorage.setItem(config.key, text);
+      savedProgress = text;
+      storageAvailable = true;
+    }
     catch (_) { storageAvailable = false; }
     updateStats();
   }
@@ -264,8 +286,8 @@
     $('#stat-correct').textContent = hideWheelResults ? 'После темы' : progress.correctTotal;
     $('#stat-errors').textContent = hideWheelResults ? 'После темы' : progress.errors.size;
     $('#storage-status').textContent = storageAvailable
-      ? 'Текущая или последняя попытка и заметки сохраняются на этом устройстве.'
-      : 'Сохранение недоступно. Новые результаты и заметки могут потеряться при закрытии страницы.';
+      ? 'Текущая или последняя попытка сохраняется на этом устройстве.'
+      : 'Сохранение недоступно. Новые результаты могут потеряться при закрытии страницы.';
   }
 
   function announce(message) { $('#announcement').textContent = message; }
@@ -282,7 +304,7 @@
       <p>После проверки доступны объяснения всех вариантов.${aggregate ? ' У ситуационных задач также сохранены подробные разборы, ограничения и дополнительные вопросы.' : ' Также доступны ход рассуждений, компромиссы, изменённые условия и вопросы для устного ответа.'} Технические положения сопровождаются ссылками на первичные источники и указанием раздела.</p>
       <p>${aggregate ? 'Последнее обновление подборки:' : 'Материалы проверены'} <time datetime="${esc(dataset.reviewedAt)}">${dateLabel(dataset.reviewedAt)}</time>. Реальная система может иметь другие ограничения: сравнивайте их с условиями сценария.</p>
       ${collections.length ? `<p>Открытые подборки для изучения тем технических собеседований:</p><ul>${collections.map(collection => `<li><a href="${esc(collection.url)}" target="_blank" rel="noopener noreferrer">${esc(collection.title)}</a>${collection.note ? ` — ${esc(collection.note)}` : ''}</li>`).join('')}</ul>` : ''}
-      <p>Заметки проверяются самостоятельно по разбору. Автоматически оценивается только выбранный вариант. Процент верных решений не подтверждает квалификацию или рабочий опыт.</p>
+      <p>Попробуйте объяснить решение своими словами и сравните его с разбором. Автоматически оценивается только выбранный вариант. Процент верных решений не подтверждает квалификацию или рабочий опыт.</p>
       <p>Сохраняется одна текущая или последняя попытка. Новая попытка заменяет предыдущую; общие счётчики и список ошибок остаются. Каждый банк хранит свой прогресс отдельно.</p>
     </details>`;
   }
@@ -296,7 +318,7 @@
     const allCard = `<section class="ticket-card${aggregate ? ' quick-card' : ''}"><h2>${aggregate ? 'Все вопросы' : 'Весь банк'}</h2><p>Все ${dataset.questions.length} ${itemsLabel}. Порядок вопросов и вариантов перемешивается в каждой попытке.</p><button class="button ${aggregate ? 'primary' : 'secondary'}" data-start="all">${aggregate ? `Начать все ${dataset.questions.length} ${itemsLabel}` : 'Пройти весь банк'}</button></section>`;
     main.innerHTML = `${noticeMarkup()}
       <header class="page-heading"><div><span class="eyebrow">От фактов к решению</span><h1>${esc(dataset.title)}</h1><p class="case-intro">${esc(dataset.description)}</p></div></header>
-      <div class="case-notice"><p>Сначала разберите факты и ограничения, выберите лучший вариант и при желании запишите ход мысли. Затем сравните своё решение с подробным разбором.</p><p>Нажатие на термин открывает пояснение. У ситуационных задач в режиме обучения также доступны опорные понятия до ответа.</p></div>
+      <div class="case-notice"><p>Сначала разберите факты и ограничения, выберите лучший вариант и объясните своё решение вслух. Затем сравните его с подробным разбором.</p><p>Нажатие на термин открывает пояснение. У ситуационных задач в режиме обучения также доступны опорные понятия до ответа.</p></div>
       <div class="case-summary"><span><strong>${dataset.questions.length}</strong> ${itemsLabel}</span><span><strong>${dataset.tracks.length}</strong> направления</span><span>Завершено попыток: <strong>${progress.completed}</strong></span><span>Верных решений: <strong>${accuracy}</strong></span><span>Ошибок: <strong>${progress.errors.size}</strong></span></div>
       ${session ? `<section class="resume-card" aria-label="Сохранённая попытка"><div><strong>${session.finished ? 'Разбор последней попытки' : 'Есть незавершённая попытка'}</strong><p>${esc(session.title)} · ${esc(modeLabel(session.mode))} · ${session.finished ? `${session.ids.filter(id => isCorrect(id)).length} из ${session.ids.length} верно` : `выбрано ответов ${Object.keys(session.answers).length} из ${session.ids.length}`}</p></div><button class="button primary" data-action="resume">${session.finished ? 'Открыть разбор' : 'Продолжить'}</button></section>` : ''}
       <div class="mode-bar"><div class="mode-switch case-mode-switch" role="group" aria-label="Когда показывать разбор"><button data-mode="practice" aria-pressed="${progress.mode === 'practice'}">Обучение</button><button data-mode="interview" aria-pressed="${progress.mode === 'interview'}">${aggregate ? 'Экзамен' : 'Собеседование'}</button></div><p class="mode-hint case-mode-help">${progress.mode === 'practice' ? 'Разбор после проверки каждого решения. Опорные понятия доступны заранее.' : 'Вся обратная связь — после завершения. Опорные понятия и источники до этого скрыты.'}</p></div>
@@ -385,7 +407,7 @@
         ${checked ? `<section class="case-feedback ${isCorrect(id) ? '' : 'is-error'}" id="case-feedback" tabindex="-1"><h2>${isCorrect(id) ? 'Решение верное' : 'В выбранном решении есть проблема'}</h2><p>Сравните ход своих рассуждений с разбором. У правильного варианта тоже есть ограничения.</p>${deepReviewMarkup(question, session.orders[id])}</section>` : ''}
         ${window.TrainerFeedback?.actions(question.id) || ''}
       </article><aside class="quiz-map case-map${session.ids.length > 50 ? ' long-session' : ''}" aria-label="${aggregate ? 'Навигация по вопросам' : 'Навигация по сценариям'}"><p class="quiz-map-title">${aggregate ? 'Вопросы попытки' : 'Сценарии попытки'}</p><div class="question-grid">${session.ids.map((questionId, index) => { const wasChecked = session.mode === 'practice' && session.checked.has(questionId); const wasAnswered = has(session.answers, questionId); const status = wasChecked ? (isCorrect(questionId) ? 'верно' : 'ошибка') : wasAnswered ? 'ответ выбран' : 'без ответа'; return `<button class="question-number ${wasChecked ? (isCorrect(questionId) ? 'good' : 'bad') : wasAnswered ? 'answered' : ''}" data-jump="${index}" aria-label="${itemLabel} ${index + 1}: ${status}" ${index === session.index ? 'aria-current="step"' : ''}>${index + 1}</button>`; }).join('')}</div><p class="quiz-progress">Выбрано ответов: ${answeredCount} / ${session.ids.length}${session.mode === 'practice' ? `<br>Проверено: ${session.checked.size}` : ''}</p><button class="button secondary" data-action="finish">Завершить попытку</button></aside></div>
-      <p class="keyboard-hint">1–4 — выбрать вариант · Enter — проверить или перейти далее. В поле заметки клавиши вводят текст.</p>`;
+      <p class="keyboard-hint">1–4 — выбрать вариант · Enter — проверить или перейти далее.</p>`;
     bindMain();
     if (session.ids.length > 50) {
       const grid = main.querySelector('.question-grid');
@@ -405,7 +427,7 @@
     const wrong = session.ids.length - correct;
     main.innerHTML = `${noticeMarkup()}<header class="page-heading"><div><span class="eyebrow">Результат и самопроверка</span><h1>Разбор попытки</h1><p>${esc(session.title)} · ${esc(modeLabel(session.mode))}</p></div></header>
       <section class="result-card"><div class="result-score" aria-label="Верно ${correct} из ${session.ids.length}">${correct}<span> / ${session.ids.length}</span></div><div class="result-copy"><h2>Решения проверены</h2><p>Верно: ${correct}. Неверно: ${wrong - skipped}. Без ответа: ${skipped}.</p><div class="result-actions"><button class="button primary" data-action="retry">Повторить набор</button>${wrong ? '<button class="button secondary" data-action="repeat-wrong">Разобрать ошибки</button>' : ''}<button class="button secondary" data-action="home">К наборам</button></div></div></section>
-      <p class="case-score-note">Оценён только выбор варианта. Ваши заметки не получили автоматическую оценку: сравните их с ходом рассуждений, компромиссами и ответами на дополнительные вопросы. Этот результат не является оценкой профессиональной квалификации.</p>
+      <p class="case-score-note">Оценён только выбор варианта. Сравните своё объяснение с ходом рассуждений, компромиссами и ответами на дополнительные вопросы. Этот результат не является оценкой профессиональной квалификации.</p>
       <section aria-labelledby="review-heading"><div class="section-heading"><h2 id="review-heading">${aggregate ? 'Разбор всех вопросов' : 'Разбор всех сценариев'}</h2></div><div class="case-review-list">${session.ids.map((id, index) => { const question = questions.get(id); const chosen = session.answers[id]; const answered = has(session.answers, id); const correctAnswer = isCorrect(id); return `<details class="review-item"><summary><span class="case-review-state ${correctAnswer ? '' : 'bad'}">${correctAnswer ? 'Верно' : answered ? 'Ошибка' : 'Без ответа'}</span>${index + 1}. ${termsMarkup(question.title)}</summary><div class="review-body"><div class="question-context"><span>${esc(tracks.get(question.track).title)}</span></div>${scenarioMarkup(question)}<p class="review-answer ${correctAnswer ? '' : 'wrong'}"><strong>Ваш ответ:</strong> ${answered ? esc(question.options[chosen].text) : 'Не выбран; сценарий добавлен в работу над ошибками.'}</p>${session.notes[id] ? `<section><h3>Сохранённая заметка</h3><div class="case-review-note">${esc(session.notes[id])}</div></section>` : ''}${deepReviewMarkup(question, session.orders[id])}${window.TrainerFeedback?.actions(question.id) || ''}</div></details>`; }).join('')}</div></section>`;
     bindMain();
     updateStats();
@@ -480,6 +502,7 @@
   }
 
   async function spinWheel() {
+    if (!refreshProgress()) return;
     if (!wheel || !dataset || wheelBusy || progress.pendingSpin || (progress.session && !progress.session.finished)) return;
     const eligible = eligibleWheelTopics();
     if (!eligible.length) return renderWheelHome();
@@ -500,7 +523,7 @@
     } catch (_) { /* A visual failure must never redraw or discard the persisted choice. */ }
     finally {
       wheelBusy = false;
-      if (progress.session === chosenSession && progress.pendingSpin) {
+      if (refreshProgress() && progress.session === chosenSession && progress.pendingSpin) {
         progress.pendingSpin = false;
         progress.view = 'session';
         saveProgress(); renderWheelQuiz(); focusMain();
@@ -546,12 +569,14 @@
   }
 
   function nextWheelQuestion() {
+    if (!refreshProgress()) return;
     const session = progress.session;
     if (!wheel || !session || session.finished || progress.pendingSpin || progress.view !== 'session' || !session.checked.has(session.ids[session.index]) || session.index >= session.ids.length - 1) return;
     session.index++; saveProgress(); renderWheelQuiz(); focusMain();
   }
 
   function finishWheelTopic(stopped) {
+    if (!refreshProgress()) return;
     const session = progress.session;
     if (!wheel || !session || session.finished || progress.pendingSpin) return;
     if (stopped !== 'stopped' && session.checked.size !== session.ids.length) return;
@@ -566,6 +591,7 @@
   }
 
   async function requestStopWheelTopic() {
+    if (!refreshProgress()) return;
     if (!progress.session || progress.session.finished || progress.pendingSpin) return;
     if (await askConfirmation('Остановить тему?', 'Тема останется в барабане. Только подтверждённые ответы сохранятся в статистике. Для паузы отмените действие и вернитесь к барабану.', 'Остановить тему')) finishWheelTopic('stopped');
   }
@@ -581,8 +607,10 @@
   }
 
   async function requestNewWheelRound() {
+    if (!refreshProgress()) return;
     if (!wheel || !wheelWon() || wheelBusy || progress.pendingSpin) return;
     if (!await askConfirmation('Начать новый круг?', 'Все темы вернутся в барабан. Разбор последней темы заменится новым кругом; общие счётчики и прогресс других режимов сохранятся.', 'Начать круг')) return;
+    if (!refreshProgress()) return;
     progress.clearedTopics = new Set(); progress.selectedTopicId = null; progress.session = null; progress.pendingSpin = false; progress.view = 'home';
     notice = 'Начат новый круг барабана.'; saveProgress(); renderWheelHome(); focusMain();
   }
@@ -632,7 +660,7 @@
         <fieldset class="case-options"><legend>Выберите ответ, затем подтвердите его</legend><div class="case-option-list">${session.orders[id].map((optionIndex, displayIndex) => { const option = question.options[optionIndex]; const chosen = selected && session.answers[id] === optionIndex; return `<div class="case-option ${chosen ? 'selected' : ''}"><input type="radio" name="case-answer" id="answer-${optionIndex}" data-answer="${optionIndex}" value="${optionIndex}" aria-label="${LETTERS[displayIndex]}. ${esc(option.text)}" ${chosen ? 'checked' : ''}><label class="case-option-pick" for="answer-${optionIndex}" aria-hidden="true"></label><span class="case-option-copy"><strong>${LETTERS[displayIndex]}.</strong>${termsMarkup(option.text)}</span></div>`; }).join('')}</div></fieldset>
         <div class="case-actions"><button class="button primary" data-action="check" ${selected ? '' : 'disabled'}>Ответить</button></div>${window.TrainerFeedback?.actions(id) || ''}
       </article><aside class="quiz-map case-map" aria-label="Прогресс билета"><p class="quiz-map-title">Верных подряд</p><strong>${session.checked.size} / ${session.ids.length}</strong><p class="case-score-note">Ответьте на текущий вопрос, чтобы перейти дальше.</p><button class="button secondary" data-action="finish">Остановить попытку</button></aside></div>
-      <p class="keyboard-hint">1–4 — выбрать вариант · Enter — ответить. Клавиши в заметке вводят текст.</p>`;
+      <p class="keyboard-hint">1–4 — выбрать вариант · Enter — ответить.</p>`;
     bindMain();
     updateStats();
   }
@@ -657,6 +685,7 @@
   }
 
   function finishChallenge(outcome) {
+    if (!refreshProgress()) return;
     const session = progress.session;
     if (!session || session.finished) return;
     if (outcome === 'stopped') delete session.answers[session.ids[session.index]];
@@ -677,6 +706,7 @@
   }
 
   function startSession(ids, title, mode = progress.mode) {
+    if (!refreshProgress()) return false;
     if (wheel) return false;
     if (!dataset) return false;
     if (aggregate) { ids = dataset.questions.map(question => question.id); title = 'Все вопросы'; mode = 'challenge'; }
@@ -696,9 +726,11 @@
   }
 
   async function requestStart(kind, trackId) {
+    if (!refreshProgress()) return;
     if (!dataset || wheel || (aggregate && kind !== 'all')) return;
     const previous = progress.session;
-    if (previous && !previous.finished && !await askConfirmation('Начать новую попытку?', 'Новая попытка заменит текущую вместе с её заметками. Уже проверенные решения останутся в общих счётчиках; выбранные, но непроверенные ответы не будут оценены.', 'Начать новую')) return;
+    if (previous && !previous.finished && !await askConfirmation('Начать новую попытку?', 'Новая попытка заменит текущую. Уже проверенные решения останутся в общих счётчиках; выбранные, но непроверенные ответы не будут оценены.', 'Начать новую')) return;
+    if (!refreshProgress()) return;
     if (kind === 'mixed') startSession(mixedIds(), 'Смешанная десятка');
     if (kind === 'all') startSession(dataset.questions.map(question => question.id), 'Весь банк');
     if (kind === 'mistakes') startSession([...progress.errors], 'Работа над ошибками');
@@ -706,6 +738,7 @@
   }
 
   function selectAnswer(optionIndex) {
+    if (!refreshProgress()) return;
     const session = progress.session;
     if (!session || session.finished || (wheel && progress.pendingSpin) || progress.view !== 'session' || !Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex > 3) return;
     const id = session.ids[session.index];
@@ -717,6 +750,7 @@
   }
 
   function saveNote(value) {
+    if (!refreshProgress()) return;
     const session = progress.session;
     if (!session || session.finished || (wheel && progress.pendingSpin) || typeof value !== 'string') return;
     session.notes[session.ids[session.index]] = value.slice(0, NOTE_LIMIT);
@@ -724,6 +758,7 @@
   }
 
   function checkAnswer() {
+    if (!refreshProgress()) return;
     const session = progress.session;
     if (!session || session.finished || (wheel && progress.pendingSpin) || progress.view !== 'session' || (!aggregate && !wheel && session.mode !== 'practice')) return;
     const id = session.ids[session.index];
@@ -752,6 +787,7 @@
   }
 
   function jump(index) {
+    if (!refreshProgress()) return;
     if (wheel) return;
     if (aggregate) return;
     const session = progress.session;
@@ -765,11 +801,15 @@
   }
 
   function finishSession() {
+    if (!refreshProgress()) return;
     if (wheel) return finishWheelTopic('stopped');
     if (aggregate) return finishChallenge('stopped');
     const session = progress.session;
     if (!session || session.finished) return;
-    for (const id of session.ids) if (session.mode === 'interview' || !session.checked.has(id)) recordDecision(id);
+    for (const id of session.ids) {
+      if (session.mode === 'practice' && !session.checked.has(id)) delete session.answers[id];
+      if (session.mode === 'interview' || !session.checked.has(id)) recordDecision(id);
+    }
     session.finished = true;
     progress.completed++;
     progress.view = 'session';
@@ -780,6 +820,7 @@
   }
 
   async function requestFinish() {
+    if (!refreshProgress()) return;
     if (wheel) return requestStopWheelTopic();
     const session = progress.session;
     if (!session || session.finished) return;
@@ -787,12 +828,13 @@
       if (await askConfirmation('Остановить попытку?', 'Билет будет завершён без прохождения. Неподтверждённые и неотвеченные вопросы не будут оценены. Для паузы отмените это действие и нажмите «К наборам · пауза».', 'Остановить попытку')) finishChallenge('stopped');
       return;
     }
-    const skipped = session.ids.filter(id => !has(session.answers, id)).length;
-    if (skipped && !await askConfirmation('Завершить с пропусками?', `Осталось без ответа: ${skipped}. Эти сценарии попадут в работу над ошибками и будут учтены как неверные. После завершения ответы этой попытки изменить нельзя.`, 'Завершить попытку')) return;
+    const pending = session.ids.filter(id => session.mode === 'practice' ? !session.checked.has(id) : !has(session.answers, id)).length;
+    if (pending && !await askConfirmation('Завершить с пропусками?', `Осталось ${session.mode === 'practice' ? 'без проверки' : 'без ответа'}: ${pending}. Эти сценарии попадут в работу над ошибками и будут учтены как неверные. После завершения ответы этой попытки изменить нельзя.`, 'Завершить попытку')) return;
     finishSession();
   }
 
   function goHome() {
+    if (!refreshProgress()) return;
     progress.view = 'home';
     saveProgress();
     renderHome();
@@ -800,6 +842,7 @@
   }
 
   function resume() {
+    if (!refreshProgress()) return;
     if (!progress.session) return;
     progress.view = 'session';
     saveProgress();
@@ -808,6 +851,7 @@
   }
 
   function setMode(value) {
+    if (!refreshProgress()) return;
     if (wheel || aggregate || !validMode(value)) return;
     progress.mode = value;
     saveProgress();
@@ -837,7 +881,9 @@
   }
 
   async function resetProgress() {
-    if (!dataset || !await askConfirmation(wheel ? 'Сбросить прогресс барабана?' : 'Сбросить прогресс этого банка?', wheel ? 'Все пройденные темы вернутся в барабан. Будут удалены счётчики, ошибки, текущая или последняя попытка и заметки этого режима. Прогресс остальных режимов останется.' : 'Будут удалены его счётчики, ошибки, текущая или последняя попытка и заметки. Прогресс остальных банков останется.', wheel ? 'Сбросить барабан' : 'Сбросить этот банк')) return;
+    if (!refreshProgress()) return;
+    if (!dataset || !await askConfirmation(wheel ? 'Сбросить прогресс барабана?' : 'Сбросить прогресс этого банка?', wheel ? 'Все пройденные темы вернутся в барабан. Будут удалены счётчики, ошибки и текущая или последняя попытка этого режима. Прогресс остальных режимов останется.' : 'Будут удалены его счётчики, ошибки и текущая или последняя попытка. Прогресс остальных банков останется.', wheel ? 'Сбросить барабан' : 'Сбросить этот банк')) return;
+    if (!refreshProgress()) return;
     if (wheel) wheelBusy = false;
     progress = emptyProgress();
     notice = wheel ? 'Прогресс барабана сброшен. Все темы снова доступны.' : 'Прогресс этого банка сброшен.';
@@ -934,7 +980,11 @@
   $('#confirm-dialog').addEventListener('cancel', event => { event.preventDefault(); closeConfirmation(false); });
   document.addEventListener('keydown', keyboard);
   window.addEventListener('pagehide', saveProgress);
+  window.addEventListener('storage', event => {
+    if (event.key === config?.key || event.key === null) refreshProgress();
+  });
   window.trainerNativeBack = () => {
+    if (!refreshProgress()) return true;
     if (progress.view !== 'session') return false;
     goHome();
     return true;

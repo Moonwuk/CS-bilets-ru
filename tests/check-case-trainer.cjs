@@ -212,6 +212,9 @@ async function main() {
   let run = await runtime({ storage });
   let state = () => run.a.get().progress;
   assert(run.html().includes('COLLECTION_SENTINEL'));
+  assert(!run.html().includes('запишите ход мысли'));
+  assert(!run.html().includes('Заметки проверяются'));
+  assert(!run.nodes.get('#storage-status').textContent.includes('заметки'));
   assert.equal(state().total, 0);
   assert.equal(storage.get(baseKey), initial500);
   assert.equal(storage.get(keys['ai-security']), initialAi);
@@ -238,6 +241,7 @@ async function main() {
 
   // Practice: immediate review, immutable checked answer, restored ordering, no double count.
   run.a.startSession(['s001', 's002', 's003'], 'Три решения', 'practice');
+  assert(!run.html().includes('В поле заметки'));
   assert(run.html().includes('FOUNDATION_TERM_SENTINEL'));
   assert(!run.html().includes('OPTION_EXPLANATION_SENTINEL'));
   const wrong = choose(run, false);
@@ -288,9 +292,69 @@ async function main() {
   run.a.finishSession(); assert.equal(state().total, 3); assert.equal(state().completed, 1);
   run = await runtime({ storage });
   assert.equal(state().total, 3); assert.equal(state().completed, 1); assert(state().session.finished);
+  assert(!run.html().includes('Ваши заметки не получили'));
   run.a.startSession([wrong.id], 'Повторение ошибки'); choose(run, true); run.a.checkAnswer(); run.a.finishSession();
   assert(!state().errors.has(wrong.id), 'Correct practice removes an existing mistake');
   assert.equal(state().total, 4); assert.equal(state().correctTotal, 2);
+
+  // Choosing an option is not submission in practice, even when every question has a choice.
+  const unchecked = await runtime();
+  unchecked.a.startSession(['s001', 's002', 's003'], 'Непроверенные ответы', 'practice');
+  choose(unchecked, true); unchecked.a.checkAnswer();
+  unchecked.a.jump(1); choose(unchecked, true);
+  unchecked.a.jump(2); choose(unchecked, false);
+  const beforeFinish = unchecked.storage.get(keys.senior);
+  let pendingFinish = unchecked.a.requestFinish();
+  assert(unchecked.nodes.get('#confirm-dialog').open);
+  assert(unchecked.nodes.get('#dialog-message').textContent.includes('без проверки: 2'));
+  unchecked.nodes.get('#dialog-cancel').dispatch('click'); await pendingFinish;
+  assert.equal(unchecked.storage.get(keys.senior), beforeFinish, 'Cancelling preserves all unsubmitted choices');
+  pendingFinish = unchecked.a.requestFinish();
+  unchecked.nodes.get('#dialog-ok').dispatch('click'); await pendingFinish;
+  assert.equal(unchecked.a.get().progress.total, 3);
+  assert.equal(unchecked.a.get().progress.correctTotal, 1);
+  assert.equal(Object.keys(unchecked.a.get().progress.session.answers).length, 1);
+  assert.equal(unchecked.a.get().progress.errors.size, 2);
+  const restoredUnchecked = await runtime({storage:unchecked.storage});
+  assert(restoredUnchecked.a.get().progress.session.finished);
+  assert.equal(restoredUnchecked.a.get().progress.correctTotal, 1);
+  restoredUnchecked.a.finishSession();
+  assert.equal(restoredUnchecked.a.get().progress.total, 3, 'Resuming a result must not score it again');
+
+  // Two pages share real saved JSON. Also exercise delayed/missed storage events via the write guard.
+  for (const id of Object.keys(keys)) {
+    const shared = new Map();
+    const active = await runtime({id,storage:shared});
+    const stale = await runtime({id,storage:shared});
+    active.a.startSession(active.a.mixedIds(), 'Общий прогресс');
+    choose(active, true); active.a.checkAnswer();
+    const saved = shared.get(keys[id]);
+    stale.windowListeners.get('pagehide')();
+    assert.equal(shared.get(keys[id]), saved, `${id}: leaving an old tab must not overwrite the current attempt`);
+    assert.equal(stale.a.get().progress.total, 1);
+    assert.deepEqual(plain(stale.a.get().progress.session), plain(active.a.get().progress.session));
+    active.a.jump(1); choose(active, true); active.a.checkAnswer();
+    stale.windowListeners.get('storage')({key:keys[id]});
+    assert.equal(stale.a.get().progress.total, 2, 'Storage events update visible counters and the attempt');
+    active.a.jump(2); choose(active, true); active.a.checkAnswer();
+    const latest = shared.get(keys[id]);
+    stale.a.finishSession();
+    assert.equal(shared.get(keys[id]), latest);
+    assert(!stale.a.get().progress.session.finished, 'A stale finish action only refreshes; it must not finish another tab’s attempt');
+    assert.equal(stale.a.get().progress.total, 3);
+    const cancelledByReset = stale.a.requestFinish();
+    assert(stale.nodes.get('#confirm-dialog').open);
+    shared.delete(keys[id]);
+    stale.windowListeners.get('storage')({key:'another-bank'});
+    assert(stale.nodes.get('#confirm-dialog').open, 'Other banks must not affect this confirmation');
+    stale.windowListeners.get('storage')({key:null});
+    await cancelledByReset;
+    assert(!stale.nodes.get('#confirm-dialog').open);
+    assert.equal(stale.a.get().progress.session, null);
+    assert.equal(stale.a.get().progress.total, 0);
+    active.windowListeners.get('pagehide')();
+    assert.equal(active.a.get().progress.total, 0, 'A stale tab must not resurrect cleared progress');
+  }
 
   // Interview: choices remain editable and nothing is graded or revealed until completion, including after reload.
   run.a.startSession(['s001', 's002', 's003'], 'Репетиция', 'interview');
@@ -600,7 +664,7 @@ async function main() {
       checkedBanks.push(`${expected} ${id}`);
     }
   }
-  console.log(`Case trainer checks passed: separate storage, 3/3/2/2 and 4/3/3 mixed sets, basis visibility and feedback integration, full-bank shuffle, practice/interview visibility, notes and XSS, resume/scoring, confirmations, migrations, validation, keyboard and responsive markup${process.argv.includes('--fixtures-only') ? ' (fixtures only; published banks not checked)' : `, plus published banks: ${checkedBanks.join(', ')}`}.`);
+  console.log(`Case trainer checks passed: separate storage, 3/3/2/2 and 4/3/3 mixed sets, basis visibility and feedback integration, full-bank shuffle, practice/interview visibility, legacy notes and XSS, resume/scoring, unsubmitted practice choices, stale-tab writes and storage events, confirmations, migrations, validation, keyboard and responsive markup${process.argv.includes('--fixtures-only') ? ' (fixtures only; published banks not checked)' : `, plus published banks: ${checkedBanks.join(', ')}`}.`);
 }
 function assertQuestionHeading(run, question) {
   const markup = run.html();
