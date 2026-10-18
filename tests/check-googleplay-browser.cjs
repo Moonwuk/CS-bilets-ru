@@ -6,13 +6,14 @@ const assert = require('node:assert/strict');
 const {chromium} = require('playwright');
 (async () => {
   const assets = path.resolve('android/build/work-googleplay/assets/site');
+  const rustoreAssets = path.resolve('android/build/work-rustore/assets/site');
   const out = path.resolve('android/build/googleplay-screenshots');
   fs.mkdirSync(out, {recursive:true});
   const mime = {'.html':'text/html','.js':'application/javascript','.json':'application/json','.css':'text/css'};
   const server = http.createServer((req,res) => {
     const name = new URL(req.url,'http://localhost').pathname.slice(1);
     if (!name || name.split('/').some(part => !part || part === '.' || part === '..') || name.includes('\\')) { res.writeHead(404);res.end();return; }
-    const file = path.join(assets,name);
+    const file = name.startsWith('rustore/') ? path.join(rustoreAssets,name.slice('rustore/'.length)) : path.join(assets,name);
     if (!fs.existsSync(file)) { res.writeHead(404);res.end();return; }
     res.writeHead(200,{
       'Content-Type':(mime[path.extname(file)] || 'application/octet-stream') + '; charset=utf-8',
@@ -32,6 +33,8 @@ const {chromium} = require('playwright');
     const base = 'http://127.0.0.1:' + server.address().port;
     await page.goto(base+'/index.html');
     await page.locator('[data-action="random"]').waitFor();
+    const appVersion = JSON.parse(fs.readFileSync('android/version.json','utf8')).versionName;
+    assert.equal(await page.locator('html').getAttribute('data-app-version'), appVersion);
     if (await page.locator('.mode-menu').getAttribute('open') !== null) throw Error('Android mobile menu must be collapsed');
     if (await page.locator('[href="./support.html"]').count()) throw Error('Play build contains payment menu');
     await page.screenshot({path:path.join(out,'01-random-ticket.png')});
@@ -184,8 +187,75 @@ const {chromium} = require('playwright');
     assert.equal(await page.locator('#case-title').innerText(), challengeQuestion.question);
     assert.equal(await page.locator('.question-panel .case-prompt').count(), 1);
     if(await page.evaluate(()=>document.documentElement.scrollWidth > innerWidth)) throw Error('Horizontal overflow');
+
+    // RuStore keeps the in-app feedback form; its version comes from Android packaging.
+    const fixes = await browser.newContext({viewport:{width:360,height:640},isMobile:true,hasTouch:true});
+    const review = await fixes.newPage();
+    review.on('pageerror', e => errors.push(String(e)));
+    const scenarioKey = 'cs-bilets-ru.scenarios.v1';
+    const scenarioBank = new Map(read('scenarios-questions.json').questions.map(q=>[q.id,q]));
+    const scenarioProgress = target => target.evaluate(key=>JSON.parse(localStorage.getItem(key)),scenarioKey);
+    await review.goto(base+'/rustore/scenarios.html');
+    await review.locator('[data-start="mixed"]').waitFor();
+    assert(!(await review.locator('#main').innerText()).includes('запишите ход мысли'));
+    await review.locator('[data-question-feedback="suggestion"]').click();
+    await review.locator('#question-feedback-message').fill('Проверка версии приложения');
+    assert((await review.locator('#question-feedback-preview').textContent()).includes('Версия приложения: '+appVersion));
+    await review.locator('.feedback-close').click();
+    await review.locator('[data-start="mixed"]').click();
+    const practice = await scenarioProgress(review);
+    for(let index=0;index<practice.session.ids.length;index++) {
+      await review.locator(`[data-jump="${index}"]`).click();
+      const correct = scenarioBank.get(practice.session.ids[index]).options.findIndex(option=>option.correct);
+      await review.locator(`[data-answer="${correct}"]`).check();
+    }
+    const unsubmitted = await scenarioProgress(review);
+    assert.equal(unsubmitted.total,0);
+    assert.equal(unsubmitted.session.checked.length,0);
+    await review.locator('[data-action="finish"]').first().click();
+    await review.locator('#confirm-dialog[open]').waitFor();
+    assert((await review.locator('#dialog-message').innerText()).includes('без проверки: 10'));
+    await review.locator('#dialog-cancel').click();
+    assert.deepEqual(await scenarioProgress(review),unsubmitted);
+    await review.locator('[data-action="finish"]').first().click();
+    await review.locator('#dialog-ok').click();
+    const finished = await scenarioProgress(review);
+    assert.equal(finished.total,10);
+    assert.equal(finished.correctTotal,0);
+    assert.equal(finished.errors.length,10);
+    assert.deepEqual(finished.session.answers,{});
+    await review.reload();
+    await review.locator('.result-score').waitFor();
+    assert.deepEqual(await scenarioProgress(review),finished);
+    await fixes.close();
+
+    // Closing a second page after a scored answer must preserve the shared attempt.
+    const tabs = await browser.newContext({viewport:{width:360,height:640}});
+    const active = await tabs.newPage();
+    const older = await tabs.newPage();
+    for (const target of [active,older]) {
+      target.on('pageerror', e => errors.push(String(e)));
+      await target.goto(base+'/scenarios.html');
+      await target.locator('[data-start="mixed"]').waitFor();
+    }
+    await active.locator('[data-start="mixed"]').click();
+    const current = await scenarioProgress(active);
+    const correct = scenarioBank.get(current.session.ids[0]).options.findIndex(option=>option.correct);
+    await active.locator(`[data-answer="${correct}"]`).check();
+    await active.locator('[data-action="check"]').click();
+    const scored = await scenarioProgress(active);
+    assert.equal(scored.total,1);
+    assert.equal(scored.correctTotal,1);
+    await active.close();
+    await older.goto(base+'/index.html');
+    await older.locator('[data-action="random"]').waitFor();
+    assert.deepEqual(await scenarioProgress(older),scored);
+    await older.goto(base+'/scenarios.html');
+    await older.locator('[data-answer]').first().waitFor();
+    assert.deepEqual(await scenarioProgress(older),scored);
+    await tabs.close();
     if(errors.length)throw Error(errors.join('\n'));
-    fs.writeFileSync(path.join(out,'browser-review.txt'),'PASS: nine packaged screenshots and multipart compliance bank load under Android CSP; collapsed mobile menu; no Play payment menu; 20-question basic attempt; separate compliance button, 15 topics, 12-question topic check/resume, complete 180-question attempt including 60 new questions; basic progress stays intact; 101-question OSI topic includes all 60 new protocol questions and blue QUIC help; glossary keeps answers unchanged; 15 local practice cases render with collapsed solutions; basic-question headings do not repeat topic names in the wheel or all-questions; no JS errors or horizontal overflow. Screenshots are Chromium renders of packaged WebView assets, not native Android installation tests.\n');
+    fs.writeFileSync(path.join(out,'browser-review.txt'),'PASS: nine packaged screenshots and multipart compliance bank load under Android CSP; collapsed mobile menu; no Play payment menu; 20-question basic attempt; separate compliance button, 15 topics, 12-question topic check/resume, complete 180-question attempt including 60 new questions; basic progress stays intact; 101-question OSI topic includes all 60 new protocol questions and blue QUIC help; glossary keeps answers unchanged; 15 local practice cases render with collapsed solutions; basic-question headings do not repeat topic names in the wheel or all-questions; RuStore feedback uses the packaged app version; ten unsubmitted practice choices require confirmation and score as skips after completion/reload; a second tab preserves the scored attempt; no JS errors or horizontal overflow. Screenshots are Chromium renders of packaged WebView assets, not native Android installation tests.\n');
     console.log(fs.readFileSync(path.join(out,'browser-review.txt'),'utf8'));
   } finally {
     if (browser)await browser.close();
